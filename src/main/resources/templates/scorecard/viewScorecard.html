@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Performance Management</title>
+
+    <link href="../../../static/css/bootstrap.min.css" rel="stylesheet"
+          th:href="@{/css/bootstrap.min.css}">
+    <link href="../../../static/font-awesome/css/font-awesome.css" rel="stylesheet"
+          th:href="@{/font-awesome/css/font-awesome.css}">
+
+    <link href="../../../static/css/animate.css" rel="stylesheet"
+          th:href="@{/css/animate.css}">
+    <link href="../../../static/css/style.css" rel="stylesheet"
+          th:href="@{/css/style.css}">
+    <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet"
+          th:href="@{/css/plugins/select2/select2.min.css}">
+    <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet"
+          th:href="@{/css/plugins/select2/select2-bootstrap4.min.css}">
+    <link href="../../../static/css/chat.css" rel="stylesheet"
+          th:href="@{/css/chat.css}">
+
+    <script>
+        function submitScorecardForApproval(){
+            document.getElementById('scorecardForm').submit();
+        }
+    </script>
+    <style>
+        .hr{
+            border-top: 4px solid #d6d6d4 !important;
+        }
+
+        table.table thead .sorted:after{
+            display: inline-block;
+            font-family: 'FontAwesome';
+            opacity: 0.8;
+            margin-left: 1em;
+        }
+        table.table thead .sorted.sorted-desc:after{
+            content: "\f15e";
+        }
+        table.table thead .sorted.sorted-asc:after{
+            content: "\f15d";
+        }
+        .fail{
+            color: red;
+        }
+        .fair{
+            color: orange;
+        }
+        .pass{
+            color: green;
+        }
+    </style>
+</head>
+
+<body class="mini-navbar">
+
+<div id="wrapper">
+    <div th:replace="fragments/template :: side-menu"></div>
+
+    <div id="page-wrapper" class="gray-bg">
+
+        <div th:replace="fragments/template :: top-navbar"></div>
+        <div th:replace="fragments/template :: page-heading"></div>
+        <div th:replace="fragments/template :: alerts"></div>
+
+        <div class="wrapper wrapper-content animated fadeInRight ecommerce">
+            <div class="ibox-content m-b-sm border-bottom">
+
+                <div class="row table-responsive" >
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Key Focus Arrea</th>
+                            <th> Strategic Objective</th>
+                            <th>Goal</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Represents eveidence of success and failure">Performance Measure</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Unit of measurement can be in currency, number or percentage">Unit of Measure</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Baseline target">Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Allocated Goal Weight">KPI Weight</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances">Employee Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Manager Score">Manager Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Actual Score">Moderated Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Weighted Score">Weighted Score (%)</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Supporting Documents">Supporting Documents</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Justification">Justification</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Conversational comments between supervisor and subbordinate">Manager\'s Comment</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="goal, stat : ${goalsList}"  th:with="newPerspective=${(stat.index == 0) || (goalsList[stat.index - 1].perspective.name != goal.perspective?.name)},
+                                                                                  newStrategicObjective=${newPerspective || (stat.index == 0) || (goalsList[stat.index - 1].strategicObjective != goal.strategicObjective)}">
+                            <td th:if="${newPerspective}" th:text="${goal.perspective?.name}" th:rowspan="${goalsList.?[perspective?.name == #root.goal.perspective?.name].size()}"></td>
+                            <td th:if="${newStrategicObjective}" th:text="${goal.strategicObjective?.name}" th:rowspan="${goalsList.?[perspective?.name == #root.goal.perspective?.name].?[strategicObjective?.name == #root.goal.strategicObjective?.name].size()}"></td>
+                            <td th:text="${goal.name}"></td>
+                            <td th:text="${goal.measure}"></td>
+                            <td th:text="${goal.unit}"></td>
+                            <td th:text="${goal.target}"></td>
+                            <td th:text="${goal.allocatedWeight}"></td>
+                            <td th:text="${goal.employeeScore <= 0.0 || goal.employeeScore == null ? '' : #numbers.formatDecimal(goal.employeeScore, 0,  2)}" th:attr="class = ${goal.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${goal.managerScore <= 0.0 || goal.managerScore == null ? '' : #numbers.formatDecimal(goal.managerScore, 0, 2)}" th:attr="class = ${goal.managerScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${goal.actualScore <= 0.0 || goal.actualScore == null ? '' : #numbers.formatDecimal(goal.actualScore, 0, 2)}" th:attr="class = ${goal.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
+                            <td th:text="${goal.actualScore <= 0.0 || goal.actualScore == null ? '' : #numbers.formatDecimal((goal.actualScore / 5) * goal.allocatedWeight, 0, 2) + '%'}"></td>
+                            <td th:text="${goal.supportingDocument}"></td>
+                            <td th:text="${goal.justification}"></td>
+                            <td>
+                                <a th:if="${#lists.isEmpty(goal.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
+                                    <i  class="fa fa-lg fa-commenting" style="color: grey"></i>
+                                </a>
+                                <a th:unless="${#lists.isEmpty(goal.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
+                                    <i class="fa fa-lg fa-comment" style="color: #1d84c6"></i>
+                                </a>
+                                <a th:if="${goal.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
+                                    <i class="fa fa-lg fa-flag" style="color: red" ></i>
+                                </a>
+                                <a th:unless="${goal.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
+                                    <i class="fa fa-lg fa-flag" style="color: grey"></i>
+                                </a>
+                            </td>
+
+                            <div class="modal fade" th:id="'commentModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h4 class="modal-title">Comment on Target [<span th:text="${goal.name}" class="text-success"></span>]</h4>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <form method="post" th:object="${comment}" th:action="@{/scorecards/save-comment}">
+                                            <div class="modal-body">
+                                                <div class="row">
+                                                    <div class="col-sm-12">
+<!--                                                            <div class="row table-striped" th:each="comment : ${goal.comments}">-->
+<!--                                                                <span class="col-8" th:text="${comment.name}"></span>-->
+<!--                                                                <span class="col-4" th:text="${comment.sender?.fullName}"></span>-->
+<!--                                                                <hr class="hr">-->
+<!--                                                            </div>-->
+                                                        <div class="chat-container">
+                                                            <main>
+                                                                <div class="chat" th:each="comment, stat : ${goal.comments}">
+                                                                    <li th:text="${comment.name
+                                                                    }"></li>
+<!--                                                                    <li th:class="${commentList?.sender?.id == 1 ? 'me' : 'you'}">-->
+<!--                                                                        <div class="entete">-->
+<!--                                                                            <h3 th:text="${commentList.date}"></h3>-->
+<!--                                                                            <h2 th:text="${commentList.sender?.fullName}"></h2>-->
+<!--                                                                        </div>-->
+<!--                                                                        <div class="triangle"></div>-->
+<!--                                                                        <div class="message" th:text="${commentList.name}">-->
+<!--                                                                        </div>-->
+<!--                                                                    </li>-->
+
+                                                                </div>
+                                                                <footer>
+                                                                    <input type="hidden" th:value="${goal.id}" name="goal">
+                                                                    <input type="hidden" th:value="${goal.scorecardId}" name="scorecardId">
+                                                                    <textarea placeholder="Type your message" th:field="*{name}"></textarea>
+                                                                    <a href="#" class="btn btn-white" style="width: 100% !important">Send</a>
+                                                                </footer>
+                                                            </main>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="submit" class="btn btn-primary">Save Comment</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" th:id="'flagModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h4 class="modal-title">Flag Target [<span th:text="${goal.name}" class="text-success"></span>]</h4>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <form method="post" th:object="${goal}" th:action="@{/scorecards/save-flag}">
+                                            <div class="modal-body">
+                                                <div class="row">
+                                                    <div class="col-sm-12">
+                                                        <div class="form-group row">
+                                                            <label class="col-form-label">Reason for Flagging</label>
+                                                            <textarea name="flag" th:text="${goal.flag}" class="form-control" rows="3"></textarea>
+                                                            <input type="hidden" th:value="${goal.id}" name="id">
+                                                            <input type="hidden" th:value="${goal.scorecardId}" name="scorecardId">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="submit" class="btn btn-primary">Save Comment</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </tr>
+                        <tr>
+                            <td colspan="6"></td>
+                            <td>
+                                <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
+                                <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
+                            </td>
+                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
+                                <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}"></h4>
+                            </td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+                <div class="form-group row">
+                    <div class="col-lg-4">
+                        <input type="hidden" name="scorecardId" th:value="${id}">
+                    </div>
+
+                    <div class="col-lg-2" th:if="${session.loggedUser?.id == scorecard.owner?.supervisor?.id && scorecard.approvalStatus == 'PENDING_APPROVAL'}">
+                        <a data-toggle="modal" data-target="#rejectModal"><button class="btn btn-danger" type="button">Reject Scorecard</button></a>
+                    </div>
+                    <div class="col-2"  th:if="${session.loggedUser?.id == scorecard.owner?.supervisor?.id && scorecard.approvalStatus == 'PENDING_APPROVAL'}" >
+                        <form method="post" th:action="@{/scorecards/supervisor-approve}">
+                            <input type="hidden" name="id" th:value="${id}">
+                            <button class="btn btn-success" type="submit">Approve Scorecard</button>
+                        </form>
+                    </div>
+
+                    <div class="col-lg-2" th:if="${session.loggedUser?.role == 'MODERATOR' && scorecard.approvalStatus == 'APPROVED_BY_SUPERVISOR'}">
+                        <a data-toggle="modal" data-target="#hrRejectModal"><button class="btn btn-danger" type="button">Reject Scorecard</button></a>
+                    </div>
+                    <div class="col-2"  th:if="${session.loggedUser?.role == 'MODERATOR' && scorecard.approvalStatus == 'APPROVED_BY_SUPERVISOR'}" >
+                        <form method="post" th:action="@{/scorecards/hr-approve}">
+                            <input type="hidden" name="id" th:value="${id}">
+                            <button class="btn btn-success" type="submit">Approve Scorecard</button>
+                        </form>
+                    </div>
+
+                    <div class="col-5">
+                        <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
+                        <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
+                        <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'NEW'}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
+                    </div>
+                 </div>
+            </div>
+
+        </div>
+        <div th:replace="fragments/template :: footer"></div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Reject Scorecard</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" th:action="@{/scorecards/supervisor-reject}">
+                <div class="modal-body">
+                    <div class="row">
+
+                        <div class="col-sm-12">
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4">Message</label>
+                                <div class="col-lg-8">
+                                    <div class="input-group m-b">
+                                        <textarea rows="3" name="message" id="message" class="form-control"></textarea>
+                                        <input type="hidden" name="id" th:value="${id}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+            <form method="post" th:action="@{/scorecards/hr-reject}">
+                <div class="modal-body">
+                    <div class="row">
+
+                        <div class="col-sm-12">
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4">Message</label>
+                                <div class="col-lg-8">
+                                    <div class="input-group m-b">
+                                        <textarea rows="3" name="message" class="form-control"></textarea>
+                                        <input type="hidden" name="id" th:value="${id}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Mainly scripts -->
+<script src="../../../static/js/jquery-3.6.0.min.js"
+        th:src="@{/js/jquery-3.6.0.min.js}"></script>
+<script src="../../../static/js/popper.min.js"
+        th:src="@{/js/popper.min.js}"></script>
+<script src="../../../static./js/bootstrap.js"
+        th:src="@{/js/bootstrap.js}"></script>
+<script src="../../../static/js/plugins/metisMenu/jquery.metisMenu.js"
+        th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+<script src="../../../static/js/plugins/select2/select2.full.min.js"
+        th:src="@{/js/plugins/select2/select2.full.min.js}"></script>
+
+
+<!-- Custom and plugin javascript -->
+<script src="../../../static/js/inspinia.js"
+        th:src="@{/js/inspinia.js}"></script>
+<script src="../../../static/js/plugins/pace/pace.min.js"
+        th:src="@{/js/plugins/pace/pace.min.js}"></script>
+
+<script>
+
+    $(document).ready(function(){
+        $('.select2_demo_1').select2({
+
+        });
+    })
+    $(document).ready(function(){
+        $('.myselect').select2({
+            tags: true
+        });
+    })
+    $(document).on('select2:open', () => {
+        document.querySelector('.select2-search__field').focus();
+    });
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ZimTrade Performance Management</title>
+    <link rel="stylesheet" type="text/css" href="css/style.css"/>
+    <link rel="stylesheet" type="text/css" href="css/style2.css"/>
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+</head>
+
+<body>
+<div class="row">
+    <h3>Performance Improvement Plan</h3>
+    <h6>Confidential</h6>
+</div>
+       <div class="row">
+            <table class="table" style="border: none; width: 100%">
+                <tr>
+                    <td style="width: 10%"></td>
+                    <td style="width: 20%">
+                        <img src="images/zimlogo.png" class="logo" />
+                    </td>
+                    <td>
+                        <tr>
+                            <th>Name</th>
+                            <td></td>
+                            <th>Position</th>
+                            <td></td>
+
+                        </tr>
+                        <tr>
+                            <th>Date</th>
+                            <td></td>
+                            <th>Department</th>
+                            <td></td>
+                        </tr>
+                    </td>
+                </tr>
+            </table>
+       </div>
+
+        <p>1. The purpose of this Performance Improvement Plan (PIP) is to define performance deficiencies, clarify performance expectations, and allow you the
+            opportunity to demonstrate your ability to meet the performance expectations outlined below. To facilitate sustained improvement, the following plan has been
+            established. This plan may be modified as necessary depending on your progress.</p>
+
+<!-- Students Table -->
+    <div id="studentss">
+        <div th:if="${not #lists.isEmpty(accounts)}">
+        <table style="word-wrap: break-word; margin-right: 10px;" >
+          <thead>
+             <tr>
+               <td class="italic"><b>Target area</b>
+                   Detail specific area where performance standards have not been met</td>
+               <td class="italic"><b>Performance concern</b>
+                   Detail specific dates and examples of where the standards have not been met</td>
+                 <td class="italic"><b>Expected standard of performance</b>
+                     Detail what is expected of the employee in terms of their performance i.e., what does ‘good’</td>
+               <td class="italic"><b>Agreed improvement actions</b>
+                   Detail what actions need to be taken to meet expected standard of performance</td>
+               <td class="italic"><b>Support</b>
+                   Detail what has been agreed in terms of support required to achieve the expected standard of performance</td>
+               <td class="italic"><b>Review Date</b></td>
+               <td class="italic"><b>Review notes</b>
+                   Detail improvement made and any future review dates</td>
+               <td class="italic">Date to achieve expected standard</td>
+             </tr>
+          </thead>
+            <tbody>
+             <tr>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+             </tr>
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <div class="row" id="students" th:if="${not #lists.isEmpty(accounts)}">
+                <div class="col-12" th:each="account : ${accounts}">
+                    <div class="ibox ">
+                        <div class="ibox-title">
+                            <h5>Unordered list</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <ul>
+                                <li>But I must explain </li>
+                                <li>To you how all this mistaken</li>
+                                <li>Idea of denouncing pleasure </li>
+                                <li>Great explorer of the truth</li>
+                                <li>To take a trivial example
+                                    <ul>
+                                        <li>Or one who avoids a pain</li>
+                                        <li>Indignation and dislike men</li>
+                                        <li>Nor again is there anyone </li>
+                                        <li>But who has any right</li>
+                                    </ul>
+                                </li>
+                                <li>That they cannot foresee</li>
+                                <li>Who avoids a pain that produceg</li>
+                                <li>Consequences that are extremely </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+        </div>
+        <p>2. Follow-up Updates – You will receive feedback on your progress according to the following schedule:</p>
+        <table class="table">
+            <thead>
+              <tr>
+                  <th>Date Scheduled</th>
+                  <th>Activity</th>
+                  <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+             <tr>
+                 <td></td>
+                 <td></td>
+                 <td></td>
+             </tr>
+            </tbody>
+        </table>
+        <p>3. By signing below, you acknowledge that you and your supervisor has discussed this performance improvement plan.</p>
+        <table class="table">
+            <thead>
+              <tr>
+                  <th>This action plan has been agreed by</th>
+                  <td>Signed</td>
+                  <td>Date</td>
+              </tr>
+            </thead>
+            <tbody>
+             <tr>
+                 <th>Manager</th>
+                 <td></td>
+                 <td></td>
+             </tr>
+             <tr>
+                 <th>Subbordinate</th>
+                 <td></td>
+                 <td></td>
+             </tr>
+            </tbody>
+        </table>
+        <p>4. PROGRESS SUMMARY 30-day/60-day/90-day Updates</p>
+        <table class="table table-bordered" border="1" style="word-wrap: break-word">
+            <thead>
+             <tr>
+                 <th>Performance Concern</th>
+                 <th>Date of Review</th>
+                 <td><b>Progress/Review Notes</b>
+                     Detail the status of the
+                     progress made at the review
+                     meeting i.e. (Satisfactory
+                     improvement, partial
+                     improvement) or (Insufficient/No improvement)</td>
+                 <th>Next Action Required</th>
+                 <th>Due Date</th>
+             </tr>
+            </thead>
+            <tbody>
+              <tr>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+              </tr>
+            </tbody>
+        </table>
+        <h4>Final Rating / Review</h4>
+        <table>
+            <tr>
+                <td>Employee has achieved required improvements as described above.</td>
+                <td><input type="checkbox" checked="checked" /></td>
+            </tr>
+            <tr>
+                <td>Employee has not achieved required improvements as described above.</td>
+                <td><input type="checkbox" /></td>
+            </tr>
+        </table>
+
+        <table>
+            <tr>
+                <th>Supervisor:</th>
+                <td></td>
+                <th>Date:</th>
+                <td></td>
+            </tr>
+            <tr>
+                <th>Employee:</th>
+                <td></td>
+                <th>Date:</th>
+                <td></td>
+            </tr>
+        </table>
+        <h4>Additional Comments</h4>
+        <p style="text-decoration: underline;"></p>
+    </div>
+</div>
+
+
+
+</body>
+</html>

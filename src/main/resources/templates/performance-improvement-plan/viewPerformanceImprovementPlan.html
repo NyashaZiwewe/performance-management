@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Performance Management</title>
+
+    <link href="../../../static/css/bootstrap.min.css" rel="stylesheet"
+          th:href="@{/css/bootstrap.min.css}">
+    <link href="../../../static/font-awesome/css/font-awesome.css" rel="stylesheet"
+          th:href="@{/font-awesome/css/font-awesome.css}">
+
+    <link href="../../../static/css/animate.css" rel="stylesheet"
+          th:href="@{/css/animate.css}">
+    <link href="../../../static/css/style.css" rel="stylesheet"
+          th:href="@{/css/style.css}">
+
+    <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet"
+          th:href="@{/css/plugins/select2/select2.min.css}">
+    <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet"
+          th:href="@{/css/plugins/select2/select2-bootstrap4.min.css}">
+
+<style>
+    .hr{
+        border-top: 4px solid #d6d6d4 !important;
+    }
+
+    .completed {
+        position: relative;
+    }
+    .completed::after {
+        border-bottom: 0.2em solid green;
+        content: "";
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 50%;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="wrapper">
+    <div th:replace="fragments/template :: side-menu"></div>
+
+    <div id="page-wrapper" class="gray-bg">
+
+        <div th:replace="fragments/template :: top-navbar"></div>
+        <div th:replace="fragments/template :: page-heading"></div>
+        <div th:replace="fragments/template :: alerts"></div>
+
+        <div class="wrapper wrapper-content animated fadeInRight ecommerce">
+            <div class="ibox row">
+                <div class="ibox-content m-b-sm border-bottom col-8" style="max-height: 700px; overflow-y: auto">
+                <div class="text-center col-8">
+                    <h3 th:text="${performanceImprovementPlan.agreedAction}" style="color: #000000; font-weight: bold"></h3>
+                </div>
+                    <div class="row">
+                        <div class="col-sm-12">
+                          <h5 style="color: #000000">Description</h5>
+                            <span th:text="${performanceImprovementPlan.targetArea +' - '+ performanceImprovementPlan.concern}"></span>
+                            <hr class="hr">
+                        </div>
+
+                        <div class="col-sm-12">
+                          <h4 style="color: #000000">Tasks</h4>
+                            <table class="table table-striped">
+                            <tr th:each="task : ${tasksList}">
+                                <td>
+                                    <h5 style="font-weight: normal" th:text="${task.name}" th:if="${task.status =='COMPLETED'}" class="completed" ></h5>
+                                    <h5 style="font-weight: normal" th:text="${task.name}" th:unless="${task.status =='COMPLETED'}"></h5>
+                                </td>
+                                <td>
+                                    <span th:if="${session.loggedUser.id == performanceImprovementPlan.employee?.id}">
+                                        <input th:id="${task.id}" type="checkbox" th:if="${task.status =='COMPLETED'}" checked  style="zoom:1.5;" onchange="updateTaskStatus(this.id)">
+                                        <input th:id="${task.id}" type="checkbox" th:unless="${task.status =='COMPLETED'}"  style="zoom:1.5;" onchange="updateTaskStatus(this.id)">
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr th:if="${session.loggedUser.id == performanceImprovementPlan.employee?.id}">
+                                <td>
+                                    <input id="task" name="task" class="form-control" onchange="saveTask()">
+                                </td>
+                            </tr>
+                            </table>
+                            <hr class="hr">
+                        </div>
+                        <div class="col-sm-12">
+                          <h4 style="color: #000000">Issues</h4>
+                            <table class="table table-striped">
+                            <tr th:each="issue : ${issuesList}">
+                                <td>
+                                    <h5 style="font-weight: normal" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}" class="completed" ></h5>
+                                    <h5 style="font-weight: normal" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></h5>
+                                </td>
+                                <th>
+                                <td>
+                                    <span th:if="${session.loggedUser.id == performanceImprovementPlan.employee?.id}">
+                                        <input th:id="${issue.id}" type="checkbox" th:if="${issue.status =='COMPLETED'}" checked  style="zoom:1.5;" onchange="updateIssueStatus(this.id)">
+                                        <input th:id="${issue.id}" type="checkbox" th:unless="${issue.status =='COMPLETED'}"  style="zoom:1.5;" onchange="updateIssueStatus(this.id)">
+                                    </span>
+                                </td>
+                                </th>
+                            </tr>
+                            <tr th:if="${session.loggedUser.id == performanceImprovementPlan.employee?.id}">
+                                <td>
+                                    <input id="issue" class="form-control" onchange="saveIssue()">
+                                </td>
+                            </tr>
+                            </table>
+                        </div>
+
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-lg-4">
+                          <input type="hidden" name="performanceImprovementPlanId" id="performanceImprovementPlanId" th:value="${performanceImprovementPlan.id}">
+                        </div>
+                        <div class="col-lg-8">
+                                <a th:href="@{/performance-improvement-plans}" class="btn btn-warning">Cancel</a>
+
+                            <button class="btn btn-success" type="submit">Save</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="ibox-content col-4" style="max-height: 700px; overflow-y: auto">
+                    <div class="col-sm-12">
+                        <h4 style="color: #000000">Comments</h4>
+                        <table class="table table-borderless">
+                        <tr th:each="note : ${notesList}">
+                            <td th:text="${note.comment}"></td>
+                            <th th:id="'hidden' + ${note.id}"></th>
+                        </tr>
+                        <tr>
+                            <td>
+                                <input id="note" class="form-control" onchange="saveNote()">
+                            </td>
+                        </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div th:replace="fragments/template :: footer"></div>
+
+    </div>
+</div>
+
+<!-- Mainly scripts -->
+<script src="../../../static/js/jquery-3.6.0.min.js"
+        th:src="@{/js/jquery-3.6.0.min.js}"></script>
+<script src="../../../static/js/popper.min.js"
+        th:src="@{/js/popper.min.js}"></script>
+<script src="../../../static./js/bootstrap.js"
+        th:src="@{/js/bootstrap.js}"></script>
+<script src="../../../static/js/plugins/metisMenu/jquery.metisMenu.js"
+        th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+<script src="../../../static/js/plugins/select2/select2.full.min.js"
+        th:src="@{/js/plugins/select2/select2.full.min.js}"></script>
+
+
+<!-- Custom and plugin javascript -->
+<script src="../../../static/js/inspinia.js"
+        th:src="@{/js/inspinia.js}"></script>
+<script src="../../../static/js/plugins/pace/pace.min.js"
+        th:src="@{/js/plugins/pace/pace.min.js}"></script>
+
+<script>
+
+    $(document).ready(function () {
+        $('.select2_demo_1').select2({});
+        $('#submit-btn').prop('disabled', true);
+    })
+
+    $(document).ready(function () {
+        $('.myselect').select2({
+            tags: true
+        });
+    })
+    $(document).on('select2:open', () => {
+        document.querySelector('.select2-search__field').focus();
+    });
+
+
+    function saveTask(){
+        let performanceImprovementPlanId = document.getElementById("performanceImprovementPlanId").value;
+        let task = document.getElementById("task").value;
+
+        $.ajax({
+            url : '/performance-improvement-plans/save-task',
+            method: "POST",
+            data: {
+                performanceImprovementPlanId, task
+            },
+            success: function (data) {
+                location.reload();
+            },
+            error : function(data) {
+
+            }
+        });
+    }
+
+    function saveIssue(){
+        let performanceImprovementPlanId = document.getElementById("performanceImprovementPlanId").value;
+        let issue = document.getElementById("issue").value;
+
+        $.ajax({
+            url : '/performance-improvement-plans/save-issue',
+            method: "POST",
+            data: {
+                performanceImprovementPlanId, issue
+            },
+            success: function (data) {
+                location.reload();
+            },
+            error : function(data) {
+
+            }
+        });
+    }
+
+    function saveNote(){
+        let performanceImprovementPlanId = document.getElementById("performanceImprovementPlanId").value;
+        let note = document.getElementById("note").value;
+
+        $.ajax({
+            url : '/performance-improvement-plans/save-note',
+            method: "POST",
+            data: {
+                performanceImprovementPlanId, note
+            },
+            success: function (data) {
+                location.reload();
+            },
+            error : function(data) {
+
+            }
+        });
+    }
+
+
+    function updateTaskStatus(taskId){
+        let performanceImprovementPlanId = document.getElementById("performanceImprovementPlanId").value;
+        $.ajax({
+            url : '/performance-improvement-plans/update-task-status',
+            method: "POST",
+            data: {
+                performanceImprovementPlanId, taskId
+            },
+            success: function (data) {
+                location.reload();
+            },
+            error : function(data) {
+
+            }
+        });
+    }
+
+    function updateIssueStatus(issueId){
+        let performanceImprovementPlanId = document.getElementById("performanceImprovementPlanId").value;
+        $.ajax({
+            url : '/performance-improvement-plans/update-issue-status',
+            method: "POST",
+            data: {
+                performanceImprovementPlanId, issueId
+            },
+            success: function (data) {
+                location.reload();
+            },
+            error : function(data) {
+
+            }
+        });
+    }
+
+</script>
+
+
+
+</body>
+
+</html>
