@@ -113,4 +113,12 @@ public class AssessmentController {
         return modelAndView;
     }
 
+    @RequestMapping("/view-chart/{id}")
+    public ModelAndView viewChart(@PathVariable("id") long id, HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_CHART);
+        modelAndView.addObject("pageTitle", "View Chart");
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
+
 }

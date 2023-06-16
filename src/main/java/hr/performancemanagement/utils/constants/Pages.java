@@ -33,5 +33,6 @@ public class Pages {
 //    public static final String MODERATE_SCORES_SELECT_YEAR = "assessment/moderateScoresSelectYear";
     public static final String VIEW_SCORES = "assessment/viewScores";
     public static final String VIEW_PERFORMANCE_REPORT = "reports/performanceReport";
+    public static final String VIEW_CHART = "reports/lineChart";
 
 }

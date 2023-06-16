@@ -26,6 +26,16 @@
         text-align: center;
     }
 </style>
+<style>
+    @media only print {
+        body {
+            visibility: hidden;
+        }
+        .divID {
+            visibility: visible;
+        }
+    }
+</style>
 
 <body>
 
@@ -40,9 +50,10 @@
         <div th:replace="fragments/template :: alerts"></div>
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce" >
-            <input  type="button" value="Convert HTML to PDF"
-                    onclick="convertHTMLtoPDF()">
-            <div class="ibox-content m-b-sm border-bottom" id="divID">
+<!--            <input  type="button" value="Convert HTML to PDF"-->
+<!--                    onclick="convertHTMLtoPDF()">-->
+            <button onclick="window.print()">Print</button>
+            <div class="ibox-content m-b-sm border-bottom col-10" id="divID">
                 <fieldset class="border p-2">
                     <legend class="w-auto">Performance Report</legend>
 
@@ -67,6 +78,9 @@
                             </table>
                         </div>
                     </div>
+
+                    <div id="chartContainer" class="row" style="height: 370px; max-width: 80%; margin: 5px 5px;"></div>
+                    <br>
                     <h2>Performance Improvement Plan</h2>
                     <h4>Confidential</h4>
 
@@ -108,6 +122,111 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <p>2. Follow-up Updates – You will receive feedback on your progress according to the following schedule: </p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Date Scheduled</th>
+                                <th>Activity</th>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td>30-day Update</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td>60-day Update</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td>90-day Update and Status </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <p>3. By signing below, you acknowledge that you and your supervisor has discussed this performance improvement plan.</p>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th>This action plan has been agreed by</th>
+                                <td>Signed</td>
+                                <td>Date</td>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <th>Manager</th>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <th>Subordinate</th>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>4. PROGRESS SUMMARY 30-day/60-day/90-day Updates</p>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered" border="1" style="word-wrap: break-word">
+                            <thead>
+                            <tr>
+                                <th>Performance Concern</th>
+                                <th>Date of Review</th>
+                                <td><b>Progress/Review Notes</b>
+                                    Detail the status of the
+                                    progress made at the review
+                                    meeting i.e. (Satisfactory
+                                    improvement, partial
+                                    improvement) or (Insufficient/No improvement)</td>
+                                <th>Next Action Required</th>
+                                <th>Due Date</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4>Final Rating / Review</h4>
+                    <table>
+                        <tr>
+                            <td>Employee has achieved required improvements as described above.</td>
+                            <td><input type="checkbox" checked="checked" /></td>
+                        </tr>
+                        <tr>
+                            <td>Employee has not achieved required improvements as described above.</td>
+                            <td><input type="checkbox" /></td>
+                        </tr>
+                    </table>
+
+                    <table>
+                        <tr>
+                            <th>Supervisor:</th>
+                            <td></td>
+                            <th>Date:</th>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <th>Employee:</th>
+                            <td></td>
+                            <th>Date:</th>
+                            <td></td>
+                        </tr>
+                    </table>
+                    <h4>Additional Comments</h4>
+                    <p style="text-decoration: underline;"></p>
                 </fieldset>
             </div>
 
@@ -137,19 +256,64 @@
     function convertHTMLtoPDF() {
         const { jsPDF } = window.jspdf;
 
-        let doc = new jsPDF('l', 'mm', [1500, 1400]);
+         let doc = new jsPDF('p', 'mm', [850, 1400]);
+        // let doc = new jsPDF({
+        //     orientation: 'l',
+        //     unit: 'mm',
+        //     format: 'a4',
+        //     // putOnlyUsedFonts:true,
+        //     matrix: [1500, 1400]
+        // });
         let pdfjs = document.querySelector('#divID');
+        let canvas = document.getElementById('chartContainer');
+        let canvasImg = canvas.toDataURL();
+        doc.addImage(canvasImg, 'PNG', 5, 20, width-20, 70);
 
         doc.html(pdfjs, {
             callback: function(doc) {
                 doc.save("newpdf.pdf");
             },
-            x: 12,
-            y: 12
+            // x: 12,
+            // y: 12
         });
     }
 </script>
 
+<script>
+    window.onload = function () {
+
+        var chart = new CanvasJS.Chart("chartContainer", {
+            animationEnabled: true,
+            // theme: "light2",
+            title:{
+                text: "Simple Line Chart"
+            },
+            axisY:{
+                includeZero: false
+            },
+            data: [{
+                type: "line",
+                dataPoints: [
+                    { y: 450 },
+                    { y: 414},
+                    { y: 520, indexLabel: "highest",markerColor: "green", markerType: "triangle" },
+                    { y: 460 },
+                    { y: 450 },
+                    { y: 500 },
+                    { y: 480 },
+                    { y: 480 },
+                    { y: 410 , indexLabel: "lowest",markerColor: "red", markerType: "cross" },
+                    { y: 500 },
+                    { y: 480 },
+                    { y: 510 }
+                ]
+            }]
+        });
+        chart.render();
+
+    }
+</script>
+<script src="../../static/js/plugins/canvas/canvasjs.min.js" th:src="@{'/js/plugins/canvas/canvasjs.min.js'}"></script>
 </body>
 
 </html>

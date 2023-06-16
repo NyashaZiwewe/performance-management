@@ -3,6 +3,7 @@ package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.Scorecard;
+import hr.performancemanagement.entities.StrategicObjective;
 import hr.performancemanagement.repository.ScoreCardRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,11 +23,21 @@ public class ScorecardService {
     @Autowired
     HttpSession session;
 
+    @Autowired
+    StrategicObjectiveService strategicObjectiveService;
+    @Autowired
+    private final ReportingPeriodService reportingPeriodService;
+
+    public ScorecardService(ReportingPeriodService reportingPeriodService) {
+        this.reportingPeriodService = reportingPeriodService;
+    }
+
     public List<Scorecard> listAllScorecards(long clientId){
         List<Scorecard> scorecardList = new ArrayList<>();
         scoreCardRepository.findScorecardsByClientId(clientId).forEach(scorecard -> scorecardList.add(scorecard));
         return scorecardList;
     }
+
 
     public List<Scorecard> getScorecardsByReportingPeriodId(ReportingPeriod reportingPeriod){
 
@@ -61,7 +72,6 @@ public class ScorecardService {
 
     public List<Scorecard> getScoresByPeriodId(ReportingPeriod reportingPeriod){
 
-
         List<Scorecard> scorecardList = getScorecardsByReportingPeriodId(reportingPeriod);
 
         for(Scorecard scorecard : scorecardList){
@@ -71,6 +81,65 @@ public class ScorecardService {
         }
 
         return scorecardList;
+    }
+
+    public int countPassedScorecardsByPeriodId(ReportingPeriod reportingPeriod){
+
+        List<Scorecard> scorecardList = getScorecardsByReportingPeriodId(reportingPeriod);
+        int passedScorecards = 0;
+
+        for(Scorecard scorecard : scorecardList){
+            double actualScore = scoreCardRepository.findAverageActualScore(scorecard.getId());
+            if(actualScore >= 2.5){
+                passedScorecards ++;
+            }
+        }
+        return passedScorecards;
+    }
+
+    public int countFailedScorecardsByPeriodId(ReportingPeriod reportingPeriod){
+
+        List<Scorecard> scorecardList = getScorecardsByReportingPeriodId(reportingPeriod);
+        int failedScorecards = 0;
+
+        for(Scorecard scorecard : scorecardList){
+            double actualScore = scoreCardRepository.findAverageActualScore(scorecard.getId());
+            if(actualScore < 2.5){
+                failedScorecards ++;
+            }
+        }
+        return failedScorecards;
+    }
+
+    public List<Double> findAverageAllocatedWeightPerStrategicObjective(){
+
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
+
+        List<Double> averageWeights = new ArrayList<>();
+        for(StrategicObjective strategicObjective : strategicObjectivesList){
+
+            averageWeights.add(scoreCardRepository.findAverageAllocatedWeightPerStrategicObjective(strategicObjective));
+        }
+
+        return averageWeights;
+    }
+
+    public List<Double> findAverageWeightedScorePerStrategicObjective(){
+
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
+
+        List<Double> averageWeightedScores = new ArrayList<>();
+        for(StrategicObjective strategicObjective : strategicObjectivesList){
+
+            double averageScore = scoreCardRepository.findAverageWeightedScorePerStrategicObjective(strategicObjective);
+            double averageWeight = scoreCardRepository.findAverageAllocatedWeightPerStrategicObjective(strategicObjective);
+            double weightedScore = (averageScore / 5) * averageWeight;
+            averageWeightedScores.add(weightedScore);
+        }
+
+        return averageWeightedScores;
     }
 
     public Scorecard getScorecardById(long id){
