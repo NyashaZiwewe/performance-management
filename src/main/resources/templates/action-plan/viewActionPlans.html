@@ -51,7 +51,7 @@
                         </div>
                         <div class="ibox-content">
                                 <div class="table-responsive" th:fragement="administration">
-                                <table class="table table-borderless table-hover transactionsDataTable nowrap">
+                                <table class="table table-borderless table-hover transactionsDataTable">
                                     <thead>
                                     <tr>
                                         <th>Plan</th>
@@ -88,14 +88,14 @@
                                         </td>
                                         <td th:text="${plan.date}"></td>
                                         <td>
-                                            <a th:if="${session.loggedUser.id == plan.manager?.id}" data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}">
-                                               <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                                            </a>
                                             <a th:href="@{/action-plans/view-plan/} + ${plan.id}">
                                                 <button class="btn btn-success btn-sm">View</button>
                                             </a>
                                             <a th:if="${session.loggedUser.id == plan.manager?.id}" data-toggle="modal" th:data-target="'#editModal'+ ${stat.index}">
                                                <button class="btn btn-success btn-sm">Edit</button>
+                                            </a>
+                                            <a th:if="${session.loggedUser.id == plan.manager?.id}" data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}">
+                                                <button class="btn btn-danger btn-sm" type="button">Delete</button>
                                             </a>
                                         </td>
 

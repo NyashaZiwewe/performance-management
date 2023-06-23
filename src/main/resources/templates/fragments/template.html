@@ -37,7 +37,7 @@
                 <li class="nav-header">
                     <div class="dropdown profile-element">
                         <img alt="image" class="rounded-0" src="../../static/img/download.png"
-                             th:src="@{/img/download.png}" style="height: 6em; width: 100%"/>
+                             th:src="@{/img/zimlogo.png}" style="height: 6em; width: 100%"/>
                         <a data-toggle="dropdown" class="dropdown-toggle" href="#">
                             <span class="block font-bold" sec:authentication="name" th:text="${session.name}"> User1</span>
                             <span class=" text-xs block" sec:authentication="authorities" th:text="${session.position}">Position</span>
@@ -59,9 +59,9 @@
                         <li class="nav-item">
                             <a th:href="@{/scorecards/clone-scorecard}">Clone Scorecard</a>
                         </li>
-                        <li class="nav-item">
-                            <a th:href="@{/scorecards/capture-scores}">Capture Scores</a>
-                        </li>
+<!--                        <li class="nav-item">-->
+<!--                            <a th:href="@{/scorecards/capture-scores}">Capture Scores</a>-->
+<!--                        </li>-->
                     </ul>
                 </li>
                 <li class="active">
@@ -117,7 +117,7 @@
                 </div>
                 <ul class="nav navbar-top-links navbar-right">
                     <li>
-                        <span class="m-r-sm text-muted welcome-message">Welcome to ZiwSoft PMS<strong></strong></span>
+                        <span class="m-r-sm text-muted welcome-message">Welcome to ZimTrade PMS<strong></strong></span>
                     </li>
                     <li>
                         <a href="/logout">

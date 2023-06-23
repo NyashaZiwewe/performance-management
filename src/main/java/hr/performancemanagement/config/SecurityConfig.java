@@ -3,6 +3,7 @@ package hr.performancemanagement.config;
 import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.service.AccountService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
+import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,8 +24,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.xml.bind.DatatypeConverter;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,13 +49,26 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     @Override
                     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
 
+                        MessageDigest md = null;
+//                        HttpServletRequest request = null;
+//                        ModelAndView modelAndView = new ModelAndView("login.html");
+//                        PortletUtils.addMessagesToPage(modelAndView, request);
+
+                        try {
+                            md = MessageDigest.getInstance("MD5");
+                        } catch (NoSuchAlgorithmException e) {
+                            throw new RuntimeException(e);
+                        }
+
                         final String name = authentication.getName();
-                        final String password = authentication.getCredentials().toString();
+                        final String pass = authentication.getCredentials().toString();
+
+                        md.update(pass.getBytes());
+                        byte[] digest = md.digest();
+                        String password = DatatypeConverter.printHexBinary(digest).toLowerCase();
 
                         Account account = accountService.findAccountByEmail(name);
 
-//                        UserDetails systemUser = User.withUsername("sysdev")
-//                                .password("#pass123").authorities("system:dev").build();
                         if(account !=null) {
 
                             if (name.equals(account.getEmail()) && password.equals(account.getPassword())) {
@@ -76,11 +95,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                                 final Set<SimpleGrantedAuthority> roles = authorities.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet());
                                 return new UsernamePasswordAuthenticationToken(name, password, roles);
                             } else {
-//                            HttpServletRequest request = null;
-//                            PortletUtils.addErrorMsg("Invalid username or password ", request);
-                                throw new BadCredentialsException("Invalid username or password");
+
+                            //PortletUtils.addErrorMsg("Invalid username or password ", request);
+
+                               throw new BadCredentialsException("Invalid username or password");
                             }
                         }else {
+                 //           PortletUtils.addErrorMsg("Account doesn't exist", request);
                             throw new BadCredentialsException("Account does not exist");
                         }
                     }

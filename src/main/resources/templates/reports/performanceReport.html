@@ -4,21 +4,21 @@
 <head>
 
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" media="all">
 
-    <title>.:: Ecorec ::.</title>
+    <title>.:: Performance Management ::.</title>
 
     <link href="../../../static/css/bootstrap.min.css" rel="stylesheet"
-          th:href="@{/css/bootstrap.min.css}">
+          th:href="@{/css/bootstrap.min.css}" media="all">
     <link href="../../../static/font-awesome/css/font-awesome.css" rel="stylesheet"
-          th:href="@{/font-awesome/css/font-awesome.css}">
+          th:href="@{/font-awesome/css/font-awesome.css}" media="all">
 
     <link href="../../../static/css/animate.css" rel="stylesheet"
-          th:href="@{/css/animate.css}">
+          th:href="@{/css/animate.css}" media="all">
     <link href="../../../static/css/style.css" rel="stylesheet"
-          th:href="@{/css/style.css}">
+          th:href="@{/css/style.css}" media="all">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 </head>
 
 <style>
@@ -27,12 +27,25 @@
     }
 </style>
 <style>
-    @media only print {
+    @page {
+        size: A4;
+        margin: 0;
+        /*margin-bottom: 2cm !important;*/
+    }
+    @media print {
+        footer {page-break-after: always;}
+        html, body {
+            /*width: 210mm;*/
+            width: 100%;
+            height: auto;
+            /*height: 297mm;*/
+        }
         body {
             visibility: hidden;
         }
-        .divID {
+        #divID {
             visibility: visible;
+
         }
     }
 </style>
@@ -50,12 +63,9 @@
         <div th:replace="fragments/template :: alerts"></div>
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce" >
-<!--            <input  type="button" value="Convert HTML to PDF"-->
-<!--                    onclick="convertHTMLtoPDF()">-->
-            <button onclick="window.print()">Print</button>
-            <div class="ibox-content m-b-sm border-bottom col-10" id="divID">
+            <div class="ibox-content m-b-sm border-bottom " id="divID">
                 <fieldset class="border p-2">
-                    <legend class="w-auto">Performance Report</legend>
+                    <legend class="w-auto"><a onclick="window.print()">Performance Report - [PDF]</a></legend>
 
                     <div class="row">
                         <div class="col-6">
@@ -79,8 +89,6 @@
                         </div>
                     </div>
 
-                    <div id="chartContainer" class="row" style="height: 370px; max-width: 80%; margin: 5px 5px;"></div>
-                    <br>
                     <h2>Performance Improvement Plan</h2>
                     <h4>Confidential</h4>
 
@@ -88,44 +96,76 @@
                         opportunity to demonstrate your ability to meet the performance expectations outlined below. To facilitate sustained improvement, the following plan has been
                         established. This plan may be modified as necessary depending on your progress.</p>
 
+<!--                    <div th:if="${not #lists.isEmpty(pips)}">-->
+<!--                        <table class="table">-->
+<!--                            <thead>-->
+<!--                            <tr>-->
+<!--                                <td class="italic"><b>Target area</b>-->
+<!--                                    Detail specific area where performance standards have not been met</td>-->
+<!--                                <td class="italic"><b>Performance concern</b>-->
+<!--                                    Detail specific dates and examples of where the standards have not been met</td>-->
+<!--                                <td class="italic"><b>Expected standard of performance</b>-->
+<!--                                    Detail what is expected of the employee in terms of their performance i.e., what does ‘good’</td>-->
+<!--                                <td class="italic"><b>Agreed improvement actions</b>-->
+<!--                                    Detail what actions need to be taken to meet expected standard of performance</td>-->
+<!--                                <td class="italic"><b>Support</b>-->
+<!--                                    Detail what has been agreed in terms of support required to achieve the expected standard of performance</td>-->
+<!--                                <td class="italic"><b>Review Date</b></td>-->
+<!--                                <td class="italic"><b>Review notes</b>-->
+<!--                                    Detail improvement made and any future review dates</td>-->
+<!--                                <td class="italic">Date</td>-->
+<!--                            </tr>-->
+<!--                            </thead>-->
+<!--                            <tbody>-->
+<!--                            <tr th:each="pip : ${pips}">-->
+<!--                                <td th:text="${pip.targetArea}"></td>-->
+<!--                                <td th:text="${pip.concern}"></td>-->
+<!--                                <td th:text="${pip.expectedStandard}"></td>-->
+<!--                                <td th:text="${pip.agreedAction}"></td>-->
+<!--                                <td th:text="${pip.requiredSupport}"></td>-->
+<!--                                <td th:text="${pip.endDate}"></td>-->
+<!--                                <td th:text="${pip.reviewNotes}"></td>-->
+<!--                                <td th:text="${pip.endDate}"></td>-->
+<!--                            </tr>-->
+<!--                            </tbody>-->
+<!--                        </table>-->
+<!--                    </div>-->
                     <div th:if="${not #lists.isEmpty(pips)}">
-                        <table class="table">
-                            <thead>
-                            <tr>
-                                <td class="italic"><b>Target area</b>
-                                    Detail specific area where performance standards have not been met</td>
-                                <td class="italic"><b>Performance concern</b>
-                                    Detail specific dates and examples of where the standards have not been met</td>
-                                <td class="italic"><b>Expected standard of performance</b>
-                                    Detail what is expected of the employee in terms of their performance i.e., what does ‘good’</td>
-                                <td class="italic"><b>Agreed improvement actions</b>
-                                    Detail what actions need to be taken to meet expected standard of performance</td>
-                                <td class="italic"><b>Support</b>
-                                    Detail what has been agreed in terms of support required to achieve the expected standard of performance</td>
-                                <td class="italic"><b>Review Date</b></td>
-                                <td class="italic"><b>Review notes</b>
-                                    Detail improvement made and any future review dates</td>
-                                <td class="italic">Date</td>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="pip : ${pips}">
-                                <td th:text="${pip.targetArea}"></td>
-                                <td th:text="${pip.concern}"></td>
-                                <td th:text="${pip.expectedStandard}"></td>
-                                <td th:text="${pip.agreedAction}"></td>
-                                <td th:text="${pip.requiredSupport}"></td>
-                                <td th:text="${pip.endDate}"></td>
-                                <td th:text="${pip.reviewNotes}"></td>
-                                <td th:text="${pip.endDate}"></td>
-                            </tr>
-                            </tbody>
-                        </table>
+                        <div class="row" th:each="pip : ${pips}">
+                            <div class="col-lg-6">
+                                <div class="panel panel-default">
+                                    <div class="panel-heading">
+                                        <b>Target area:</b> <span th:text="${pip.targetArea}"></span>
+                                    </div>
+                                    <div class="panel-body">
+                                        <b>Performance concern:</b> <span th:text="${pip.concern}"></span>
+                                    </div>
+                                    <div class="panel-footer">
+                                        <b>Expected standard of performance:</b> <span th:text="${pip.expectedStandard}"></span>
+                                    </div>
+                                    <div class="panel-footer">
+                                        <b>Agreed improvement actions:</b> <span th:text="${pip.agreedAction}"></span>
+                                    </div>
+                                    <div class="panel-footer">
+                                        <b>Support Required:</b> <span th:text="${pip.requiredSupport}"></span>
+                                    </div>
+                                    <div class="panel-footer">
+                                        <b>Review Date:</b> <span th:text="${pip.endDate}"></span>
+                                    </div>
+                                    <div class="panel-footer">
+                                        <b>Date:</b> <span th:text="${pip.endDate}"></span>
+                                    </div>
+                                    <div class="panel-footer">
+                                        <b>Review Notes:</b> <span th:text="${pip.reviewNotes}"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <p>2. Follow-up Updates – You will receive feedback on your progress according to the following schedule: </p>
+                    <p><b>2. Follow-up Updates:</b> You will receive feedback on your progress according to the following schedule: </p>
                     <div class="table-responsive">
-                        <table class="table table-bordered">
+                        <table class="table table-bordered" style="width: 50%">
                             <tr>
                                 <th>Date Scheduled</th>
                                 <th>Activity</th>
@@ -171,18 +211,18 @@
 
                     <p>4. PROGRESS SUMMARY 30-day/60-day/90-day Updates</p>
 
-                    <div class="table-responsive">
+                    <div class="table table-responsive">
                         <table class="table table-bordered" border="1" style="word-wrap: break-word">
                             <thead>
                             <tr>
                                 <th>Performance Concern</th>
                                 <th>Date of Review</th>
                                 <td><b>Progress/Review Notes</b>
-                                    Detail the status of the
+                                    (Detail the status of the
                                     progress made at the review
                                     meeting i.e. (Satisfactory
                                     improvement, partial
-                                    improvement) or (Insufficient/No improvement)</td>
+                                    improvement) or (Insufficient/No improvement))</td>
                                 <th>Next Action Required</th>
                                 <th>Due Date</th>
                             </tr>
@@ -200,7 +240,7 @@
                     </div>
 
                     <h4>Final Rating / Review</h4>
-                    <table>
+                    <table class="table">
                         <tr>
                             <td>Employee has achieved required improvements as described above.</td>
                             <td><input type="checkbox" checked="checked" /></td>
@@ -211,7 +251,7 @@
                         </tr>
                     </table>
 
-                    <table>
+                    <table class="table" style="width: 50%">
                         <tr>
                             <th>Supervisor:</th>
                             <td></td>
@@ -225,8 +265,10 @@
                             <td></td>
                         </tr>
                     </table>
-                    <h4>Additional Comments</h4>
-                    <p style="text-decoration: underline;"></p>
+                    <fieldset class="border p-2">
+                        <legend class="w-auto">Additional Comments</legend>
+                        <p></p>
+                    </fieldset>
                 </fieldset>
             </div>
 
@@ -252,68 +294,6 @@
 <script src="../../../static/js/plugins/pace/pace.min.js"
         th:src="@{/js/plugins/pace/pace.min.js}"></script>
 
-<script type="text/javascript">
-    function convertHTMLtoPDF() {
-        const { jsPDF } = window.jspdf;
-
-         let doc = new jsPDF('p', 'mm', [850, 1400]);
-        // let doc = new jsPDF({
-        //     orientation: 'l',
-        //     unit: 'mm',
-        //     format: 'a4',
-        //     // putOnlyUsedFonts:true,
-        //     matrix: [1500, 1400]
-        // });
-        let pdfjs = document.querySelector('#divID');
-        let canvas = document.getElementById('chartContainer');
-        let canvasImg = canvas.toDataURL();
-        doc.addImage(canvasImg, 'PNG', 5, 20, width-20, 70);
-
-        doc.html(pdfjs, {
-            callback: function(doc) {
-                doc.save("newpdf.pdf");
-            },
-            // x: 12,
-            // y: 12
-        });
-    }
-</script>
-
-<script>
-    window.onload = function () {
-
-        var chart = new CanvasJS.Chart("chartContainer", {
-            animationEnabled: true,
-            // theme: "light2",
-            title:{
-                text: "Simple Line Chart"
-            },
-            axisY:{
-                includeZero: false
-            },
-            data: [{
-                type: "line",
-                dataPoints: [
-                    { y: 450 },
-                    { y: 414},
-                    { y: 520, indexLabel: "highest",markerColor: "green", markerType: "triangle" },
-                    { y: 460 },
-                    { y: 450 },
-                    { y: 500 },
-                    { y: 480 },
-                    { y: 480 },
-                    { y: 410 , indexLabel: "lowest",markerColor: "red", markerType: "cross" },
-                    { y: 500 },
-                    { y: 480 },
-                    { y: 510 }
-                ]
-            }]
-        });
-        chart.render();
-
-    }
-</script>
-<script src="../../static/js/plugins/canvas/canvasjs.min.js" th:src="@{'/js/plugins/canvas/canvasjs.min.js'}"></script>
 </body>
 
 </html>

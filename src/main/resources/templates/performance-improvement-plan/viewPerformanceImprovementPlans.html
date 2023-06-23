@@ -46,12 +46,12 @@
                         <div class="ibox-title">
                             Performance Improvement Plans
                             <div class="ibox-tools">
-                                <a th:href="@{/performance-improvement-plans/add-plan}"><button class="btn btn-success btn-sm">Add New Performance Improvement Plan</button></a>
+                                <a th:href="@{/performance-improvement-plans/add-plan}"><button class="btn btn-success btn-sm">Add New Plan</button></a>
                             </div>
                         </div>
                         <div class="ibox-content">
                                 <div class="table-responsive" th:fragement="administration">
-                                <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap">
+                                <table class="table table-striped table-bordered table-hover transactionsDataTable">
                                     <thead>
                                     <tr>
                                         <th>Employee</th>
@@ -61,10 +61,12 @@
                                         <th>Agreed Action</th>
                                         <th>Required Support</th>
                                         <th>Review Notes</th>
-                                        <th>Progress</th>
+                                        <th>Progress/ Status</th>
                                         <th>Closing Date</th>
-                                        <th>Status</th>
-                                        <th>Date Added</th>
+<!--                                        <th>Status</th>-->
+<!--                                        <th>Date Added</th>-->
+                                        <th></th>
+                                        <th></th>
                                         <th></th>
                                     </tr>
                                     </thead>
@@ -81,24 +83,28 @@
                                             <span class="pie" th:text="${plan.progress} +','+ ${100 - plan.progress}"></span>
                                         </td>
                                         <td th:text="${plan.endDate}"></td>
-                                        <td>
-                                            <div th:switch="${plan.status}">
-                                                <label class="label label-warning" th:case="NEW" th:text="${plan.status}"></label>
-                                                <label class="label label-danger" th:case="ON_HOLD" th:text="${plan.status}"></label>
-                                                <label class="label label-primary" th:case="IN_PROGRESS" th:text="${plan.status}"></label>
-                                                <label class="label label-success" th:case="COMPLETED" th:text="${plan.status}"></label>
-                                                <label class="label label-success" th:case="CLOSED" th:text="${plan.status}"></label>
-                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
-                                            </div>
-                                        </td>
-                                        <td th:text="${plan.date}"></td>
+<!--                                        <td>-->
+<!--                                            <div th:switch="${plan.status}">-->
+<!--                                                <label class="label label-warning" th:case="NEW" th:text="${plan.status}"></label>-->
+<!--                                                <label class="label label-danger" th:case="ON_HOLD" th:text="${plan.status}"></label>-->
+<!--                                                <label class="label label-primary" th:case="IN_PROGRESS" th:text="${plan.status}"></label>-->
+<!--                                                <label class="label label-success" th:case="COMPLETED" th:text="${plan.status}"></label>-->
+<!--                                                <label class="label label-success" th:case="CLOSED" th:text="${plan.status}"></label>-->
+<!--                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>-->
+<!--                                            </div>-->
+<!--                                        </td>-->
+<!--                                        <td th:text="${plan.date}"></td>-->
                                         <td>
                                             <a th:if="${session.loggedUser.id == plan.employee?.id}" data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}">
                                                <button class="btn btn-danger btn-sm" type="button">Delete</button>
                                             </a>
+                                        </td>
+                                        <td>
                                             <a th:href="@{/performance-improvement-plans/view-plan/} + ${plan.id}">
                                                 <button class="btn btn-success btn-sm">View</button>
                                             </a>
+                                        </td>
+                                        <td>
                                             <a th:if="${session.loggedUser.id == plan.employee?.id}" data-toggle="modal" th:data-target="'#editModal'+ ${stat.index}">
                                                <button class="btn btn-success btn-sm">Edit</button>
                                             </a>
@@ -334,25 +340,25 @@
             buttons: [
                 { extend: 'copy'},
                 {extend: 'csv',
-                    title: 'System Users',
+                    title: 'Performance Improvement Plans',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,8]
                     }},
                 {extend: 'excel',
-                    title: 'System Users',
+                    title: 'Performance Improvement Plans',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,8]
                     }},
                 {extend: 'pdf',
-                    title: 'System Users',
+                    title: 'Performance Improvement Plans',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,8]
                     }},
 
                 {extend: 'print',
-                    title: 'System Users',
+                    title: 'Performance Improvement Plans',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,8]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

@@ -55,6 +55,9 @@
         .pass{
             color: green;
         }
+        legend{
+            color: #175ea8;
+        }
     </style>
 </head>
 
@@ -265,6 +268,28 @@
                         <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'NEW'}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
                     </div>
                  </div>
+                <div class="form-group row">
+                    <div class="col-4" th:if="${scorecard.ownerComment != null}">
+                        <fieldset class="border p-2">
+                            <legend class="w-auto">Owner's Overall Comment</legend>
+                                <span th:text="${scorecard.ownerComment}"></span>
+                        </fieldset>
+                    </div>
+
+                    <div class="col-4" th:if="${scorecard.supervisorComment != null}">
+                        <fieldset class="border p-2">
+                            <legend class="w-auto">Supervisor's Overall Comment</legend>
+                                <span th:text="${scorecard.supervisorComment}"></span>
+                        </fieldset>
+                    </div>
+
+                    <div class="col-4" th:if="${scorecard.moderatorComment != null}">
+                        <fieldset class="border p-2">
+                            <legend class="w-auto">Moderator's Overall Comment</legend>
+                                <span th:text="${scorecard.moderatorComment}"></span>
+                        </fieldset>
+                    </div>
+                </div>
             </div>
 
         </div>

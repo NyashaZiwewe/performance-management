@@ -112,6 +112,8 @@ public class ScorecardController {
     @RequestMapping(value = "/save-scorecard", method = RequestMethod.POST)
     public String saveScorecard(HttpServletRequest request, Scorecard newScorecard) throws UnsupportedEncodingException {
 
+        Account loggedUser = (Account) session.getAttribute("loggedUser");
+
         if(scorecardService.countActiveScorecards(newScorecard.getOwner(), newScorecard.getReportingPeriod()) >= 1){
             PortletUtils.addErrorMsg(newScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + newScorecard.getReportingPeriod().getStartDate() +" - "+ newScorecard.getReportingPeriod().getEndDate() +")", request);
             return "redirect:/scorecards/add-scorecard";
@@ -131,8 +133,13 @@ public class ScorecardController {
                     + "The ZimTrade Team";
             mailservice.sendEmail(recipient, subject, template);
 
-            PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with capturing targets", request);
-            return "redirect:/scorecards/capture-targets/"+ newScorecard.getId();
+            if(newScorecard.getOwner().getId() == loggedUser.getId()){
+                PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with capturing targets", request);
+                return "redirect:/scorecards/capture-targets/"+ newScorecard.getId();
+            }else {
+                PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with creating other scorecards", request);
+                return "redirect:/scorecards/add-scorecard";
+            }
         }
     }
 
@@ -254,6 +261,24 @@ public class ScorecardController {
 
         goalService.saveGoal(goal);
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
+    }
+
+    @RequestMapping(value = "/save-tcomment", method = RequestMethod.POST)
+    public String saveComment(HttpServletRequest request, Long scorecardId, String userType, String comment) {
+
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+
+        if("owner".equalsIgnoreCase(userType)){
+            scorecard.setOwnerComment(comment);
+        } else if ("supervisor".equalsIgnoreCase(userType)) {
+            scorecard.setSupervisorComment(comment);
+        } else if ("moderator".equalsIgnoreCase(userType)) {
+            scorecard.setModeratorComment(comment);
+        }else {
+
+        }
+        scorecardService.saveScorecard(scorecard);
+        return "redirect:/scorecards/capture-scores/"+ scorecardId;
     }
 
     @RequestMapping(value = "/delete-target", method = RequestMethod.POST)

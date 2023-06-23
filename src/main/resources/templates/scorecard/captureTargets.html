@@ -220,12 +220,12 @@
                                     </div>
                                 </tr>
                                 <tr>
-                                    <td colspan="5"></td>
+                                    <td colspan="6"></td>
                                     <td>
                                         <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                         <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                                     </td>
-                                    <td colspan="2"></td>
+                                    <td></td>
                                 </tr>
                                 <form th:if="${totalAllocatedWeight != 100.0 && session.loggedUser?.id == scorecard.owner?.id} " th:action="@{/scorecards/save-target}" method="post" th:object="${goal}">
                                     <tr>

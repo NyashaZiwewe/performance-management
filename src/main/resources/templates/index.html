@@ -44,14 +44,14 @@
                         <div class="ibox ">
                             <div class="ibox-title">
                                 <div class="ibox-tools">
-                                    <span class="label label-success float-right">Monthly</span>
+                                    <span class="label label-primary float-right">Completed</span>
                                 </div>
-                                <h5>Views</h5>
+                                <h5>Scorecards</h5>
                             </div>
                             <div class="ibox-content">
-                                <h1 class="no-margins">386,200</h1>
+                                <span class="label label-primary">12</span>
                                 <div class="stat-percent font-bold text-success">98% <i class="fa fa-bolt"></i></div>
-                                <small>Total views</small>
+                                <small>Completed Scorecards</small>
                             </div>
                         </div>
                     </div>
@@ -59,14 +59,14 @@
                         <div class="ibox ">
                             <div class="ibox-title">
                                 <div class="ibox-tools">
-                                    <span class="label label-info float-right">Annual</span>
+                                    <span class="label label-info float-right">Outstanding</span>
                                 </div>
-                                <h5>Orders</h5>
+                                <h5>Scorecards</h5>
                             </div>
                             <div class="ibox-content">
-                                <h1 class="no-margins">80,800</h1>
+                                <span class="label label-primary">2</span>
                                 <div class="stat-percent font-bold text-info">20% <i class="fa fa-level-up"></i></div>
-                                <small>New orders</small>
+                                <small>Outstanding Scorecards</small>
                             </div>
                         </div>
                     </div>
@@ -75,20 +75,22 @@
                         <div class="ibox ">
                             <div class="ibox-title">
                                 <div class="ibox-tools">
-                                    <span class="label label-primary float-right">Today</span>
+                                    <span class="label label-primary float-right">Count</span>
                                 </div>
-                                <h5>visits</h5>
+                                <h5>Suggestion Box</h5>
                             </div>
                             <div class="ibox-content">
 
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <h1 class="no-margins">406,42</h1>
-                                        <div class="font-bold text-navy">44% <i class="fa fa-level-up"></i> <small>Rapid pace</small></div>
+                                        <span class="label label-primary">14</span>
+                                        <div class="stat-percent font-bold text-info">44% <i class="fa fa-level-up"></i></div>
+                                        <small>Complaints</small>
                                     </div>
                                     <div class="col-md-6">
-                                        <h1 class="no-margins">206,12</h1>
-                                        <div class="font-bold text-navy">22% <i class="fa fa-level-up"></i> <small>Slow pace</small></div>
+                                        <span class="label label-primary">12</span>
+                                        <div class="stat-percent font-bold text-info">22% <i class="fa fa-level-up"></i></div>
+                                            <small>Recommendations</small>
                                     </div>
                                 </div>
 
@@ -99,15 +101,25 @@
                     <div class="col-lg-4">
                         <div class="ibox ">
                             <div class="ibox-title">
-                                <h5>Monthly income</h5>
+                                <h5>360° Assessments</h5>
                                 <div class="ibox-tools">
-                                    <span class="label label-primary">Updated 12.2015</span>
+                                    <span class="label label-primary">Updated 06.2023</span>
                                 </div>
                             </div>
-                            <div class="ibox-content no-padding">
-                                <div class="flot-chart m-t-lg" style="height: 55px;">
-                                    <div class="flot-chart-content" id="flot-chart1"></div>
+                            <div class="ibox-content">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <span class="label label-primary">14</span>
+                                        <div class="stat-percent font-bold text-info">20% <i class="fa fa-level-up"></i></div>
+                                        <small>Peer to Peer</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="label label-primary">12</span>
+                                        <div class="stat-percent font-bold text-info">22% <i class="fa fa-level-up"></i></div>
+                                        <small>Supervisor Subordinate</small>
+                                    </div>
                                 </div>
+
                             </div>
 
                         </div>
@@ -332,7 +344,7 @@
         labels: ["Above Target","Below Target"],
         datasets: [{
             data: [pass,fail],
-            backgroundColor: ["#1ab293","red"]
+            backgroundColor: ["#1ab293","#860002"]
         }]
     } ;
 

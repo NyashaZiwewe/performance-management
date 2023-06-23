@@ -144,21 +144,6 @@ public class AccountsController {
         return "redirect:/accounts/";
     }
 
-    @GetMapping("/download-pdf")
-    public void downloadPdf(HttpServletResponse response){
-        try {
-            Path file = Paths.get(pdfService.generatePdf().getAbsolutePath());
-            if(Files.exists(file)){
-                response.setContentType("application/pdf");
-//                response.addHeader("Content-Disposition", "attachment; filename"+ file.getFileName());
-                response.addHeader("Content-Disposition", "inline; filename"+ file.getFileName());
-                Files.copy(file, response.getOutputStream());
-                response.getOutputStream().flush();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
 
 }
