@@ -12,7 +12,7 @@ import java.util.List;
 @Repository
 public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     List<Scorecard> findScorecardsByClientId(long clientId);
-    List<Scorecard> findScorecardsByOwner(int owner);
+    List<Scorecard> findScorecardsByOwner(Account owner);
     List<Scorecard> findScorecardsByReportingPeriodAndClientId(ReportingPeriod reportingPeriod, long clientId);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner(ReportingPeriod reportingPeriod, Account account);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner_Supervisor(ReportingPeriod reportingPeriod, Account account);
@@ -37,5 +37,9 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     @Nullable
     @Query("SELECT coalesce(AVG(actualScore), 0) FROM Goal WHERE strategicObjective = :strategicObjective")
     Double findAverageWeightedScorePerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
+
+    @Nullable
+    @Query("SELECT id FROM Scorecard WHERE owner = :owner AND status = 'ACTIVE'")
+    Long findEmployeeActiveScorecardId(@Param("owner") Account owner);
 
 }

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,16 +18,25 @@ public class PerformanceImprovementPlanService {
 
     @Autowired
     PerformanceImprovementPlanRepository performanceImprovementPlanRepository;
+    @Autowired
+    HttpSession session;
 
-    public List<PerformanceImprovementPlan> listAllPerformanceImprovementPlans(long clientId){
+    public List<PerformanceImprovementPlan> listAllPerformanceImprovementPlans(){
+        Account loggedUser = (Account) session.getAttribute("loggedUser");
         List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
-        performanceImprovementPlanRepository.findPerformanceImprovementPlansByClientId(clientId).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
+        performanceImprovementPlanRepository.findPerformanceImprovementPlansByClientId(loggedUser.getClientId()).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
         return performanceImprovementPlanList;
     }
 
     public List<PerformanceImprovementPlan> listPerformanceImprovementPlansByEmployee(Account employee, ReportingPeriod reportingPeriod){
         List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
         performanceImprovementPlanRepository.findPerformanceImprovementPlansByEmployeeAndReportingPeriod(employee, reportingPeriod).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
+        return performanceImprovementPlanList;
+    }
+
+    public List<PerformanceImprovementPlan> listAllPerformanceImprovementPlansByEmployee(Account employee){
+        List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
+        performanceImprovementPlanRepository.findPerformanceImprovementPlansByEmployee(employee).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
         return performanceImprovementPlanList;
     }
 

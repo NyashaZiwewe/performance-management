@@ -15,14 +15,16 @@ public class ReportingPeriod {
     private String startDate;
     @Column(unique = true)
     private String endDate;
+    private String assessmentStatus = "IN_ACTIVE";
     private String status;
     private Date date;
 
-    public ReportingPeriod(long id, long clientId, String startDate, String endDate, String status, Date date) {
+    public ReportingPeriod(long id, long clientId, String startDate, String endDate, String assessmentStatus, String status, Date date) {
         this.id = id;
         this.clientId = clientId;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.assessmentStatus = assessmentStatus;
         this.status = status;
         this.date = date;
     }
@@ -60,6 +62,14 @@ public class ReportingPeriod {
 
     public void setEndDate(String endDate) {
         this.endDate = endDate;
+    }
+
+    public String getAssessmentStatus() {
+        return assessmentStatus;
+    }
+
+    public void setAssessmentStatus(String assessmentStatus) {
+        this.assessmentStatus = assessmentStatus;
     }
 
     public String getStatus() {

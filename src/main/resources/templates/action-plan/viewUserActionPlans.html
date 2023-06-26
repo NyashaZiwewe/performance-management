@@ -44,91 +44,110 @@
                 <div class="col-lg-12 ">
                     <div class="ibox ">
                         <div class="ibox-title">
-                            Performance Improvement Plans
+                            Action Plans
                             <div class="ibox-tools">
-                                <a th:href="@{/performance-improvement-plans/add-plan}"><button class="btn btn-success btn-sm">Add New Plan</button></a>
+                                <a th:href="@{/action-plans/add-plan}"><button class="btn btn-success btn-sm">Add New Action Plan</button></a>
                             </div>
                         </div>
                         <div class="ibox-content">
                                 <div class="table-responsive" th:fragement="administration">
-                                <table class="table table-striped table-bordered table-hover transactionsDataTable">
+                                <table class="table table-borderless table-hover transactionsDataTable">
                                     <thead>
                                     <tr>
-                                        <th>Employee</th>
-                                        <th>Target Area</th>
-                                        <th>Concern</th>
-                                        <th>Expected Standard</th>
-                                        <th>Agreed Action</th>
-                                        <th>Required Support</th>
-                                        <th>Review Notes</th>
-                                        <th>Progress/ Status</th>
-                                        <th>Closing Date</th>
-<!--                                        <th>Status</th>-->
-<!--                                        <th>Date Added</th>-->
-                                        <th></th>
-                                        <th></th>
+                                        <th>Plan</th>
+                                        <th>Description</th>
+                                        <th>Measure of Success</th>
+                                        <th>Reporting Period</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Progress</th>
+                                        <th>Incumbent</th>
+                                        <th>Status</th>
+                                        <th>Date Added</th>
                                         <th></th>
                                     </tr>
                                     </thead>
                                     <tbody>
                                     <tr th:each="plan, stat :${plansList}">
-                                        <td th:text="${plan.employee?.fullName}"></td>
-                                        <td th:text="${plan.targetArea}"></td>
-                                        <td th:text="${plan.concern}"></td>
-                                        <td th:text="${plan.expectedStandard}"></td>
-                                        <td th:text="${plan.agreedAction}"></td>
-                                        <td th:text="${plan.requiredSupport}"></td>
-                                        <td th:text="${plan.reviewNotes}"></td>
+                                        <td th:text="${plan.name}"></td>
+                                        <td th:text="${plan.description}"></td>
+                                        <td th:text="${plan.measureOfSuccess}"></td>
+                                        <td th:text="${plan.reportingPeriod?.startDate +' - '+ plan.reportingPeriod?.endDate}"></td>
+                                        <td th:text="${plan.startDate}"></td>
+                                        <td th:text="${plan.endDate}"></td>
                                         <td>
                                             <span class="pie" th:text="${plan.progress} +','+ ${100 - plan.progress}"></span>
                                         </td>
-                                        <td th:text="${plan.endDate}"></td>
-<!--                                        <td>-->
-<!--                                            <div th:switch="${plan.status}">-->
-<!--                                                <label class="label label-warning" th:case="NEW" th:text="${plan.status}"></label>-->
-<!--                                                <label class="label label-danger" th:case="ON_HOLD" th:text="${plan.status}"></label>-->
-<!--                                                <label class="label label-primary" th:case="IN_PROGRESS" th:text="${plan.status}"></label>-->
-<!--                                                <label class="label label-success" th:case="COMPLETED" th:text="${plan.status}"></label>-->
-<!--                                                <label class="label label-success" th:case="CLOSED" th:text="${plan.status}"></label>-->
-<!--                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>-->
-<!--                                            </div>-->
-<!--                                        </td>-->
-<!--                                        <td th:text="${plan.date}"></td>-->
+                                        <td th:text="${plan.manager?.fullName}"></td>
                                         <td>
-                                            <a th:href="@{/performance-improvement-plans/view-plan/} + ${plan.id}">
+                                            <div th:switch="${plan.status}">
+                                                <label class="label label-primary" th:case="ACTIVE" th:text="${plan.status}"></label>
+                                                <label class="label label-danger" th:case="IN_ACTIVE" th:text="${plan.status}"></label>
+                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
+                                            </div>
+                                        </td>
+                                        <td th:text="${plan.date}"></td>
+                                        <td>
+                                            <a th:href="@{/action-plans/view-plan/} + ${plan.id}">
                                                 <button class="btn btn-success btn-sm">View</button>
                                             </a>
-                                        </td>
-                                        <td>
-                                            <a th:if="${session.loggedUser.id == plan.employee?.id}" data-toggle="modal" th:data-target="'#editModal'+ ${stat.index}">
+                                            <a th:if="${session.loggedUser.id == plan.manager?.id}" data-toggle="modal" th:data-target="'#editModal'+ ${stat.index}">
                                                <button class="btn btn-success btn-sm">Edit</button>
                                             </a>
-                                        </td>
-                                        <td>
-                                            <a th:if="${session.loggedUser.id == plan.employee?.id}" data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}">
+                                            <a th:if="${session.loggedUser.id == plan.manager?.id}" data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}">
                                                 <button class="btn btn-danger btn-sm" type="button">Delete</button>
                                             </a>
                                         </td>
 
-                                            <div class="modal fade" th:id="'editModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                        <div class="modal fade" th:id="'editModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                                 <div class="modal-dialog modal-lg" role="document">
                                                     <div class="modal-content">
                                                         <div class="modal-header">
-                                                            <h4 class="modal-title">Update Plan [<span th:text="${plan.agreedAction}" class="text-success"></span>]</h4>
+                                                            <h4 class="modal-title">Update Plan [<span th:text="${plan.name}" class="text-success"></span>]</h4>
                                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                                 <span aria-hidden="true">&times;</span>
                                                             </button>
                                                         </div>
-                                                        <form method="post" th:object="${performanceImprovementPlan}" th:action="@{/performance-improvement-plans/update-plan}">
+                                                        <form method="post" th:object="${actionPlan}" th:action="@{/action-plans/update-plan}">
                                                             <div class="modal-body">
                                                                 <div class="row">
                                                                     <div class="col-sm-12">
                                                                         <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Employee</label>
+                                                                            <label class="col-form-label col-lg-3 required">Plan</label>
                                                                             <div class="col-lg-9">
                                                                                 <div class="input-group m-b">
-                                                                                    <select class="select2_demo_1 form-control" required th:field="*{employee}">
-                                                                                        <option selected th:value="${plan.employee.id}" th:text="${plan.employee?.fullName}"></option>
+                                                                                    <input type="text" class="form-control" name="name" th:value="${plan.name}" required>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-sm-12">
+                                                                        <div class="form-group row">
+                                                                            <label class="col-form-label col-lg-3 required">Description</label>
+                                                                            <div class="col-lg-9">
+                                                                                <div class="input-group m-b">
+                                                                                    <textarea class="form-control" name="description" th:text="${plan.description}" rows="3" required></textarea>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-sm-12">
+                                                                        <div class="form-group row">
+                                                                            <label class="col-form-label col-lg-3 required">Measure of Success</label>
+                                                                            <div class="col-lg-9">
+                                                                                <div class="input-group m-b">
+                                                                                    <input type="text" class="form-control" name="measureOfSuccess" th:value="${plan.measureOfSuccess}" required>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-sm-12">
+                                                                        <div class="form-group row">
+                                                                            <label class="col-form-label col-lg-3 required">Incumbent</label>
+                                                                            <div class="col-lg-9">
+                                                                                <div class="input-group m-b">
+                                                                                    <select class="select2_demo_1 form-control" required th:field="*{manager}" style="width: 100%">
+                                                                                        <option selected th:value="${plan.manager?.id}" th:text="${plan.manager?.fullName}"></option>
                                                                                         <option th:each="employee : ${accountsList}"
                                                                                                 th:value="${employee.id}" th:text="${employee.fullName}"></option>
                                                                                     </select>
@@ -141,11 +160,11 @@
                                                                             <label class="col-form-label col-lg-3 required">Reporting Period</label>
                                                                             <div class="col-lg-9">
                                                                                 <div class="input-group m-b">
-                                                                                    <select class="select2_demo_1 form-control" required th:field="*{reportingPeriod}">
-                                                                                        <option selected th:value="${plan.reportingPeriod?.id}" th:text="${plan.reportingPeriod?.startDate +' - '+ plan.reportingPeriod?.endDate}"></option>
-                                                                                        <option th:each="period :${reportingPeriodsList.?[#this.status eq 'ACTIVE']}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
-                                                                                            1
-                                                                                        </option>
+                                                                                    <select class="select2_demo_1 form-control" required th:field="*{reportingPeriod}" style="width: 100%">
+                                                                                        <option selected th:value="${plan.reportingPeriod.id}" th:text="${plan.reportingPeriod?.startDate} + ' - ' + ${plan.reportingPeriod?.endDate}"></option>
+<!--                                                                                        <option th:each="period :${reportingPeriodsList.?[#this.status eq 'ACTIVE']}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option-->
+<!--                                                                                            1-->
+<!--                                                                                        </option>-->
                                                                                     </select>
                                                                                 </div>
                                                                             </div>
@@ -153,67 +172,17 @@
                                                                     </div>
                                                                     <div class="col-sm-12">
                                                                         <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Target Area</label>
+                                                                            <label class="col-form-label col-lg-3 required">Start Date</label>
                                                                             <div class="col-lg-9">
                                                                                 <div class="input-group m-b">
-                                                                                    <input type="text" class="form-control" name="targetArea" th:value="${plan.targetArea}" required>
+                                                                                    <input type="date" oninput="endDate.min=this.value" class="form-control" name="startDate" th:value="${plan.startDate}" required>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                     <div class="col-sm-12">
                                                                         <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Performance Concern</label>
-                                                                            <div class="col-lg-9">
-                                                                                <div class="input-group m-b">
-                                                                                    <input type="text" class="form-control" name="concern" th:value="${plan.concern}" required>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-sm-12">
-                                                                        <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Expected Standard</label>
-                                                                            <div class="col-lg-9">
-                                                                                <div class="input-group m-b">
-                                                                                    <input class="form-control" name="expectedStandard" th:value="${plan.expectedStandard}" required>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-sm-12">
-                                                                        <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Agreed Action</label>
-                                                                            <div class="col-lg-9">
-                                                                                <div class="input-group m-b">
-                                                                                    <input class="form-control" name="agreedAction" th:value="${plan.agreedAction}" required>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-sm-12">
-                                                                        <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Required Support</label>
-                                                                            <div class="col-lg-9">
-                                                                                <div class="input-group m-b">
-                                                                                    <input class="form-control" name="requiredSupport" th:value="${plan.requiredSupport}" required>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-sm-12">
-                                                                        <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Review Notes</label>
-                                                                            <div class="col-lg-9">
-                                                                                <div class="input-group m-b">
-                                                                                    <input class="form-control" name="reviewNotes" th:value="${plan.reviewNotes}" required>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-sm-12">
-                                                                        <div class="form-group row">
-                                                                            <label class="col-form-label col-lg-3 required">Planned Closing Date</label>
+                                                                            <label class="col-form-label col-lg-3 required">End Date</label>
                                                                             <div class="col-lg-9">
                                                                                 <div class="input-group m-b">
                                                                                     <input type="date" class="form-control" name="endDate" th:value="${plan.endDate}" required>
@@ -257,7 +226,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="modal fade" th:id="'deleteModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                        <div class="modal fade" th:id="'deleteModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                                 <div class="modal-dialog" role="document">
                                                     <div class="modal-content">
                                                         <div class="modal-header">
@@ -266,14 +235,14 @@
                                                                 <span aria-hidden="true">&times;</span>
                                                             </button>
                                                         </div>
-                                                        <form method="post" th:action="@{/performance-improvement-plans/delete-plan}">
+                                                        <form method="post" th:action="@{/action-plans/delete-plan}">
                                                             <div class="modal-body">
                                                                 <div class="row">
                                                                     <div class="col-12">
                                                                         <h5 class="text-danger"> Are you sure you want to delete this Plan?</h5>
                                                                     </div>
                                                                     <div class="col-12">
-                                                                        <h3 th:text="${plan.agreedAction}"></h3>
+                                                                        <h3 th:text="${plan.name}"></h3>
                                                                     </div>
                                                                     <input type="hidden" th:value="${plan.id}" name="id">
                                                                 </div>
@@ -340,25 +309,25 @@
             buttons: [
                 { extend: 'copy'},
                 {extend: 'csv',
-                    title: 'Performance Improvement Plans',
+                    title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,8]
+                        columns: [0,1,2,3,4,5]
                     }},
                 {extend: 'excel',
-                    title: 'Performance Improvement Plans',
+                    title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,8]
+                        columns: [0,1,2,3,4,5]
                     }},
                 {extend: 'pdf',
-                    title: 'Performance Improvement Plans',
+                    title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,8]
+                        columns: [0,1,2,3,4,5]
                     }},
 
                 {extend: 'print',
-                    title: 'Performance Improvement Plans',
+                    title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,8]
+                        columns: [0,1,2,3,4,5]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

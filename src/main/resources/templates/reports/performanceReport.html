@@ -19,6 +19,17 @@
           th:href="@{/css/style.css}" media="all">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+    <style>
+        .fail{
+            color: red;
+        }
+        .fair{
+            color: orange;
+        }
+        .pass{
+            color: green;
+        }
+    </style>
 </head>
 
 <style>
@@ -69,7 +80,7 @@
 
                     <div class="row">
                         <div class="col-6">
-                            <img th:src="@{/img/download.png}" src="../../static/img/download.png" class="logo" style="height: 100px !important; width: 200px !important;"/>
+                            <img th:src="@{/img/zimlogo.png}" src="../../static/img/zimlogo.png" class="logo" style="height: 100px !important; width: 200px !important;"/>
                         </div>
                         <div class="col-6">
                             <table class="table" style="border: none; width: 100%">
@@ -87,6 +98,42 @@
                                 </tr>
                             </table>
                         </div>
+                    </div>
+                    <h2>Scorecard Summary</h2>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                            <tr>
+                                <th>Key Focus Area</th>
+                                <th>Strategic Objective</th>
+                                <th>Goal</th>
+                                <th>Performance Measure</th>
+                                <th>Moderated Score</th>
+                                <th>Weighted Score (%)</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="goal, stat : ${goalsList}"  th:with="newPerspective=${(stat.index == 0) || (goalsList[stat.index - 1].perspective.name != goal.perspective?.name)},
+                                                                                      newStrategicObjective=${newPerspective || (stat.index == 0) || (goalsList[stat.index - 1].strategicObjective != goal.strategicObjective)}">
+                                    <td th:if="${newPerspective}" th:text="${goal.perspective?.name}" th:rowspan="${goalsList.?[perspective?.name == #root.goal.perspective?.name].size()}"></td>
+                                    <td th:if="${newStrategicObjective}" th:text="${goal.strategicObjective?.name}" th:rowspan="${goalsList.?[perspective?.name == #root.goal.perspective?.name].?[strategicObjective?.name == #root.goal.strategicObjective?.name].size()}"></td>
+                                    <td th:text="${goal.name}"></td>
+                                    <td th:text="${goal.measure}"></td>
+                                    <td th:text="${goal.actualScore <= 0.0 || goal.actualScore == null ? '' : #numbers.formatDecimal(goal.actualScore, 0, 2)}" th:attr="class = ${goal.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
+                                    <td th:text="${goal.actualScore <= 0.0 || goal.actualScore == null ? '' : #numbers.formatDecimal((goal.actualScore / 5) * goal.allocatedWeight, 0, 2) + '%'}"></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4"></td>
+                                    <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
+                                        <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
+                                    </td>
+                                    <td th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
+                                        <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}"></h4>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <h2>Performance Improvement Plan</h2>
@@ -131,8 +178,8 @@
 <!--                        </table>-->
 <!--                    </div>-->
                     <div th:if="${not #lists.isEmpty(pips)}">
-                        <div class="row" th:each="pip : ${pips}">
-                            <div class="col-lg-6">
+                        <div class="row">
+                            <div class="col-4" th:each="pip : ${pips}">
                                 <div class="panel panel-default">
                                     <div class="panel-heading">
                                         <b>Target area:</b> <span th:text="${pip.targetArea}"></span>

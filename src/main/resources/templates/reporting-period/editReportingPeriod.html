@@ -69,7 +69,20 @@
                         </div>
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">STATUS</label>
+                                <label class="col-form-label col-lg-4 required">Assessment Status</label>
+                                <div class="col-lg-8">
+                                    <select class="select2_demo_1 form-control" name="assessmentStatus" required th:field="*{assessmentStatus}">
+                                        <option th:value="${assessmentStatus}" th:text="${assessmentStatus}" selected></option>
+                                        <option th:each="assessmentStatus : ${T(hr.performancemanagement.utils.enums.AssessmentStatus).values()}" th:value="${assessmentStatus}" th:text="${assessmentStatus}">Option
+                                            1
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-12">
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4 required">Status</label>
                                 <div class="col-lg-8">
                                     <select class="select2_demo_1 form-control" name="status" required th:field="*{status}">
                                         <option th:value="${status}" th:text="${status}" selected></option>

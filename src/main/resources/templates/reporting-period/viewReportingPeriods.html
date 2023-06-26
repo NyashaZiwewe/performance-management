@@ -57,8 +57,9 @@
                                     <tr>
                                         <th>Start Date</th>
                                         <th>End Date</th>
+                                        <th>Assessment Status</th>
                                         <th>Status</th>
-                                        <th></th>
+                                        <th>Strategic Objectives</th>
                                         <th></th>
                                         <th></th>
                                     </tr>
@@ -68,6 +69,14 @@
                                         <td th:text="${period.startDate}"></td>
                                         <td th:text="${period.endDate}"></td>
                                         <td>
+                                            <div th:switch="${period.assessmentStatus}">
+                                                <label class="label label-primary" th:case="MID_YEAR" th:text="${period.assessmentStatus}"></label>
+                                                <label class="label label-primary" th:case="FULL_YEAR" th:text="${period.assessmentStatus}"></label>
+                                                <label class="label label-danger" th:case="IN_ACTIVE" th:text="${period.assessmentStatus}"></label>
+                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
+                                            </div>
+                                        </td>
+                                        <td>
                                             <div th:switch="${period.status}">
                                                 <label class="label label-primary" th:case="ACTIVE" th:text="${period.status}"></label>
                                                 <label class="label label-danger" th:case="IN_ACTIVE" th:text="${period.status}"></label>
@@ -75,9 +84,7 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">
-                                              <button class="btn btn-sm btn-success" type="button">View Strategic Goals</button>
-                                            </a>
+                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">View</a>
                                         </td>
                                         <td>
                                             <a th:href="@{/reporting-periods/edit-reporting-period/} + ${period.id}">

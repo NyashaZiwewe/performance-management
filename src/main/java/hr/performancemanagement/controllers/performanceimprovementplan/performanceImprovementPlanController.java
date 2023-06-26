@@ -62,7 +62,19 @@ public class performanceImprovementPlanController {
     public ModelAndView viewPerformanceImprovementPlans(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS);
         modelAndView.addObject("pageTitle", "View");
-        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanRepository.findAll();
+        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlans();
+        modelAndView.addObject("plansList", plansList);
+        modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
+
+    @RequestMapping (value = "/view-user-performance-improvement-plans/{userId}")
+    public ModelAndView viewPerformanceImprovementPlans(@PathVariable("userId") Long userId, HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS);
+        modelAndView.addObject("pageTitle", "View");
+        Account employee = accountService.getAccountById(userId);
+        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlansByEmployee(employee);
         modelAndView.addObject("plansList", plansList);
         modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
         preparePage(modelAndView, request);

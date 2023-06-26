@@ -169,7 +169,7 @@
                     </div>
                     <div class="form-group row">
                         <div class="col-lg-4">
-                            <input type="hidden" name="id" th:value="${id}">
+                            <input type="hidden" name="id"  id="id" th:value="${id}">
                         </div>
                         <div class="col-lg-8">
                             <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
@@ -182,21 +182,21 @@
                     <div class="col-4" th:if="${isOwner == true}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Owner's Overall Comment</legend>
-                            <textarea id="comment" class="form-control" oninput="saveComment('owner')"></textarea>
+                            <textarea th:text="${scorecard.ownerComment}" id="ownerComment" class="form-control" oninput="saveComment('owner')"></textarea>
                         </fieldset>
                     </div>
 
                     <div class="col-4" th:if="${isSupervisor == true}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Supervisor's Overall Comment</legend>
-                            <textarea id="comment" class="form-control" oninput="saveComment('supervisor')"></textarea>
+                            <textarea th:text="${scorecard.supervisorComment}" id="supervisorComment" class="form-control" oninput="saveComment('supervisor')"></textarea>
                         </fieldset>
                     </div>
 
                     <div class="col-4" th:if="${isModerator == true}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Moderator's Overall Comment</legend>
-                            <textarea id="comment" class="form-control" oninput="saveComment('moderator')"></textarea>
+                            <textarea th:text="${scorecard.moderatorComment}" id="moderatorComment"  class="form-control" oninput="saveComment('moderator')"></textarea>
                         </fieldset>
                     </div>
                 </div>
@@ -246,17 +246,37 @@
     });
 
     function saveComment(userType){
+
         let scorecardId = document.getElementById("id").value;
-        let comment = document.getElementById("comment").innerHTML;
+        let comment = null;
+
+        if(userType === "owner"){
+
+            comment = document.getElementById("ownerComment").value;
+
+        }else if(userType === "supervisor"){
+
+            comment = document.getElementById("supervisorComment").value;
+
+        }else if(userType === "moderator") {
+
+            comment = document.getElementById("moderatorComment").value;
+
+        } else {
+
+            return;
+        }
+        console.log("the comment: "+ comment);
 
         $.ajax({
-            url : '/scorecards/save-comment',
+            url : '/scorecards/save-overall-comment',
             method: "POST",
             data: {
                 scorecardId, userType, comment
             },
             success: function (data) {
-                location.reload();
+                //location.reload();
+                console.log(data);
             },
             error : function(data) {
 

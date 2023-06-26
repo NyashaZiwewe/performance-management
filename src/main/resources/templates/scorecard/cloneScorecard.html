@@ -75,10 +75,23 @@
                 <div class="row">
                     <div class="col-sm-12">
                         <div class="form-group row">
-                            <label class="col-form-label col-lg-4 required">Scorecard Owner</label>
+                            <label class="col-form-label col-lg-4 required"> Scorecard Owner</label>
+                            <div class="col-lg-8">
+                                <select class=" select2_demo_1 form-control" name="oldowner" readonly>
+                                    <option selected th:value="${owner.id}" th:text="${owner.fullName}"></option>
+<!--                                    <option th:each="account :${accountsList}" th:value="${account.id}"-->
+<!--                                            th:text="${account.fullName}">Option 1-->
+<!--                                    </option>-->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-12">
+                        <div class="form-group row">
+                            <label class="col-form-label col-lg-4 required">New Scorecard Owner</label>
                             <div class="col-lg-8">
                                 <select class=" select2_demo_1 form-control" name="owner" required>
-                                    <option selected value="">--Owner--</option>
+                                    <option selected value="">--New Owner--</option>
                                     <option th:each="account :${accountsList}" th:value="${account.id}"
                                             th:text="${account.fullName}">Option 1
                                     </option>

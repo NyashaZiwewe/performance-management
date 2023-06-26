@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>.:: Ecorec ::.</title>
+    <title>Performance Management</title>
 
     <link href="../../../static/css/bootstrap.min.css" rel="stylesheet"
           th:href="@{/css/bootstrap.min.css}">
@@ -45,7 +45,7 @@
                     </tr>
                     <tr>
                         <th>Email</th>
-                      <td th:text="${account.email}"></td>
+                      <td><a th:href="'mailto:' + ${account.email}" th:text="${account.email}"></a></td>
                     </tr>
                     <tr>
                         <th>Position</th>
@@ -65,7 +65,11 @@
                     </tr>
                     <tr>
                         <th>Supervisor</th>
-                        <td th:text="${account.supervisor?.fullName}"></td>
+                        <td>
+                            <a th:href="@{/accounts/view-account/} + ${account.supervisor?.id}">
+                                <span  th:text="${account.supervisor?.fullName}"></span>
+                            </a>
+                        </td>
                     </tr>
                     <tr>
                         <th>Status</th>
@@ -96,7 +100,24 @@
                                 <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
                             </div>
                         </td>
-
+                    </tr>
+                    <tr>
+                        <th>Scorecards</th>
+                        <td>
+                            <a th:href="@{/scorecards/view-user-scorecards/} + ${account.id}">View All</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Action Plans</th>
+                        <td>
+                            <a th:href="@{/action-plans/view-user-action-plans/} + ${account.id}">View All</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Performance Improvement Plans</th>
+                        <td>
+                            <a th:href="@{/performance-improvement-plans/view-user-performance-improvement-plans/} + ${account.id}">View All</a>
+                        </td>
                     </tr>
 
                     </tbody>

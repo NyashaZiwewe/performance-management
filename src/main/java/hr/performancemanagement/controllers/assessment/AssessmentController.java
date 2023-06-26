@@ -1,13 +1,8 @@
 package hr.performancemanagement.controllers.assessment;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.PerspectiveRepository;
-import hr.performancemanagement.service.PerformanceImprovementPlanService;
-import hr.performancemanagement.service.PerspectiveService;
-import hr.performancemanagement.service.ReportingPeriodService;
-import hr.performancemanagement.service.ScorecardService;
+import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -18,7 +13,6 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.util.Date;
 import java.util.List;
 
 @Controller
@@ -32,9 +26,15 @@ public class AssessmentController {
 
     @Autowired
     PerformanceImprovementPlanService performanceImprovementPlanService;
+    @Autowired
+    private final GoalService goalService;
 
     @Autowired
     HttpSession session;
+
+    public AssessmentController(GoalService goalService) {
+        this.goalService = goalService;
+    }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
         modelAndView.addObject("pageDomain", "Performance Review");
@@ -92,6 +92,7 @@ public class AssessmentController {
         modelAndView.addObject("pageTitle", "View Performance Score");
 
         Scorecard scoreCard = scorecardService.getScorecardById(id);
+        List<Goal> GOALS_LIST = goalService.listAllGoals(id);
         ReportingPeriod reportingPeriod = scoreCard.getReportingPeriod();
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
@@ -102,12 +103,24 @@ public class AssessmentController {
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
+        double averageModeratedScore = goalService.getAverageModeratorScore(id);
+        double weightedScore;
+        try {
+            weightedScore = (averageModeratedScore / 5 ) * 100;
+        }catch (Exception e){
+            weightedScore = 0;
+        }
+
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("pips", pips);
         modelAndView.addObject("owner", owner);
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);
         modelAndView.addObject("endDate", endDate);
+        modelAndView.addObject("scorecard", scoreCard);
+        modelAndView.addObject("goalsList", GOALS_LIST);
+        modelAndView.addObject("averageModeratedScore", averageModeratedScore);
+        modelAndView.addObject("weightedScore", weightedScore);
         PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
         preparePage(modelAndView, request);
         return modelAndView;

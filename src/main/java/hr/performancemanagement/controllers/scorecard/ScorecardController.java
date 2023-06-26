@@ -8,7 +8,6 @@ import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -70,14 +69,17 @@ public class ScorecardController {
         List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
         List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
         List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives((Long) session.getAttribute("clientId"));
-//        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = getLoggedUser();
+        long loggedUserId = loggedUser.getId();
+        String role = loggedUser.getRole();
 
         modelAndView.addObject("pageDomain", "Performance");
         modelAndView.addObject("pageName", "Scorecards");
         modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
         modelAndView.addObject("accountsList", ACCOUNTS_LIST);
         modelAndView.addObject("perspectivesList", PERSPECTIVES_LIST);
-//        modelAndView.addObject("profile", loggedUser.getRole());
+        modelAndView.addObject("loggedUserId", loggedUserId);
+        modelAndView.addObject("role", role);
         PortletUtils.addMessagesToPage(modelAndView, request);
 
     }
@@ -88,13 +90,20 @@ public class ScorecardController {
         modelAndView.addObject("pageTitle", "View Scorecards");
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
-        long loggedUserId = loggedUser.getId();
-        String role = loggedUser.getRole();
 
         modelAndView.addObject("scorecards", scorecards);
-        modelAndView.addObject("loggedUserId", loggedUserId);
-        modelAndView.addObject("role", role);
+        preparePage(modelAndView, request, session);
+        return modelAndView;
+    }
+
+    @RequestMapping(value = "/view-user-scorecards/{id}")
+    public ModelAndView viewUserScorecards(@PathVariable("id") Long userId, HttpServletRequest request, HttpSession session) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_USER_SCORECARDS);
+        Account owner = accountService.getAccountById(userId);
+        modelAndView.addObject("pageTitle", "View " + owner.getFullName() + "\'s Scorecards");
+        List<Scorecard> scorecards = scorecardService.getScorecardsByOwner(owner);
+
+        modelAndView.addObject("scorecards", scorecards);
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -112,7 +121,7 @@ public class ScorecardController {
     @RequestMapping(value = "/save-scorecard", method = RequestMethod.POST)
     public String saveScorecard(HttpServletRequest request, Scorecard newScorecard) throws UnsupportedEncodingException {
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+         Account loggedUser = getLoggedUser();
 
         if(scorecardService.countActiveScorecards(newScorecard.getOwner(), newScorecard.getReportingPeriod()) >= 1){
             PortletUtils.addErrorMsg(newScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + newScorecard.getReportingPeriod().getStartDate() +" - "+ newScorecard.getReportingPeriod().getEndDate() +")", request);
@@ -180,7 +189,7 @@ public class ScorecardController {
     public ModelAndView captureScores(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = getLoggedUser();
         long loggedUserId = loggedUser.getId();
         long ownerId = scorecard.getOwner().getId();
         long supervisorId = scorecard.getOwner().getSupervisor().getId();
@@ -263,7 +272,7 @@ public class ScorecardController {
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
-    @RequestMapping(value = "/save-tcomment", method = RequestMethod.POST)
+    @RequestMapping(value = "/save-overall-comment", method = RequestMethod.POST)
     public String saveComment(HttpServletRequest request, Long scorecardId, String userType, String comment) {
 
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
@@ -278,7 +287,7 @@ public class ScorecardController {
 
         }
         scorecardService.saveScorecard(scorecard);
-        return "redirect:/scorecards/capture-scores/"+ scorecardId;
+        return "";
     }
 
     @RequestMapping(value = "/delete-target", method = RequestMethod.POST)
@@ -365,7 +374,7 @@ public class ScorecardController {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
         scorecard.setApprovalStatus("MODERATED_BY_HR");
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
 
@@ -424,7 +433,7 @@ public class ScorecardController {
         try {
             scorecardService.saveScorecard(scorecard);
             try {
-                Account loggedUser = (Account) session.getAttribute("loggedUser");
+                Account loggedUser = getLoggedUser();
                 Approval approval = new Approval();
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
@@ -485,7 +494,7 @@ public class ScorecardController {
             scorecardService.saveScorecard(scorecard);
 
             try {
-                Account loggedUser = (Account) session.getAttribute("loggedUser");
+                Account loggedUser = getLoggedUser();
                 Approval approval = new Approval();
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
@@ -534,7 +543,7 @@ public class ScorecardController {
         String owner = scorecard.getOwner().getFullName();
 //        String recipient = scorecard.getOwner().getSupervisor().getEmail();
         String recipient = "ziwewend@gmail.com";
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = getLoggedUser();
         scorecard.setApprovalStatus("APPROVED_BY_HR");
         scorecard.setLockStatus("OPEN");
 
@@ -597,7 +606,7 @@ public class ScorecardController {
 //        String recipient = scorecard.getOwner().getSupervisor().getEmail();
         String recipient = "ziwewend@gmail.com";
         scorecard.setApprovalStatus("REJECTED_BY_HR");
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = getLoggedUser();
 
         try{
             scorecardService.saveScorecard(scorecard);
@@ -652,6 +661,7 @@ public class ScorecardController {
         double averageManagerScore = goalService.getAverageManagerScore(id);
         double averageModeratedScore = goalService.getAverageModeratorScore(id);
         double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
+        Scorecard scorecard = scorecardService.getScorecardById(id);
         double weightedScore;
         try {
              weightedScore = (averageModeratedScore / 5 ) * 100;
@@ -659,7 +669,28 @@ public class ScorecardController {
              weightedScore = 0;
         }
 
-        Scorecard scorecard = scorecardService.getScorecardById(id);
+        String approvalStatus = scorecard.getApprovalStatus();
+        String status = scorecard.getStatus();
+        String lockStatus = scorecard.getLockStatus();
+        Account account = getLoggedUser();
+        long loggedId = account.getId();
+        long ownerId = scorecard.getOwner().getId();
+        long scorecardOwnerSupervisor = account.getSupervisor().getId();
+        String role = account.getRole();
+
+        boolean canModerate = false;
+
+        if("ACTIVE".equals(status) && "OPEN".equals(lockStatus)) {
+            if(loggedId == ownerId || loggedId == scorecardOwnerSupervisor){
+                canModerate = false;
+            }
+            else if ("MODERATOR".equals(role) && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
+                canModerate = true;
+            } else{
+                canModerate = false;
+            }
+        }
+
         modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
         modelAndView.addObject("scorecard", scorecard);
         modelAndView.addObject("goalsList", GOALS_LIST);
@@ -669,6 +700,7 @@ public class ScorecardController {
         modelAndView.addObject("averageModeratedScore", averageModeratedScore);
         modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
         modelAndView.addObject("weightedScore", weightedScore);
+        modelAndView.addObject("canModerate", canModerate);
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -745,14 +777,36 @@ public class ScorecardController {
     @RequestMapping("/clone-scorecard/{id}")
     public ModelAndView cloneScorecard(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD);
-        List<Goal> GOALS_LIST = goalService.listAllGoals(id);
         modelAndView.addObject("pageTitle", "Clone Scorecard");
         Scorecard scorecard = scorecardService.getScorecardById(id);
         modelAndView.addObject("scorecard", scorecard);
-
+        modelAndView.addObject("owner", scorecard.getOwner());
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
+
+    @RequestMapping("/clone-scorecard-select-owner")
+    public ModelAndView cloneScorecardSelect(HttpServletRequest request, HttpSession session) {
+        ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD_SELECT_OWNER);
+        modelAndView.addObject("pageTitle", "Clone Scorecard");
+        preparePage(modelAndView, request, session);
+        return modelAndView;
+    }
+
+    @RequestMapping(value = "/clone-scorecard-save-owner", method = RequestMethod.POST)
+    public String cloneScorecardSaveOwner(HttpServletRequest request, Long id) {
+        Account owner = accountService.getAccountById(id);
+        try {
+            Scorecard scorecard = scorecardService.getActiveEmployeeScorecardByOwner(owner);
+            PortletUtils.addInfoMsg("You have selected "+ owner.getFullName()+ "\'s scorecard", request);
+            return "redirect:/scorecards/clone-scorecard/"+ scorecard.getId();
+        }catch (Exception e){
+            PortletUtils.addErrorMsg(owner.getFullName()+ " Does not have an active scorecard. Please try another employee or You may go to view scorecards and select the scorecard you want from the archives", request);
+            return "redirect:/scorecards/clone-scorecard-select-owner";
+        }
+
+    }
+
 
     @RequestMapping(value = "/copy-scorecard", method = RequestMethod.POST)
     public String copyScorecard(HttpServletRequest request,Scorecard imaginaryScorecard) throws UnsupportedEncodingException {
@@ -802,6 +856,11 @@ public class ScorecardController {
             mailservice.sendEmail(recipient, subject, template);
             return "redirect:/scorecards/view-scorecard/" + id;
         }
+    }
+
+    public Account getLoggedUser(){
+        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        return loggedUser;
     }
 
 }

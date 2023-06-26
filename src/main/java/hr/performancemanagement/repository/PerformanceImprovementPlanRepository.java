@@ -12,6 +12,7 @@ import java.util.List;
 public interface PerformanceImprovementPlanRepository extends JpaRepository<PerformanceImprovementPlan, Long> {
     List<PerformanceImprovementPlan> findPerformanceImprovementPlansByClientId(long clientId);
     List<PerformanceImprovementPlan> findPerformanceImprovementPlansByEmployeeAndReportingPeriod(Account account, ReportingPeriod reportingPeriod);
+    List<PerformanceImprovementPlan> findPerformanceImprovementPlansByEmployee(Account account);
     PerformanceImprovementPlan findPerformanceImprovementPlanById(long id);
 
 }

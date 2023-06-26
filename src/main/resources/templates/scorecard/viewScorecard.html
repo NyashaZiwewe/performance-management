@@ -79,7 +79,7 @@
                     <table class="table">
                         <thead>
                         <tr>
-                            <th>Key Focus Arrea</th>
+                            <th>Key Focus Area</th>
                             <th> Strategic Objective</th>
                             <th>Goal</th>
                             <th data-toggle="popover" data-placement="top" data-content="Represents eveidence of success and failure">Performance Measure</th>
@@ -264,7 +264,8 @@
 
                     <div class="col-5">
                         <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
-                        <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
+                        <a th:if="${session.loggedUser?.id == scorecard.owner?.supervisor?.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
+                        <a th:if="${canModerate == true}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Moderate Scores</a>
                         <a th:if="${session.loggedUser?.id == scorecard.owner?.id && scorecard.approvalStatus == 'NEW'}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
                     </div>
                  </div>

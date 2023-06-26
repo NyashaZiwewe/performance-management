@@ -12,7 +12,7 @@ import java.util.List;
 @Repository
 public interface ActionPlanRepository extends JpaRepository<ActionPlan, Long> {
     List<ActionPlan> findActionPlansByClientId(long clientId);
-    List<ActionPlan> findActionPlansByManager(long manager);
+    List<ActionPlan> findActionPlansByManager(Account manager);
     List<ActionPlan> findActionPlanByStatus(String status);
     List<ActionPlan> findActionPlansByReportingPeriodAndClientId(ReportingPeriod reportingPeriod, long clientId);
     List<ActionPlan> findActionPlansByReportingPeriodAndManager(ReportingPeriod reportingPeriod, Account account);

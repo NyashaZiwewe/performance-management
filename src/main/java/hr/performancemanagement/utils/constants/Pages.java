@@ -10,8 +10,10 @@ public class Pages {
     public static final String EDIT_ACCOUNT = "account/editAccount";
 
     public static final String VIEW_SCORECARDS = "scorecard/viewScorecards";
+    public static final String VIEW_USER_SCORECARDS = "scorecard/viewUserScorecards";
     public static final String VIEW_SCORECARD = "scorecard/viewScorecard";
     public static final String CLONE_SCORECARD = "scorecard/cloneScorecard";
+    public static final String CLONE_SCORECARD_SELECT_OWNER = "scorecard/cloneScorecardSelectOwner";
     public static final String ADD_SCORECARD = "scorecard/addScorecard";
     public static final String CAPTURE_TARGETS = "scorecard/captureTargets";
     public static final String CAPTURE_SCORES = "scorecard/captureScores";
@@ -27,6 +29,7 @@ public class Pages {
     public static final String VIEW_PERFORMANCE_IMPROVEMENT_PLAN = "performance-improvement-plan/viewPerformanceImprovementPlan";
     public static final String ADD_PERFORMANCE_IMPROVEMENT_PLAN = "performance-improvement-plan/addPerformanceImprovementPlan";
     public static final String VIEW_ACTION_PLANS = "action-plan/viewActionPlans";
+    public static final String VIEW_USER_ACTION_PLANS = "action-plan/viewUserActionPlans";
     public static final String VIEW_ACTION_PLAN = "action-plan/viewActionPlan";
     public static final String ADD_ACTION_PLAN = "action-plan/addActionPlan";
     public static final String VIEW_SCORES_SELECT_YEAR = "assessment/viewScoresSelectYear";

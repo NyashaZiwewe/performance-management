@@ -45,7 +45,9 @@
                         </a>
                     </div>
                 </li>
-
+                <li class="active" >
+                    <a th:href="@{/}"><i class="fa fa-tachometer"></i><span class="nav-label">Dashboard</span></a>
+                </li>
                 <li class="active">
                     <a href="#"><i class="fa fa-book"></i><span class="nav-label">Scorecards</span><span
                             class="fa arrow"></span></a>
@@ -57,7 +59,7 @@
                             <a th:href="@{/scorecards/add-scorecard}">Create Scorecard</a>
                         </li>
                         <li class="nav-item">
-                            <a th:href="@{/scorecards/clone-scorecard}">Clone Scorecard</a>
+                            <a th:href="@{/scorecards/clone-scorecard-select-owner}">Clone Scorecard</a>
                         </li>
 <!--                        <li class="nav-item">-->
 <!--                            <a th:href="@{/scorecards/capture-scores}">Capture Scores</a>-->

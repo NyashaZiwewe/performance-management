@@ -59,9 +59,21 @@ public class ActionPlanController {
     @RequestMapping
     public ModelAndView viewActionPlans(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_ACTION_PLANS);
-        modelAndView.addObject("pageTitle", "View");
+        modelAndView.addObject("pageTitle", "View All");
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         List<ActionPlan> plansList = actionPlanService.listAllActionPlans(reportingPeriod);
+        modelAndView.addObject("plansList", plansList);
+        modelAndView.addObject("actionPlan", new ActionPlan());
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
+
+    @RequestMapping(value = "/view-user-action-plans/{userId}")
+    public ModelAndView viewUserActionPlans(@PathVariable("userId") Long userId, HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_USER_ACTION_PLANS);
+        Account manager = accountService.getAccountById(userId);
+        modelAndView.addObject("pageTitle", "View "+ manager.getFullName() +" \'s Action Plans");
+        List<ActionPlan> plansList = actionPlanService.listAllUserActionPlans(manager);
         modelAndView.addObject("plansList", plansList);
         modelAndView.addObject("actionPlan", new ActionPlan());
         preparePage(modelAndView, request);

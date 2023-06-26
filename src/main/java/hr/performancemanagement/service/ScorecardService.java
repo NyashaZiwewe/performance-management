@@ -38,6 +38,12 @@ public class ScorecardService {
         return scorecardList;
     }
 
+    public List<Scorecard> getScorecardsByOwner(Account owner){
+        List<Scorecard> scorecardList = new ArrayList<>();
+        scoreCardRepository.findScorecardsByOwner(owner).forEach(scorecard -> scorecardList.add(scorecard));
+        return scorecardList;
+    }
+
 
     public List<Scorecard> getScorecardsByReportingPeriodId(ReportingPeriod reportingPeriod){
 
@@ -146,6 +152,16 @@ public class ScorecardService {
 
         Scorecard scorecard = scoreCardRepository.findScorecardById(id);
         return scorecard;
+    }
+    public Scorecard getActiveEmployeeScorecardByOwner(Account account){
+        try {
+            Long scorecardId = scoreCardRepository.findEmployeeActiveScorecardId(account);
+            Scorecard scorecard = getScorecardById(scorecardId);
+            return scorecard;
+        }catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
     }
     public void addScorecard(Scorecard scorecard) {
 

@@ -52,6 +52,15 @@ public class ActionPlanService {
         return actionPlanList;
     }
 
+    public List<ActionPlan> listAllUserActionPlans(Account manager){
+
+        List<ActionPlan> actionPlanList = new ArrayList<>();
+
+        actionPlanRepository.findActionPlansByManager(manager).forEach(actionPlan -> actionPlanList.add(actionPlan));
+
+        return actionPlanList;
+    }
+
     public ActionPlan getActionPlanById(long id){
 
         ActionPlan actionPlan = actionPlanRepository.findActionPlanById(id);
