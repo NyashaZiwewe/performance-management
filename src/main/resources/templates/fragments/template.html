@@ -37,7 +37,7 @@
                 <li class="nav-header">
                     <div class="dropdown profile-element">
                         <img alt="image" class="rounded-0" src="../../static/img/download.png"
-                             th:src="@{/img/zimlogo.png}" style="height: 6em; width: 100%"/>
+                             th:src="@{/img/zrp.png}" style="height: 6em; width: 100%"/>
                         <a data-toggle="dropdown" class="dropdown-toggle" href="#">
                             <span class="block font-bold" sec:authentication="name" th:text="${session.name}"> User1</span>
                             <span class=" text-xs block" sec:authentication="authorities" th:text="${session.position}">Position</span>
@@ -103,6 +103,9 @@
                         <li class="nav-item">
                             <a href="#" th:href="@{/reporting-periods}">Reporting Periods</a>
                         </li>
+                        <li class="nav-item">
+                            <a href="#" th:href="@{/scorecard-models}">Scorecard Models</a>
+                        </li>
                     </ul>
                 </li>
 
@@ -119,7 +122,7 @@
                 </div>
                 <ul class="nav navbar-top-links navbar-right">
                     <li>
-                        <span class="m-r-sm text-muted welcome-message">Welcome to ZimTrade PMS<strong></strong></span>
+                        <span class="m-r-sm text-muted welcome-message">Welcome to ZRP PMS<strong></strong></span>
                     </li>
                     <li>
                         <a href="/logout">
@@ -171,7 +174,7 @@
         </div>
         <div class="footer" th:fragment="footer">
             <div>
-                <strong>Copyright</strong> ZiwSoft &copy;
+                <strong>Copyright</strong> ZRP &copy;
             </div>
         </div>
 

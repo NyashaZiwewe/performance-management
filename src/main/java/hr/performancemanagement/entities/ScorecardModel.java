@@ -6,27 +6,25 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-import javax.persistence.*;
-import java.sql.Date;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import java.util.Date;
 
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-public class ReportingPeriod {
+public class ScorecardModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    @Column(updatable = false)
-    private long clientId;
-    @Column(unique = true)
-    private String startDate;
-    @Column(unique = true)
-    private String endDate;
+    public long clientId;
+    private String name;
     private String status;
     @CreationTimestamp
     private Date date;
-
 }

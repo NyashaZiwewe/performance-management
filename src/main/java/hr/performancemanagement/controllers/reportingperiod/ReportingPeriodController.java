@@ -1,9 +1,11 @@
 package hr.performancemanagement.controllers.reportingperiod;
 
 import hr.performancemanagement.entities.Perspective;
+import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.StrategicObjective;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
+import hr.performancemanagement.service.ReportingDateService;
 import hr.performancemanagement.service.ReportingPeriodService;
 import hr.performancemanagement.service.StrategicObjectiveService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
@@ -31,6 +33,8 @@ public class ReportingPeriodController {
     ReportingPeriodService reportingPeriodService;
     @Autowired
     StrategicObjectiveService strategicObjectiveService;
+    @Autowired
+    ReportingDateService reportingDateService;
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
 
@@ -101,6 +105,19 @@ public class ReportingPeriodController {
         preparePage(modelAndView, request);
         return modelAndView;
     }
+
+    @RequestMapping("/reporting-dates/{id}")
+    public ModelAndView viewReportingDates(@PathVariable("id") long id, HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_REPORTING_DATES);
+        modelAndView.addObject("pageTitle", "View Reporting Dates");
+        ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(id);
+        List<ReportingDate> reportingDateList = reportingDateService.listAllReportingDates(reportingPeriod);
+        modelAndView.addObject("reportingDateList", reportingDateList);
+        modelAndView.addObject("reportingPeriod", reportingPeriod);
+
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
     @RequestMapping(value = "/add-strategic-objective", method = RequestMethod.POST)
     public String addStrategicObjective(HttpServletRequest request, StrategicObjective newStrategicObjective) {
 
@@ -116,4 +133,21 @@ public class ReportingPeriodController {
         PortletUtils.addInfoMsg("Strategic goal successfully updated.", request);
         return "redirect:/reporting-periods/strategic-goals/" + strategicObjective.getReportingPeriod().getId();
     }
+
+    @RequestMapping(value = "/add-reporting-date", method = RequestMethod.POST)
+    public String addReportingDate(HttpServletRequest request, ReportingDate newReportingDate) {
+
+        reportingDateService.saveReportingDate(newReportingDate);
+        PortletUtils.addInfoMsg("Reporting Date successfully added.", request);
+        return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
+    }
+
+    @RequestMapping(value = "/save-reporting-date", method = RequestMethod.POST)
+    public String saveReportingDate( HttpServletRequest request, ReportingDate newReportingDate) {
+
+        reportingDateService.saveReportingDate(newReportingDate);
+        PortletUtils.addInfoMsg("Reporting Date successfully updated.", request);
+        return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
+    }
+
 }

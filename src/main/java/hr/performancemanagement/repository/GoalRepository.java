@@ -15,18 +15,18 @@ import static org.springframework.http.HttpHeaders.FROM;
 public interface GoalRepository extends JpaRepository<Goal, Long> {
     List<Goal> findGoalsByPerspectiveId(long perspectiveId);
     Goal findGoalById(long id);
-
+    List<Goal> findGoalsByScorecardIdOrderByPerspective(long scorecardId);
     List<Goal> findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(long scorecardId);
 
-    @Query("SELECT SUM(allocatedWeight) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT SUM(t.allocatedWeight) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     double sumAllocatedWeight(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(employeeScore) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT AVG(s.employeeScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     double averageEmployeeScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(managerScore) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT AVG(s.managerScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     double averageManagerScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(actualScore) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT AVG(s.actualScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     double averageModeratedScore(@Param("scorecardId") long scorecardId);
 }

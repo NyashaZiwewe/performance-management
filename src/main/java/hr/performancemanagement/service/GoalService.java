@@ -2,6 +2,7 @@ package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.GoalRepository;
+import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,8 @@ import java.util.List;
 public class GoalService {
     @Autowired
     GoalRepository goalRepository;
+    @Autowired
+    private TargetRepository targetRepository;
 
     public Goal getGoalById(long id){
 
@@ -26,9 +29,10 @@ public class GoalService {
     }
 
 
-    public void saveGoal(Goal goal) {
+    public Goal saveGoal(Goal goal) {
 
-        goalRepository.save(goal);
+       Goal savedGoal = goalRepository.save(goal);
+       return savedGoal;
     }
 
     public double getTotalAllocatedWeight(long scorecardId){
@@ -66,6 +70,7 @@ public class GoalService {
             return 0.0;
         }
     }
+
     @Transactional
     public void deleteGoal(Goal goal){
         goalRepository.delete(goal);

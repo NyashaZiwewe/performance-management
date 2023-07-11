@@ -21,21 +21,21 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     int countScorecardsByOwnerAndReportingPeriod(Account owner, ReportingPeriod reportingPeriod);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(employeeScore), 0) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.employeeScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     Double findAverageEmployeeScore(@Param("scorecardId") long scorecardId);
     @Nullable
-    @Query("SELECT coalesce(AVG(managerScore),0) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.managerScore),0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     Double findAverageManagerScore(@Param("scorecardId") long scorecardId);
     @Nullable
-    @Query("SELECT coalesce(AVG(actualScore), 0) FROM Goal WHERE scorecardId = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.actualScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     Double findAverageActualScore(@Param("scorecardId") long scorecardId);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(allocatedWeight), 0) FROM Goal WHERE strategicObjective = :strategicObjective")
+    @Query("SELECT coalesce(AVG(t.allocatedWeight), 0) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
     Double findAverageAllocatedWeightPerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(actualScore), 0) FROM Goal WHERE strategicObjective = :strategicObjective")
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
     Double findAverageWeightedScorePerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
 
     @Nullable

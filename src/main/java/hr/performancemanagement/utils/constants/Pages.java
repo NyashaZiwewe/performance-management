@@ -10,13 +10,16 @@ public class Pages {
     public static final String EDIT_ACCOUNT = "account/editAccount";
 
     public static final String VIEW_SCORECARDS = "scorecard/viewScorecards";
+    public static final String VIEW_SCORECARD_MODELS = "scorecard-model/viewScorecardModels";
     public static final String VIEW_USER_SCORECARDS = "scorecard/viewUserScorecards";
     public static final String VIEW_SCORECARD = "scorecard/viewScorecard";
     public static final String CLONE_SCORECARD = "scorecard/cloneScorecard";
     public static final String CLONE_SCORECARD_SELECT_OWNER = "scorecard/cloneScorecardSelectOwner";
     public static final String ADD_SCORECARD = "scorecard/addScorecard";
+    public static final String ADD_SCORECARD_MODEL = "scorecard-model/addScorecardModel";
     public static final String CAPTURE_TARGETS = "scorecard/captureTargets";
-    public static final String CAPTURE_SCORES = "scorecard/captureScores";
+    public static final String CAPTURE_SCORES_STANDARD = "scorecard/captureScoresStandard";
+    public static final String CAPTURE_SCORES_VALUE_BASED = "scorecard/captureScoresValueBased";
     public static final String VIEW_PERSPECTIVES = "perspective/viewPerspectives";
     public static final String ADD_PERSPECTIVE = "perspective/addPerspective";
     public static final String EDIT_PERSPECTIVE = "perspective/editPerspective";
@@ -25,6 +28,7 @@ public class Pages {
     public static final String ADD_REPORTING_PERIOD = "reporting-period/addReportingPeriod";
     public static final String EDIT_REPORTING_PERIOD = "reporting-period/editReportingPeriod";
     public static final String VIEW_STRATEGIC_OBJECTIVES = "reporting-period/viewStrategicObjectives";
+    public static final String VIEW_REPORTING_DATES = "reporting-period/viewReportingDates";
     public static final String VIEW_PERFORMANCE_IMPROVEMENT_PLANS = "performance-improvement-plan/viewPerformanceImprovementPlans";
     public static final String VIEW_PERFORMANCE_IMPROVEMENT_PLAN = "performance-improvement-plan/viewPerformanceImprovementPlan";
     public static final String ADD_PERFORMANCE_IMPROVEMENT_PLAN = "performance-improvement-plan/addPerformanceImprovementPlan";

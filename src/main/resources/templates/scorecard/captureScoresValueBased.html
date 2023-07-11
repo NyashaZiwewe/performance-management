@@ -28,15 +28,17 @@
         }
     </style>
     <script type="text/javascript">
-        function saveScore(id){
+        function saveScore(goalId){
 
             //alert(id);
 
-            let employeeScore = document.getElementById("employeeScore"+id).value;
-            let managerScore = document.getElementById("managerScore"+id).value;
-            let actualScore = document.getElementById("actualScore"+id).value;
-            let supportingDocument = document.getElementById("supportingDocument"+id).value;
-            let justification = document.getElementById("justification"+id).value;
+            let reportingDate = document.getElementById("reportingDate"+goalId).value;
+            let actual = document.getElementById("actual"+goalId).value;
+            let employeeScore = document.getElementById("employeeScore"+goalId).value;
+            let managerScore = document.getElementById("managerScore"+goalId).value;
+            let actualScore = document.getElementById("actualScore"+goalId).value;
+            let supportingDocument = document.getElementById("supportingDocument"+goalId).value;
+            let justification = document.getElementById("justification"+goalId).value;
 
             console.log(actualScore);
 
@@ -44,9 +46,9 @@
                 url : '/scorecards/save-score',
                 method: "POST",
                 data: {
-                    id, employeeScore, managerScore, actualScore, supportingDocument, justification
+                    goalId,reportingDate, actual, employeeScore, managerScore, actualScore, supportingDocument, justification
                 },
-                enctype: 'multipart/form-data',
+                //enctype: 'multipart/form-data',
                 // processData: false, // tell jQuery not to process the data
                 // contentType: false, // tell jQuery not to set contentType
                 // cache: false,
@@ -58,6 +60,10 @@
 
                 }
             });
+        }
+
+        function submitScore(){
+            document.getElementById('scoreForm').submit();
         }
     </script>
 
@@ -107,20 +113,23 @@
                                         <td th:text="${goal.unit}"></td>
                                         <td th:text="${goal.target}"></td>
                                         <td th:text="${goal.allocatedWeight}"></td>
-                                        <td>
-                                            <input type="number" class="form-control" th:attr="hidden = ${isOwner == true ? 'false' : 'true'}" min="1" max="5" step="any" name="employeeScore" th:id="'employeeScore'+ ${goal.id}" th:value="${goal.employeeScore}" th:onchange="saveScore([[${goal.id}]])" style="width: 5em">
-                                            <input type="hidden" th:if="${isOwner == true}" name="managerScore" th:id="'managerScore'+ ${goal.id}" th:value="${goal.managerScore}">
-                                            <input type="hidden" th:if="${isOwner == true}" name="actualScore" th:id="'actualScore'+ ${goal.id}" th:value="${goal.actualScore}">
-                                            <span th:if="${!isOwner == true}" th:text="${goal.employeeScore}"></span>
-                                        </td>
-                                        <td th:if="${isSupervisor == true || isModerator == true}">
-                                            <input type="number" class="form-control" th:attr="hidden = ${isSupervisor == true ? 'false' : 'true'}" min="1" max="5" step="any" name="managerScore" th:id="'managerScore'+ ${goal.id}" th:value="${goal.managerScore}" th:onchange="saveScore([[${goal.id}]])" style="width: 5em">
-                                            <input type="hidden" name="actualScore" th:if="${isSupervisor == true}" th:id="'actualScore'+ ${goal.id}" th:value="${goal.actualScore}">
-                                            <span th:if="${isModerator == true}" th:text="${goal.managerScore}"></span>
-                                        </td>
-                                        <td th:if="${isModerator == true}">
-                                            <input type="number" class="form-control" min="1" max="5" step="any" name="actualScore" th:id="'actualScore'+ ${goal.id}" th:value="${goal.actualScore}" th:onchange="saveScore([[${goal.id}]])" style="width: 5em">
-                                        </td>
+                                        <td><a data-toggle="modal" th:data-target="'#scoreModal'+ ${stat.index}" th:text="${goal.employeeScore}"></a></td>
+                                        <td><a data-toggle="modal" th:data-target="'#scoreModal'+ ${stat.index}" th:text="${goal.employeeScore}"></a></td>
+                                        <td><a data-toggle="modal" th:data-target="'#scoreModal'+ ${stat.index}" th:text="${goal.employeeScore}"></a></td>
+<!--                                        <td>-->
+<!--                                            <input type="number" class="form-control" th:attr="hidden = ${isOwner == true ? 'false' : 'true'}" min="1" max="5" step="any" name="employeeScore" th:id="'employeeScore'+ ${goal.id}" th:value="${goal.employeeScore}" th:onchange="saveScore([[${goal.id}]])" style="width: 5em">-->
+<!--                                            <input type="hidden" th:if="${isOwner == true}" name="managerScore" th:id="'managerScore'+ ${goal.id}" th:value="${goal.managerScore}">-->
+<!--                                            <input type="hidden" th:if="${isOwner == true}" name="actualScore" th:id="'actualScore'+ ${goal.id}" th:value="${goal.actualScore}">-->
+<!--                                            <span th:if="${!isOwner == true}" th:text="${goal.employeeScore}"></span>-->
+<!--                                        </td>-->
+<!--                                        <td th:if="${isSupervisor == true || isModerator == true}">-->
+<!--                                            <input type="number" class="form-control" th:attr="hidden = ${isSupervisor == true ? 'false' : 'true'}" min="1" max="5" step="any" name="managerScore" th:id="'managerScore'+ ${goal.id}" th:value="${goal.managerScore}" th:onchange="saveScore([[${goal.id}]])" style="width: 5em">-->
+<!--                                            <input type="hidden" name="actualScore" th:if="${isSupervisor == true}" th:id="'actualScore'+ ${goal.id}" th:value="${goal.actualScore}">-->
+<!--                                            <span th:if="${isModerator == true}" th:text="${goal.managerScore}"></span>-->
+<!--                                        </td>-->
+<!--                                        <td th:if="${isModerator == true}">-->
+<!--                                            <input type="number" class="form-control" min="1" max="5" step="any" name="actualScore" th:id="'actualScore'+ ${goal.id}" th:value="${goal.actualScore}" th:onchange="saveScore([[${goal.id}]])" style="width: 5em">-->
+<!--                                        </td>-->
                                         <td th:if="${isModerator == true}" th:text="${#numbers.formatDecimal(goal.actualScore == null ? '' : (goal.actualScore / 5) * goal.allocatedWeight, 0, 2)}"></td>
                                         <td th:if="${isOwner == true}">
                                             <label>
@@ -140,6 +149,84 @@
                                             <input type="hidden" name="justification" th:id="'justification'+ ${goal.id}" th:value="${goal.justification}">
                                             <span th:text="${goal.justification}"></span>
                                         </td>
+                                        <td>
+                                            <div class="modal fade" th:id="'scoreModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                                <div class="modal-dialog modal-xl" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h4 class="modal-title">Update Target [<span th:text="${goal.name}" class="text-success"></span>]</h4>
+                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+
+                                                            <div class="modal-body">
+                                                                <table class="table table-hover table-striped table-borderless">
+                                                                    <thead>
+                                                                     <tr>
+                                                                         <th>Report Date</th>
+                                                                         <th>Employee Score</th>
+                                                                         <th>Manager Score</th>
+                                                                         <th>Actual Score</th>
+                                                                         <th>Weighted Score</th>
+                                                                         <th>Supporting Documents</th>
+                                                                         <th>Justification</th>
+                                                                         <th></th>
+                                                                     </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                     <tr th:each="score : ${scoresList}">
+                                                                         <td th:text="${score.reportingDate?.endDate}"></td>
+                                                                         <td th:text="${score.employeeScore}"></td>
+                                                                         <td th:text="${score.managerScore}"></td>
+                                                                         <td th:text="${score.actualScore}"></td>
+                                                                         <td th:text="${score.actualScore <= 0.0 || score.actualScore == null ? '' : #numbers.formatDecimal((score.actualScore / 5) * goal.allocatedWeight, 2) + '%'}"></td>
+                                                                         <td th:text="${score.supportingDocument}"></td>
+                                                                         <td th:text="${goal.justification}"></td>
+                                                                         <td></td>
+                                                                     </tr>
+                                                                     <tr>
+                                                                         <td>
+                                                                             <select th:id="reportingDateId + ${goal.id}">
+                                                                                 <option th:each="reportingDate : ${reportingDates}" th:value="${reportingDate.id}" th:label="${reportingDate.endDate}">Option 1</option>
+                                                                             </select>
+                                                                         </td>
+                                                                         <td>
+                                                                             <input type="number" th:attr="hidden = ${isOwner == true ? 'false' : 'true'}" step="any" th:id="actual + ${goal.id}">
+                                                                         </td>
+                                                                        <td>
+                                                                            <input type="number" th:attr="hidden = ${isOwner == true ? 'false' : 'true'}" min="1" max="5" step="any" th:id="employeeScore + ${goal.id}">
+                                                                        </td>
+                                                                        <td>
+                                                                            <input type="number" th:attr="hidden = ${isSupervisor == true ? 'false' : 'true'}" min="1" max="5" step="any" th:id="managerScore + ${goal.id}">
+                                                                        </td>
+                                                                        <td>
+                                                                            <input type="number" th:attr="hidden = ${isSupervisor == true ? 'false' : 'true'}" min="1" max="5" step="any" th:id="actualScore + ${goal.id}">
+                                                                        </td>
+                                                                         <td></td>
+                                                                        <td>
+                                                                            <input type="file" th:attr="hidden = ${isOwner == true ? 'false' : 'true'}" th:id="supportingDocument + ${goal.id}">
+                                                                        </td>
+                                                                        <td>
+                                                                            <input type="text" th:attr="hidden = ${isOwner == true ? 'false' : 'true'}" th:id="justification + ${goal.id}">
+                                                                        </td>
+                                                                        <td>
+                                                                            <button class="btn btn-primary btn-sm" type="button" th:onclick="saveScore([[${goal.id}]])">Save</button>
+                                                                        </td>
+                                                                     </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                            </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </td>
+
+
                                     </tr>
                                     <tr>
                                         <td colspan="6"></td>

@@ -7,25 +7,22 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
-import java.sql.Date;
+import java.util.Date;
 
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-public class ReportingPeriod {
+public class ReportingDate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    @Column(updatable = false)
-    private long clientId;
-    @Column(unique = true)
-    private String startDate;
-    @Column(unique = true)
     private String endDate;
-    private String status;
+    @ManyToOne
+    @JoinColumn(name = "reporting_period_id")
+    private ReportingPeriod reportingPeriod;
     @CreationTimestamp
     private Date date;
 

@@ -3,9 +3,12 @@ package hr.performancemanagement.controllers.scorecard;
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreCardRepository;
 import hr.performancemanagement.service.*;
+import hr.performancemanagement.service.ScoreService.StandardScorecardScoreService;
+import hr.performancemanagement.service.ScoreService.ValueBasedScoreService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
+import hr.performancemanagement.utils.wrappers.GoalWrapper;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -40,6 +43,8 @@ public class ScorecardController {
     @Autowired
     private final GoalService goalService;
     @Autowired
+    private final TargetService targetService;
+    @Autowired
     private final StrategicObjectiveService strategicObjectiveService;
     @Autowired
     private final CommentService commentService;
@@ -48,20 +53,33 @@ public class ScorecardController {
     @Autowired
     private final ApprovalService approvalService;
     @Autowired
+    private final ReportingDateService reportingDateService;
+    @Autowired
+    private final StandardScorecardScoreService standardScorecardScoreService;
+    @Autowired
+    private final ValueBasedScoreService valueBasedScoreService;
+    @Autowired
+    private final ScorecardModelService scorecardModelService;
+    @Autowired
     HttpSession session;
 
 
-    public ScorecardController(ScoreCardRepository scoreCardRepository, ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, Mailservice mailservice, ApprovalService approvalService) {
+    public ScorecardController(ScoreCardRepository scoreCardRepository, ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, Mailservice mailservice, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService) {
         this.scoreCardRepository = scoreCardRepository;
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
         this.scorecardService = scorecardService;
         this.perspectiveService = perspectiveService;
         this.goalService = goalService;
+        this.targetService = targetService;
         this.strategicObjectiveService = strategicObjectiveService;
         this.commentService = commentService;
         this.mailservice = mailservice;
         this.approvalService = approvalService;
+        this.reportingDateService = reportingDateService;
+        this.standardScorecardScoreService = standardScorecardScoreService;
+        this.valueBasedScoreService = valueBasedScoreService;
+        this.scorecardModelService = scorecardModelService;
     }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request, HttpSession session) {
@@ -156,6 +174,7 @@ public class ScorecardController {
     public ModelAndView captureTargets(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
+        String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
         long reportingPeriodId = scorecard.getReportingPeriod().getId();
         List<Goal> GOALS_LIST = goalService.listAllGoals(id);
         List<StrategicObjective> STRATEGIC_OBJECTIVES_LIST = strategicObjectiveService.listAllStrategicObjectives(reportingPeriodId);
@@ -175,6 +194,9 @@ public class ScorecardController {
             modelAndView.addObject("goalsList", GOALS_LIST);
             modelAndView.addObject("strategicObjectivesList", STRATEGIC_OBJECTIVES_LIST);
             modelAndView.addObject("totalAllocatedWeight", goalService.getTotalAllocatedWeight(id));
+            modelAndView.addObject("scorecardModel", scorecardModel);
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+            modelAndView.addObject("targetsList", targetsList);
 
         } else {
 
@@ -189,6 +211,9 @@ public class ScorecardController {
     public ModelAndView captureScores(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
+        String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
+        ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+        List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
         Account loggedUser = getLoggedUser();
         long loggedUserId = loggedUser.getId();
         long ownerId = scorecard.getOwner().getId();
@@ -244,31 +269,80 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard at this moment", request);
         }else{
 
-            modelAndView = new ModelAndView(Pages.CAPTURE_SCORES);
+            if("STANDARD_SCORECARD".equalsIgnoreCase(scorecardModel)){
+                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
+            }else if("VALUE_BASED".equalsIgnoreCase(scorecardModel)){
+                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_VALUE_BASED);
+            }else{
+                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+                PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
+            }
+
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("isOwner", isOwner);
             modelAndView.addObject("isSupervisor", isSupervisor);
             modelAndView.addObject("isModerator", isModerator);
             modelAndView.addObject("url", url);
-            List<Goal> GOALS_LIST = goalService.listAllGoals(id);
-            modelAndView.addObject("goalsList", GOALS_LIST);
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+            modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("weightedScore", weightedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
+            modelAndView.addObject("reportingDates", reportingDates);
+            modelAndView.addObject("scorecardModel", scorecardModel);
         }
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
 
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
-    public String saveTarget(HttpServletRequest request, Goal goal) {
+    public String saveTarget(HttpServletRequest request, GoalWrapper goalWrapper) {
 
-        long scorecardId = goal.getScorecardId();
+        long scorecardId = goalWrapper.getScorecardId();
+        Goal goal;
+        Target target;
 
-        goalService.saveGoal(goal);
+        if(goalWrapper.getGoalId() < 1){
+            goal = new Goal();
+        }else {
+            goal = goalService.getGoalById(goalWrapper.getGoalId());
+        }
+
+        goal.setScorecardId(goalWrapper.getScorecardId());
+        goal.setPerspective(goalWrapper.getPerspective());
+        goal.setStrategicObjective(goalWrapper.getStrategicObjective());
+        goal.setName(goalWrapper.getGoalName());
+        Goal savedGoal = goalService.saveGoal(goal);
+
+        if(goalWrapper.getTargetId() < 1){
+            target = new Target();
+        }else{
+            target = targetService.getTargetById(goalWrapper.getTargetId());
+        }
+
+        target.setGoal(savedGoal);
+        target.setPerspective(savedGoal.getPerspective());
+        target.setStrategicObjective(savedGoal.getStrategicObjective());
+        target.setMeasure(goalWrapper.getMeasure());
+        target.setUnit(goalWrapper.getUnit());
+        target.setAllocatedWeight(goalWrapper.getAllocatedWeight());
+        target.setNormalTarget(goalWrapper.getNormalTarget());
+        target.setBaseTarget(goalWrapper.getBaseTarget());
+        target.setStretchTarget(goalWrapper.getStretchTarget());
+        targetService.saveTarget(target);
+
+        return "redirect:/scorecards/capture-targets/"+ scorecardId;
+    }
+
+    @RequestMapping(value = "/save-target-to-existing-goal", method = RequestMethod.POST)
+    public String saveTargetToExistingGoal(HttpServletRequest request, Target target) {
+
+        long scorecardId = target.getGoal().getScorecardId();
+        Target savedTarget = targetService.saveTarget(target);
+
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
@@ -291,11 +365,24 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/delete-target", method = RequestMethod.POST)
-    public String deleteTarget(HttpServletRequest request, Goal goal) {
+    public String deleteTarget(HttpServletRequest request, Target targ) {
 
+        Target target = targetService.getTargetById(targ.getId());
+        Goal goal = goalService.getGoalById(target.getGoal().getId());
+        boolean hasTargets = targetService.checkIfGoalHasTargets(goal);
         long scorecardId = goal.getScorecardId();
-        goalService.deleteGoal(goal);
-        PortletUtils.addInfoMsg("Goal was successfully deleted", request);
+
+        try {
+            targetService.deleteTarget(target);
+            PortletUtils.addInfoMsg("Target was successfully deleted", request);
+            if(!hasTargets){
+                goalService.deleteGoal(goal);
+                PortletUtils.addInfoMsg("Goal was successfully deleted", request);
+              }
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Target wasn't deleted", request);
+        }
+
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
@@ -656,7 +743,7 @@ public class ScorecardController {
     @RequestMapping("/view-scorecard/{id}")
     public ModelAndView viewScorecard(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARD);
-        List<Goal> GOALS_LIST = goalService.listAllGoals(id);
+        String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
         double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
         double averageManagerScore = goalService.getAverageManagerScore(id);
         double averageModeratedScore = goalService.getAverageModeratorScore(id);
@@ -693,7 +780,9 @@ public class ScorecardController {
 
         modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
         modelAndView.addObject("scorecard", scorecard);
-        modelAndView.addObject("goalsList", GOALS_LIST);
+        modelAndView.addObject("scorecardModel", scorecardModel);
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+        modelAndView.addObject("targetsList", targetsList);
         modelAndView.addObject("comment", new Comment());
         modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
         modelAndView.addObject("averageManagerScore", averageManagerScore);
@@ -715,45 +804,70 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-flag", method = RequestMethod.POST)
-    public String saveFlag(HttpServletRequest request, Goal updatedGoal) {
+    public String saveFlag(HttpServletRequest request, Target updatedTarget) {
 
-        Goal goal = goalService.getGoalById(updatedGoal.getId());
-
-        goal.setFlag(updatedGoal.getFlag());
-        goalService.saveGoal(goal);
-        PortletUtils.addInfoMsg("Goal successfully flagged and the reason was saved", request);
-        return "redirect:/scorecards/view-scorecard/"+ updatedGoal.getScorecardId();
+        Target target = targetService.getTargetById(updatedTarget.getId());
+        long scorecardId = target.getGoal().getScorecardId();
+        target.setFlag(updatedTarget.getFlag());
+        targetService.saveTarget(target);
+        PortletUtils.addInfoMsg("Measure successfully flagged and the reason was saved", request);
+        return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }
 
-    @RequestMapping(value = "/save-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveScore(HttpServletRequest request, HttpServletResponse response, Long id, Double employeeScore, Double managerScore, Double actualScore, String supportingDocument, String justification) throws IOException {
+    @RequestMapping(value = "/save-standard-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveStandardScore(HttpServletRequest request, HttpServletResponse response, Long scorecardId, Long targetId, Long reportingDateId, Double actual, String evidence, String justification) {
+
+        ReportingDate reportingDate = reportingDateService.getReportingDateById(reportingDateId);
+        Target target = targetService.getTargetById(targetId);
+
+        Score score = new Score();
+        score.setTarget(target);
+        score.setReportingDate(reportingDate);
+        score.setEvidence(evidence);
+        score.setJustification(justification);
+        score.setActual(actual);
+        boolean alreadyExists = standardScorecardScoreService.saveScore(score);
+
+        JSONObject jsonObject = new JSONObject();
+
+        jsonObject.put("alreadyExists",alreadyExists);
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            StringBuilder builder = new StringBuilder();
+            builder.append(jsonString);
+            outputStream.write(builder.toString().getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+
+    }
+
+    @RequestMapping(value = "/save-value-based-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveScore(HttpServletResponse response, Long targetId, Long reportingDateId, Double employeeScore, Double managerScore, Double actualScore, String evidence, String justification) {
 
         String jsonString  = null;
         String result = null;
         JSONObject jsonObject = new JSONObject();
 
-        System.out.println("goal id is: " +id);
-        System.out.println("supporting document is: " +supportingDocument);
-        System.out.println("supporting document name is: " + String.valueOf(supportingDocument));
-        String fileName = String.valueOf(supportingDocument);
+        ReportingDate reportingDate = reportingDateService.getReportingDateById(reportingDateId);
 
-        System.out.println("file name is: " +fileName);
+        Score score = new Score();
+        score.setTarget(targetService.getTargetById(targetId));
+        score.setReportingDate(reportingDate);
+        score.setEvidence(evidence);
+        score.setJustification(justification);
+        score.setEmployeeScore(employeeScore);
+        score.setManagerScore(managerScore);
+        score.setActualScore(actualScore);
+        valueBasedScoreService.saveScore(score);
 
-
-        //supportingDocument.transferTo( new File("/Users/nyashaziwewe/Desktop/supportingdocuments" + fileName));
-
-        Goal goal = goalService.getGoalById(id);
-        goal.setEmployeeScore(employeeScore);
-        goal.setManagerScore(managerScore);
-        goal.setActualScore(actualScore);
-        goal.setSupportingDocument(fileName);
-        goal.setJustification(justification);
-        goalService.saveGoal(goal);
 
         jsonObject.put("employeeScore",employeeScore);
-        jsonObject.put("id",id);
+        jsonObject.put("targetId",targetId);
         jsonObject.put("managerScore",managerScore);
-        jsonObject.put("supportingDocument",fileName);
+        jsonObject.put("evidence",evidence);
         jsonObject.put("justification",justification);
 
         jsonString = jsonObject.toString();
@@ -837,10 +951,6 @@ public class ScorecardController {
                 newGoal.setPerspective(goal.getPerspective());
                 newGoal.setStrategicObjective(goal.getStrategicObjective());
                 newGoal.setName(goal.getName());
-                newGoal.setMeasure(goal.getMeasure());
-                newGoal.setUnit(goal.getUnit());
-                newGoal.setAllocatedWeight(goal.getAllocatedWeight());
-                newGoal.setTarget(goal.getTarget());
 
                 goalService.saveGoal(newGoal);
 

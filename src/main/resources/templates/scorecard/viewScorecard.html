@@ -58,6 +58,12 @@
         legend{
             color: #175ea8;
         }
+        .show{
+            display: block;
+        }
+        .hide{
+            display: none;
+        }
     </style>
 </head>
 
@@ -84,44 +90,49 @@
                             <th>Goal</th>
                             <th data-toggle="popover" data-placement="top" data-content="Represents eveidence of success and failure">Performance Measure</th>
                             <th data-toggle="popover" data-placement="top" data-content="Unit of measurement can be in currency, number or percentage">Unit of Measure</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Baseline target">Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Target" th:if="${scorecardModel == 'VALUE_BASED'}">Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Baseline target" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Base Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Baseline target" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Stretch Target</th>
                             <th data-toggle="popover" data-placement="top" data-content="Allocated Goal Weight">KPI Weight</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances">Employee Score</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Manager Score">Manager Score</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Actual Score">Moderated Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Actual</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances" th:if="${scorecardModel == 'VALUE_BASED'}">Employee Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Manager Score" th:if="${scorecardModel == 'VALUE_BASED'}">Manager Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Actual Score" th:if="${scorecardModel == 'VALUE_BASED'}">Moderated Score</th>
                             <th data-toggle="popover" data-placement="top" data-content="Weighted Score">Weighted Score (%)</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Supporting Documents">Supporting Documents</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Justification">Justification</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Conversational comments between supervisor and subbordinate">Manager\'s Comment</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Conversational comments between supervisor and subordinate">Manager\'s Comment</th>
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="goal, stat : ${goalsList}"  th:with="newPerspective=${(stat.index == 0) || (goalsList[stat.index - 1].perspective.name != goal.perspective?.name)},
-                                                                                  newStrategicObjective=${newPerspective || (stat.index == 0) || (goalsList[stat.index - 1].strategicObjective != goal.strategicObjective)}">
-                            <td th:if="${newPerspective}" th:text="${goal.perspective?.name}" th:rowspan="${goalsList.?[perspective?.name == #root.goal.perspective?.name].size()}"></td>
-                            <td th:if="${newStrategicObjective}" th:text="${goal.strategicObjective?.name}" th:rowspan="${goalsList.?[perspective?.name == #root.goal.perspective?.name].?[strategicObjective?.name == #root.goal.strategicObjective?.name].size()}"></td>
-                            <td th:text="${goal.name}"></td>
-                            <td th:text="${goal.measure}"></td>
-                            <td th:text="${goal.unit}"></td>
-                            <td th:text="${goal.target}"></td>
-                            <td th:text="${goal.allocatedWeight}"></td>
-                            <td th:text="${goal.employeeScore <= 0.0 || goal.employeeScore == null ? '' : #numbers.formatDecimal(goal.employeeScore, 0,  2)}" th:attr="class = ${goal.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>
-                            <td th:text="${goal.managerScore <= 0.0 || goal.managerScore == null ? '' : #numbers.formatDecimal(goal.managerScore, 0, 2)}" th:attr="class = ${goal.managerScore < 2.5 ? 'fail' : 'pass'}"></td>
-                            <td th:text="${goal.actualScore <= 0.0 || goal.actualScore == null ? '' : #numbers.formatDecimal(goal.actualScore, 0, 2)}" th:attr="class = ${goal.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
-                            <td th:text="${goal.actualScore <= 0.0 || goal.actualScore == null ? '' : #numbers.formatDecimal((goal.actualScore / 5) * goal.allocatedWeight, 0, 2) + '%'}"></td>
-                            <td th:text="${goal.supportingDocument}"></td>
-                            <td th:text="${goal.justification}"></td>
+                        <tr th:each="target, stat : ${targetsList}"  th:with="newPerspective=${(stat.index == 0) || (targetsList[stat.index - 1].perspective.name != target.perspective.name)},
+                                                                                     newStrategicObjective=${newPerspective || (stat.index == 0) || (targetsList[stat.index - 1].strategicObjective != target.strategicObjective)},
+                                                                                     newGoal=${newStrategicObjective || (targetsList[stat.index - 1].goal != target.goal)}">
+                            <td th:if="${newPerspective}" th:text="${target.perspective?.name}" th:rowspan="${targetsList.?[perspective.name == #root.target.perspective.name].size()}"></td>
+                            <td th:if="${newStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${targetsList.?[strategicObjective == #root.target.strategicObjective].size()}"></td>
+                            <td th:if="${newGoal}" th:text="${target.goal.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>
+                            <td th:text="${target.measure}"></td>
+                            <td th:text="${target.unit}"></td>
+                            <td th:if="${scorecardModel == 'VALUE_BASED'}" th:text="${target.normalTarget}"></td>
+                            <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" th:text="${target.baseTarget}"></td>
+                            <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" th:text="${target.stretchTarget}"></td>
+                            <td th:text="${target.allocatedWeight}"></td>
+
+                            <td th:text="${target.employeeScore <= 0.0 || target.employeeScore == null ? '' : #numbers.formatDecimal(target.employeeScore, 0,  2)}" th:attr="class = ${target.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${target.managerScore <= 0.0 || target.managerScore == null ? '' : #numbers.formatDecimal(target.managerScore, 0, 2)}" th:attr="class = ${target.managerScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${target.actualScore <= 0.0 || target.actualScore == null ? '' : #numbers.formatDecimal(target.actualScore, 0, 2)}" th:attr="class = ${target.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
+                            <td th:text="${target.actualScore <= 0.0 || target.actualScore == null ? '' : #numbers.formatDecimal((target.actualScore / 5) * target.allocatedWeight, 0, 2) + '%'}"></td>
+<!--                            <td th:text="${target.supportingDocument}"></td>-->
+<!--                            <td th:text="${target.justification}"></td>-->
                             <td>
-                                <a th:if="${#lists.isEmpty(goal.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
+                                <a th:if="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
                                     <i  class="fa fa-lg fa-commenting" style="color: grey"></i>
                                 </a>
-                                <a th:unless="${#lists.isEmpty(goal.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
+                                <a th:unless="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
                                     <i class="fa fa-lg fa-comment" style="color: #1d84c6"></i>
                                 </a>
-                                <a th:if="${goal.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
+                                <a th:if="${target.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
                                     <i class="fa fa-lg fa-flag" style="color: red" ></i>
                                 </a>
-                                <a th:unless="${goal.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
+                                <a th:unless="${target.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
                                     <i class="fa fa-lg fa-flag" style="color: grey"></i>
                                 </a>
                             </td>
@@ -130,7 +141,7 @@
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h4 class="modal-title">Comment on Target [<span th:text="${goal.name}" class="text-success"></span>]</h4>
+                                            <h4 class="modal-title">Comment on Target [<span th:text="${target.measure}" class="text-success"></span>]</h4>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -146,7 +157,7 @@
 <!--                                                            </div>-->
                                                         <div class="chat-container">
                                                             <main>
-                                                                <div class="chat" th:each="comment, stat : ${goal.comments}">
+                                                                <div class="chat" th:each="comment, stat : ${target.comments}">
                                                                     <li th:text="${comment.name
                                                                     }"></li>
 <!--                                                                    <li th:class="${commentList?.sender?.id == 1 ? 'me' : 'you'}">-->
@@ -161,8 +172,8 @@
 
                                                                 </div>
                                                                 <footer>
-                                                                    <input type="hidden" th:value="${goal.id}" name="goal">
-                                                                    <input type="hidden" th:value="${goal.scorecardId}" name="scorecardId">
+                                                                    <input type="hidden" th:value="${target.id}" name="goal">
+                                                                    <input type="hidden" th:value="${target.goal.scorecardId}" name="scorecardId">
                                                                     <textarea placeholder="Type your message" th:field="*{name}"></textarea>
                                                                     <a href="#" class="btn btn-white" style="width: 100% !important">Send</a>
                                                                 </footer>
@@ -184,20 +195,20 @@
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h4 class="modal-title">Flag Target [<span th:text="${goal.name}" class="text-success"></span>]</h4>
+                                            <h4 class="modal-title">Flag Target [<span th:text="${target.measure}" class="text-success"></span>]</h4>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                         </div>
-                                        <form method="post" th:object="${goal}" th:action="@{/scorecards/save-flag}">
+                                        <form method="post" th:object="${target}" th:action="@{/scorecards/save-flag}">
                                             <div class="modal-body">
                                                 <div class="row">
                                                     <div class="col-sm-12">
                                                         <div class="form-group row">
                                                             <label class="col-form-label">Reason for Flagging</label>
-                                                            <textarea name="flag" th:text="${goal.flag}" class="form-control" rows="3"></textarea>
-                                                            <input type="hidden" th:value="${goal.id}" name="id">
-                                                            <input type="hidden" th:value="${goal.scorecardId}" name="scorecardId">
+                                                            <textarea name="flag" th:text="${target.flag}" class="form-control" rows="3"></textarea>
+                                                            <input type="hidden" th:value="${target.id}" name="id">
+                                                            <input type="hidden" th:value="${target.goal.scorecardId}" name="scorecardId">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -213,7 +224,8 @@
 
                         </tr>
                         <tr>
-                            <td colspan="6"></td>
+                            <td th:if="${scorecardModel == 'VALUE_BASED'}" colspan="6"></td>
+                            <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" colspan="7"></td>
                             <td>
                                 <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                 <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>

@@ -80,7 +80,7 @@
 
                     <div class="row">
                         <div class="col-6">
-                            <img th:src="@{/img/zimlogo.png}" src="../../static/img/zimlogo.png" class="logo" style="height: 100px !important; width: 200px !important;"/>
+                            <img th:src="@{/img/zrp.png}" src="../../static/img/zrp.png" class="logo" style="height: 100px !important; width: 200px !important;"/>
                         </div>
                         <div class="col-6">
                             <table class="table" style="border: none; width: 100%">
@@ -126,10 +126,10 @@
                                 <tr>
                                     <td colspan="4"></td>
                                     <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
-                                        <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
+                                        <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}" style="text-align: left !important;"></h4>
                                     </td>
                                     <td th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
-                                        <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}"></h4>
+                                        <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}"  style="text-align: left !important;"></h4>
                                     </td>
                                 </tr>
                             </tbody>
