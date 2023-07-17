@@ -56,12 +56,14 @@
                     <thead>
                     <tr>
                       <th>Reporting Date</th>
+                      <th>Status</th>
                       <th></th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="reportingDate, stat :${reportingDateList}">
                       <td th:text="${reportingDate.endDate}"></td>
+                      <td th:text="${reportingDate.status}"></td>
                       <td>
                         <button class="btn btn-danger btn-sm" type="button" data-toggle="modal" data-target="#exampleModal">Delete</button>
                         <button class="btn btn-success btn-sm" data-toggle="modal" th:data-target="'#modal'+ ${stat.index}">
@@ -102,6 +104,19 @@
                                             </option>
                                             </select>
 <!--                                            <input type="hidden" th:value="${reportingDate.id}" name="id" id="id">-->
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div class="col-sm-12">
+                                      <div class="form-group row">
+                                        <label class="col-form-label col-lg-4">Status</label>
+                                        <div class="col-lg-8">
+                                          <div class="input-group m-b">
+                                            <select name="status" id="status" class="form-control">
+                                              <option value="IN_ACTIVE">IN ACTIVE</option>
+                                              <option value="ACTIVE">ACTIVE</option>
+                                            </select>
                                           </div>
                                         </div>
                                       </div>

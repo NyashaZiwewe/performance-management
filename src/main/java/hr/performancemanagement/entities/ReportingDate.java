@@ -23,6 +23,7 @@ public class ReportingDate {
     @ManyToOne
     @JoinColumn(name = "reporting_period_id")
     private ReportingPeriod reportingPeriod;
+    private String status;
     @CreationTimestamp
     private Date date;
 

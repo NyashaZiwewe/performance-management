@@ -1,5 +1,6 @@
 package hr.performancemanagement.service;
 
+import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingDateRepository;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,10 +16,20 @@ import java.util.List;
 public class ReportingDateService {
     @Autowired
     ReportingDateRepository reportingDateRepository;
+    @Autowired
+    HttpSession session;
 
     public ReportingDate getReportingDateById(long id){
 
         ReportingDate reportingDate = reportingDateRepository.findReportingDateById(id);
+        return reportingDate;
+    }
+
+    public ReportingDate getActiveReportingDate(){
+
+        Account loggedUser = (Account) session.getAttribute("loggedUser");
+//        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatus(loggedUser.getClientId(), "ACTIVE");
+        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatusAndAndReportingPeriod_ClientId("ACTIVE", loggedUser.getClientId());
         return reportingDate;
     }
 
@@ -27,8 +39,19 @@ public class ReportingDateService {
         return reportingDateList;
     }
 
+    private void deactivateReportingDates(ReportingPeriod reportingPeriod){
+        List<ReportingDate> reportingDateList = reportingDateRepository.findReportingDatesByReportingPeriod(reportingPeriod);
+        for(ReportingDate reportingDate: reportingDateList){
+            reportingDate.setStatus("IN_ACTIVE");
+            saveReportingDate(reportingDate);
+        }
+    }
 
     public void saveReportingDate(ReportingDate reportingDate) {
+        String status = reportingDate.getStatus();
+        if("ACTIVE".equalsIgnoreCase(status)){
+            deactivateReportingDates(reportingDate.getReportingPeriod());
+        }
         reportingDateRepository.save(reportingDate);
     }
 

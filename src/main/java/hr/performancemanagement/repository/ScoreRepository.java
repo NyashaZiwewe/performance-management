@@ -15,6 +15,7 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
     List<Score> findScoresByTarget(Target target);
     Score findScoreById(long id);
     boolean existsScoresByTargetAndReportingDate(Target target, ReportingDate reportingDate);
+    Score findScoreByTargetAndReportingDate(Target target, ReportingDate reportingDate);
 
 //    @Query("SELECT coalesce(AVG(employeeScore), 0) FROM Score WHERE target = :target")
 //    double averageEmployeeScore(@Param("target") long target);

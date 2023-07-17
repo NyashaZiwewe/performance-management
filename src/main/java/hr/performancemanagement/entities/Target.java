@@ -41,6 +41,20 @@ public class Target {
     private Double managerScore;
     private Double actualScore;
     private Double weightedScore;
+    @Transient
+    private Double currentActual;
+    @Transient
+    private Double currentEmployeeScore;
+    @Transient
+    private Double currentManagerScore;
+    @Transient
+    private Double currentActualScore;
+    @Transient
+    private Double currentWeightedScore;
+    @Transient
+    private String currentEvidence;
+    @Transient
+    private String currentJustification;
 
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Comment> comments;

@@ -213,6 +213,7 @@ public class ScorecardController {
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
         ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
         Account loggedUser = getLoggedUser();
         long loggedUserId = loggedUser.getId();
@@ -292,7 +293,9 @@ public class ScorecardController {
             modelAndView.addObject("weightedScore", weightedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("reportingDates", reportingDates);
+            modelAndView.addObject("reportingDate", reportingDate);
             modelAndView.addObject("scorecardModel", scorecardModel);
+            modelAndView.addObject("reportingPeriod", reportingPeriod);
         }
         preparePage(modelAndView, request, session);
         return modelAndView;
@@ -815,9 +818,9 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-standard-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveStandardScore(HttpServletRequest request, HttpServletResponse response, Long scorecardId, Long targetId, Long reportingDateId, Double actual, String evidence, String justification) {
+    public void saveStandardScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double actual, String evidence, String justification) {
 
-        ReportingDate reportingDate = reportingDateService.getReportingDateById(reportingDateId);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         Target target = targetService.getTargetById(targetId);
 
         Score score = new Score();
@@ -826,11 +829,25 @@ public class ScorecardController {
         score.setEvidence(evidence);
         score.setJustification(justification);
         score.setActual(actual);
-        boolean alreadyExists = standardScorecardScoreService.saveScore(score);
 
         JSONObject jsonObject = new JSONObject();
 
-        jsonObject.put("alreadyExists",alreadyExists);
+//        boolean alreadyExists = standardScorecardScoreService.scoreExists(score);
+//        if(alreadyExists){
+//            jsonObject.put("alreadyExists", true);
+//        }else{
+            standardScorecardScoreService.saveScore(score);
+            jsonObject.put("alreadyExists", false);
+//            jsonObject.put("reportingDate",reportingDate.getEndDate());
+//            jsonObject.put("baseTarget",target.getBaseTarget());
+//            jsonObject.put("stretchTarget",target.getStretchTarget());
+//            jsonObject.put("evidence",evidence);
+//            jsonObject.put("justification",justification);
+//            jsonObject.put("actual",actual);
+//            jsonObject.put("weightedScore",score.getWeightedScore());
+//        }
+
+
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
@@ -845,32 +862,32 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-value-based-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveScore(HttpServletResponse response, Long targetId, Long reportingDateId, Double employeeScore, Double managerScore, Double actualScore, String evidence, String justification) {
+    public void saveScore(HttpServletResponse response, Long targetId, Double employeeScore, Double managerScore, Double actualScore, String evidence, String justification) {
 
-        String jsonString  = null;
-        String result = null;
-        JSONObject jsonObject = new JSONObject();
-
-        ReportingDate reportingDate = reportingDateService.getReportingDateById(reportingDateId);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        Target target = targetService.getTargetById(targetId);
 
         Score score = new Score();
-        score.setTarget(targetService.getTargetById(targetId));
+        score.setTarget(target);
         score.setReportingDate(reportingDate);
-        score.setEvidence(evidence);
-        score.setJustification(justification);
         score.setEmployeeScore(employeeScore);
         score.setManagerScore(managerScore);
         score.setActualScore(actualScore);
+        score.setEvidence(evidence);
+        score.setJustification(justification);
+
+        JSONObject jsonObject = new JSONObject();
+
         valueBasedScoreService.saveScore(score);
+        jsonObject.put("alreadyExists", false);
 
+//        jsonObject.put("employeeScore",employeeScore);
+//        jsonObject.put("targetId",targetId);
+//        jsonObject.put("managerScore",managerScore);
+//        jsonObject.put("evidence",evidence);
+//        jsonObject.put("justification",justification);
 
-        jsonObject.put("employeeScore",employeeScore);
-        jsonObject.put("targetId",targetId);
-        jsonObject.put("managerScore",managerScore);
-        jsonObject.put("evidence",evidence);
-        jsonObject.put("justification",justification);
-
-        jsonString = jsonObject.toString();
+        String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
             StringBuilder builder = new StringBuilder();
@@ -952,7 +969,22 @@ public class ScorecardController {
                 newGoal.setStrategicObjective(goal.getStrategicObjective());
                 newGoal.setName(goal.getName());
 
-                goalService.saveGoal(newGoal);
+                Goal savedGoal = goalService.saveGoal(newGoal);
+
+                List<Target> targetList = targetService.getAllTargetsByGoal(goal);
+                for(Target target: targetList){
+                    Target newTarget = new Target();
+                    newTarget.setGoal(savedGoal);
+                    newTarget.setPerspective(target.getPerspective());
+                    newTarget.setStrategicObjective(target.getStrategicObjective());
+                    newTarget.setMeasure(target.getMeasure());
+                    newTarget.setUnit(target.getUnit());
+                    newTarget.setAllocatedWeight(target.getAllocatedWeight());
+                    newTarget.setNormalTarget(target.getNormalTarget());
+                    newTarget.setBaseTarget(target.getBaseTarget());
+                    newTarget.setStretchTarget(target.getStretchTarget());
+                    targetService.saveTarget(newTarget);
+                }
 
 
             }

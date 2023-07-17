@@ -1,9 +1,6 @@
 package hr.performancemanagement.service.ScoreService;
-
-import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.Score;
 import hr.performancemanagement.entities.Target;
-import hr.performancemanagement.repository.GoalRepository;
 import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.service.TargetService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,22 +21,38 @@ public class StandardScorecardScoreService {
         double baseTarget = target.getBaseTarget();
         double stretchTarget = target.getStretchTarget();
         double allocatedWeight = target.getAllocatedWeight();
+        double weightedRating = 0;
 
-        double weightedRating = (actual-baseTarget)/(stretchTarget-baseTarget) * allocatedWeight;
+        if(baseTarget != stretchTarget){
+            weightedRating = (actual-baseTarget)/(stretchTarget-baseTarget) * allocatedWeight;
+        }else{
+            weightedRating = (actual-baseTarget) * allocatedWeight;
+        }
+        if(weightedRating > allocatedWeight){
+            weightedRating = allocatedWeight;
+        }
+        if(weightedRating < -allocatedWeight){
+            weightedRating = -allocatedWeight;
+        }
+
         return weightedRating;
     }
 
-    public boolean saveScore(Score score) {
+    public Score saveScore(Score score) {
 
-        if(!scoreRepository.existsScoresByTargetAndReportingDate(score.getTarget(), score.getReportingDate())){
+            boolean exists = scoreExists(score);
+            if(exists){
+                Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+                score.setId(existingScore.getId());
+            }
             score.setWeightedScore(calculateWeightedScore(score));
-            scoreRepository.save(score);
+            Score savedScore = scoreRepository.save(score);
             updateTargetData(score.getTarget());
-            return false;
-        }else {
-            return true;
-        }
+            return savedScore;
+    }
 
+    public boolean scoreExists(Score score){
+        return scoreRepository.existsScoresByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
     }
 
     public boolean  updateTargetData(Target target){
