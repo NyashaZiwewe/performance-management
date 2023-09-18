@@ -87,7 +87,7 @@
                                                <a th:if="${loggedUserId == score.owner?.supervisor?.id AND score.employeeScore != 0.0 }" th:href="@{/scorecards/capture-scores/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">Capture Scores</a>
                                                <a th:if="${loggedUserId == score.owner?.id AND score.employeeScore == 0.0 }" th:href="@{/scorecards/capture-scores/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">Capture Scores</a>
                                                <a th:href="@{/scorecards/view-scorecard/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">View Scorecard</a>
-                                               <a th:href="@{/performance-review/view-performance-report/} + ${score.id}" class="btn btn-success btn-sm">View Report</a>
+                                               <a th:href="@{/performance-review/download-pdf/} + ${score.id}" class="btn btn-success btn-sm">View Report</a>
                                                <a th:href="@{/performance-review/view-chart/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">View Chart</a>
                                            </td>
                                        </tr>

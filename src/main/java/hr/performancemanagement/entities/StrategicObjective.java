@@ -1,5 +1,9 @@
 package hr.performancemanagement.entities;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
@@ -7,6 +11,10 @@ import java.sql.Date;
 
 
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 public class StrategicObjective {
 
     @Id
@@ -18,48 +26,9 @@ public class StrategicObjective {
     private ReportingPeriod reportingPeriod;
 
     private String name;
+    @Transient
+    private Double weightedScore;
     @CreationTimestamp
     private Date dateAdded;
 
-    public StrategicObjective(long id, ReportingPeriod reportingPeriod, String name, Date dateAdded) {
-        this.id = id;
-        this.reportingPeriod = reportingPeriod;
-        this.name = name;
-        this.dateAdded = dateAdded;
-    }
-
-    public StrategicObjective() {
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Date getDateAdded() {
-        return dateAdded;
-    }
-
-    public void setDateAdded(Date dateAdded) {
-        this.dateAdded = dateAdded;
-    }
-
-    public ReportingPeriod getReportingPeriod() {
-        return reportingPeriod;
-    }
-
-    public void setReportingPeriod(ReportingPeriod reportingPeriod) {
-        this.reportingPeriod = reportingPeriod;
-    }
 }

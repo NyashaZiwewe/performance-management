@@ -6,6 +6,7 @@ import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 @Controller
@@ -34,8 +38,10 @@ public class performanceImprovementPlanController {
     private final PIPIssueService pipIssueService;
     @Autowired
     private final PIPNoteService pipNoteService;
+    @Autowired
+    private final CommonService commonService;
 
-    public performanceImprovementPlanController(PerformanceImprovementPlanRepository performanceImprovementPlanRepository, AccountService accountService, PerformanceImprovementPlanService performanceImprovementPlanService, ReportingPeriodService reportingPeriodService, PIPTaskService pipTaskService, PIPIssueService pipIssueService, PIPNoteService pipNoteService) {
+    public performanceImprovementPlanController(PerformanceImprovementPlanRepository performanceImprovementPlanRepository, AccountService accountService, PerformanceImprovementPlanService performanceImprovementPlanService, ReportingPeriodService reportingPeriodService, PIPTaskService pipTaskService, PIPIssueService pipIssueService, PIPNoteService pipNoteService, CommonService commonService) {
         this.performanceImprovementPlanRepository = performanceImprovementPlanRepository;
         this.accountService = accountService;
         this.performanceImprovementPlanService = performanceImprovementPlanService;
@@ -43,6 +49,7 @@ public class performanceImprovementPlanController {
         this.pipTaskService = pipTaskService;
         this.pipIssueService = pipIssueService;
         this.pipNoteService = pipNoteService;
+        this.commonService = commonService;
     }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
@@ -65,6 +72,24 @@ public class performanceImprovementPlanController {
         List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlans();
         modelAndView.addObject("plansList", plansList);
         modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
+
+    @RequestMapping(value = "/view-performance-improvement-plans-2")
+    public ModelAndView viewPerformanceImprovementPlans2(HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS2);
+        modelAndView.addObject("pageTitle", "View All");
+        Account loggedUser = commonService.getLoggedUser();
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlans(reportingPeriod);
+        for(PerformanceImprovementPlan plan : plansList){
+            String initials = commonService.getInitials(plan.getEmployee().getFullName());
+            plan.getEmployee().setInitials(initials);
+        }
+        modelAndView.addObject("plansList", plansList);
+        modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
+        modelAndView.addObject("loggedUser", loggedUser);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -116,6 +141,22 @@ public class performanceImprovementPlanController {
         performanceImprovementPlanService.savePerformanceImprovementPlan(performanceImprovementPlan);
         PortletUtils.addInfoMsg("Performance Improvement Plan successfully created.", request);
         return "redirect:/performance-improvement-plans/add-plan/";
+    }
+
+    @RequestMapping(value = "/save-performance-improvement-plan", method = RequestMethod.POST)
+    public String saveNewPerformanceImprovementPlan(HttpServletRequest request, String plan) {
+        Account loggedUser = commonService.getLoggedUser();
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        PerformanceImprovementPlan performanceImprovementPlan = new PerformanceImprovementPlan();
+        performanceImprovementPlan.setStatus("todo");
+        performanceImprovementPlan.setClientId(Client.CLIENT_ID);
+        performanceImprovementPlan.setAgreedAction(plan);
+        performanceImprovementPlan.setEmployee(loggedUser);
+        performanceImprovementPlan.setReportingPeriod(reportingPeriod);
+        System.out.println(performanceImprovementPlan);
+        performanceImprovementPlanService.addPerformanceImprovementPlan(performanceImprovementPlan);
+        PortletUtils.addInfoMsg("PerformanceImprovementPlan Plan successfully created.", request);
+        return "redirect:/performance-improvement-plans/view-performance-improvement-plans-2";
     }
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
@@ -170,8 +211,35 @@ public class performanceImprovementPlanController {
         return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
     }
 
+//    @RequestMapping(value = "/update-task-status", method = RequestMethod.POST)
+//    public String updateTaskStatus(HttpServletRequest request, long performanceImprovementPlanId, String taskId) {
+//
+//        PIPTask task = pipTaskService.getPIPTaskById(Long.parseLong(taskId));
+//        if("OPEN".equals(task.getStatus())){
+//            task.setStatus("COMPLETED");
+//        }else {
+//            task.setStatus("OPEN");
+//        }
+//        pipTaskService.savePIPTask(task);
+//        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+//    }
+//
+//    @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)
+//    public String updateIssueStatus(HttpServletRequest request, long performanceImprovementPlanId, String issueId) {
+//
+//        PIPIssue issue = pipIssueService.getPIPIssueById(Long.parseLong(issueId));
+//        if("OPEN".equals(issue.getStatus())){
+//            issue.setStatus("COMPLETED");
+//        }else {
+//            issue.setStatus("OPEN");
+//        }
+//        pipIssueService.savePIPIssue(issue);
+//        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+//    }
+
+
     @RequestMapping(value = "/update-task-status", method = RequestMethod.POST)
-    public String updateTaskStatus(HttpServletRequest request, long performanceImprovementPlanId, String taskId) {
+    public void updateTaskStatus(HttpServletResponse response, String taskId) {
 
         PIPTask task = pipTaskService.getPIPTaskById(Long.parseLong(taskId));
         if("OPEN".equals(task.getStatus())){
@@ -180,7 +248,36 @@ public class performanceImprovementPlanController {
             task.setStatus("OPEN");
         }
         pipTaskService.savePIPTask(task);
-        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("status", task.getStatus());
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+    }
+
+    @RequestMapping(value = "/update-performance-improvement-plan-status", method = RequestMethod.POST)
+    public void updatePerformanceImprovementPlanStatus(HttpServletResponse response, long id, String status) {
+
+        PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(id);
+        plan.setStatus(status);
+        performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("alreadyExists", false);
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
     }
 
     @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)

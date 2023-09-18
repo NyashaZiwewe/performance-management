@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import java.sql.Date;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
@@ -28,5 +29,7 @@ public class ReportingPeriod {
     private String status;
     @CreationTimestamp
     private Date date;
+    @OneToMany(mappedBy = "reportingPeriod", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<ReportingDate> reportingDates;
 
 }

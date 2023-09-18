@@ -282,7 +282,7 @@
                                                         <span th:text="${target.currentWeightedScore}"></span>
                                                     </td>
                                                     <td>
-                                                        <input type="text" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
+                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
                                                     </td>
                                                     <td>
                                                         <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">

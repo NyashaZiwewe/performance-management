@@ -102,6 +102,16 @@
                         </td>
                     </tr>
                     <tr>
+                        <th>Is HR Moderator</th>
+                        <td>
+                            <div th:switch="${account.role}">
+                                <label class="label label-primary" th:case="MODERATOR" th:text="${account.role}"></label>
+                                <label class="label label-danger" th:case="NONE" th:text="${account.role}"></label>
+                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
                         <th>Scorecards</th>
                         <td>
                             <a th:href="@{/scorecards/view-user-scorecards/} + ${account.id}">View All</a>

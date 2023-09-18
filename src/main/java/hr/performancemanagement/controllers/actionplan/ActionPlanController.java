@@ -1,11 +1,11 @@
 package hr.performancemanagement.controllers.actionplan;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.ActionPlanRepository;
 import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 @Controller
@@ -32,14 +36,19 @@ public class ActionPlanController {
     private final IssueService issueService;
     @Autowired
     private final NoteService noteService;
+    @Autowired
+    private final CommonService commonService;
+//    @Autowired
+//    HttpSession session;
 
-    public ActionPlanController(ReportingPeriodService reportingPeriodService, ActionPlanService actionPlanService, AccountService accountService, TaskService taskService, IssueService issueService, NoteService noteService) {
+    public ActionPlanController(ReportingPeriodService reportingPeriodService, ActionPlanService actionPlanService, AccountService accountService, TaskService taskService, IssueService issueService, NoteService noteService, CommonService commonService) {
         this.reportingPeriodService = reportingPeriodService;
         this.actionPlanService = actionPlanService;
         this.accountService = accountService;
         this.taskService = taskService;
         this.issueService = issueService;
         this.noteService = noteService;
+        this.commonService = commonService;
     }
 
 
@@ -64,6 +73,23 @@ public class ActionPlanController {
         List<ActionPlan> plansList = actionPlanService.listAllActionPlans(reportingPeriod);
         modelAndView.addObject("plansList", plansList);
         modelAndView.addObject("actionPlan", new ActionPlan());
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
+    @RequestMapping(value = "/view-action-plans-2")
+    public ModelAndView viewActionPlans2(HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_ACTION_PLANS2);
+        modelAndView.addObject("pageTitle", "View All");
+        Account loggedUser = commonService.getLoggedUser();
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        List<ActionPlan> plansList = actionPlanService.listAllActionPlans(reportingPeriod);
+        for(ActionPlan plan : plansList){
+            String initials = commonService.getInitials(plan.getManager().getFullName());
+            plan.getManager().setInitials(initials);
+        }
+        modelAndView.addObject("plansList", plansList);
+        modelAndView.addObject("actionPlan", new ActionPlan());
+        modelAndView.addObject("loggedUser", loggedUser);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -116,6 +142,22 @@ public class ActionPlanController {
         actionPlanService.addActionPlan(actionPlan);
         PortletUtils.addInfoMsg("Action Plan successfully created.", request);
         return "redirect:/action-plans/add-plan/";
+    }
+
+    @RequestMapping(value = "/save-action-plan", method = RequestMethod.POST)
+    public String saveNewActionPlan(HttpServletRequest request, String plan) {
+        Account loggedUser = commonService.getLoggedUser();
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        ActionPlan actionPlan = new ActionPlan();
+        actionPlan.setStatus("todo");
+        actionPlan.setClientId(Client.CLIENT_ID);
+        actionPlan.setName(plan);
+        actionPlan.setManager(loggedUser);
+        actionPlan.setReportingPeriod(reportingPeriod);
+        System.out.println(actionPlan);
+        actionPlanService.addActionPlan(actionPlan);
+        PortletUtils.addInfoMsg("Action Plan successfully created.", request);
+        return "redirect:/action-plans/view-action-plans-2";
     }
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
@@ -171,7 +213,7 @@ public class ActionPlanController {
     }
 
     @RequestMapping(value = "/update-task-status", method = RequestMethod.POST)
-    public String updateTaskStatus(HttpServletRequest request, long actionPlanId, String taskId) {
+    public void updateTaskStatus(HttpServletResponse response, String taskId) {
 
         Task task = taskService.getTaskById(Long.parseLong(taskId));
         if("OPEN".equals(task.getStatus())){
@@ -180,7 +222,36 @@ public class ActionPlanController {
             task.setStatus("OPEN");
         }
         taskService.saveTask(task);
-        return "redirect:/action-plans/view-plan/"+ actionPlanId;
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("status", task.getStatus());
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+    }
+
+    @RequestMapping(value = "/update-action-plan-status", method = RequestMethod.POST)
+    public void updateActionPlanStatus(HttpServletResponse response, long id, String status) {
+
+        ActionPlan plan = actionPlanService.getActionPlanById(id);
+        plan.setStatus(status);
+        actionPlanService.saveActionPlan(plan);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("alreadyExists", false);
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
     }
 
     @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)
@@ -195,5 +266,7 @@ public class ActionPlanController {
         issueService.saveIssue(issue);
         return "redirect:/action-plans/view-plan/"+ actionPlanId;
     }
+
+
 
 }

@@ -9,6 +9,7 @@ import java.util.List;
 @Repository
 public interface ScorecardModelRepository extends JpaRepository<ScorecardModel, Long> {
     List<ScorecardModel> findScorecardModelsByClientId(long clientId);
+    ScorecardModel findScorecardModelById(long id);
     ScorecardModel findScorecardModelByClientIdAndStatus(long clientId, String status);
 
     int countScorecardModelsByClientIdAndName(long clientId, String name);

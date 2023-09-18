@@ -1,11 +1,16 @@
 package hr.performancemanagement.service.ScoreService;
+import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Score;
+import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.entities.Target;
 import hr.performancemanagement.repository.ScoreRepository;
+import hr.performancemanagement.service.ScorecardService;
 import hr.performancemanagement.service.TargetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.servlet.http.HttpSession;
 
 @Service
 public class ValueBasedScoreService {
@@ -13,6 +18,10 @@ public class ValueBasedScoreService {
     ScoreRepository scoreRepository;
     @Autowired
     private TargetService targetService;
+    @Autowired
+    private ScorecardService scorecardService;
+    @Autowired
+    HttpSession session;
 
     public double calculateWeightedScore(Score score){
 
@@ -33,13 +42,51 @@ public class ValueBasedScoreService {
     public Score saveScore(Score score) {
 
         boolean exists = scoreExists(score);
+        Score savedScore;
         if(exists){
+
+            Target target = targetService.getTargetById(score.getTarget().getId());
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            Account loggedUser = (Account) session.getAttribute("loggedUser");
+
+            long loggedUserId = loggedUser.getId();
+            long ownerId = scorecard.getOwner().getId();
+            long supervisorId = scorecard.getOwner().getSupervisor().getId();
+//            String role = loggedUser.getRole();
+            String approvalStatus = scorecard.getApprovalStatus();
+            boolean isOwner = false;
+            boolean isSupervisor = false;
+            boolean isModerator = false;
+
+            if (loggedUserId == ownerId) {
+                isOwner = true;
+            } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
+                isSupervisor = true;
+            } else if (loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
+                isModerator = true;
+            }else{
+                System.out.println("User can not capture scores");
+            }
+
             Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
-            score.setId(existingScore.getId());
+            //score.setId(existingScore.getId());
+            if(isOwner){
+                existingScore.setEmployeeScore(score.getEmployeeScore());
+                existingScore.setEvidence(score.getEvidence());
+                existingScore.setJustification(score.getJustification());
+            }else if(isSupervisor){
+                existingScore.setManagerScore(score.getManagerScore());
+            }else if(isModerator){
+                existingScore.setActualScore(score.getActualScore());
+            }
+            existingScore.setWeightedScore(calculateWeightedScore(existingScore));
+            savedScore = scoreRepository.save(existingScore);
+        }else{
+            score.setWeightedScore(calculateWeightedScore(score));
+            savedScore = scoreRepository.save(score);
         }
-        score.setWeightedScore(calculateWeightedScore(score));
-        Score savedScore = scoreRepository.save(score);
-        updateTargetData(score.getTarget());
+
+        updateTargetData(savedScore.getTarget());
         return savedScore;
     }
 

@@ -56,10 +56,10 @@ h2,h3{
     text-align:right;
 }
 .chat .you .message{
-    background-color:#58b666;
+    background-color: #6fe9ed;
 }
 .chat .me .message{
-    background-color:#6fbced;
+    background-color: #58b666;
 }
 .chat .triangle{
     width: 0;
@@ -68,11 +68,11 @@ h2,h3{
     border-width: 0 10px 10px 10px;
 }
 .chat .you .triangle{
-    border-color: transparent transparent #58b666 transparent;
+    border-color: transparent transparent #6fbced transparent;
     margin-left:2%;
 }
 .chat .me .triangle{
-    border-color: transparent transparent #6fbced transparent;
+    border-color: transparent transparent #58b666 transparent;
     margin-left:94%;
 }
 

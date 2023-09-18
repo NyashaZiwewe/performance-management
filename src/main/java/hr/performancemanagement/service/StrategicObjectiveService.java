@@ -29,6 +29,16 @@ public class StrategicObjectiveService {
         return strategicObjectiveList;
     }
 
+    public List<StrategicObjective> listStrategicObjectivesByScorecard(long scorecardId)
+    {
+        List<StrategicObjective> strategicObjectiveList = new ArrayList<>();
+        strategicObjectiveRepository.strategicObjectivesByScorecard(scorecardId).forEach(strategicObjective -> strategicObjectiveList.add(strategicObjective));
+        for(StrategicObjective objective : strategicObjectiveList){
+            objective.setWeightedScore(strategicObjectiveRepository.weightedScoreByScorecardAndStrategicObjective(objective));
+        }
+        return strategicObjectiveList;
+    }
+
     public void addStrategicObjective(StrategicObjective strategicObjective) {
 
         strategicObjectiveRepository.save(strategicObjective);

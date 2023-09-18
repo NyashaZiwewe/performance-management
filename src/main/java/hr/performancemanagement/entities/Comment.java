@@ -25,7 +25,7 @@ public class Comment implements Serializable {
     @JoinColumn(name = "target_id")
     private Target target;
     private String name;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "sender_id")
     private Account sender;
     @CreationTimestamp

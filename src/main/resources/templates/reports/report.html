@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+
+<head>
+
+    <meta charset="utf-8"></meta>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"></meta>
+    <title>.:: Ecorec ::.</title>
+
+    <link href="../../static/css/bootstrap.min.css" rel="stylesheet"></link>
+    <link href="../../static/font-awesome/css/font-awesome.css" rel="stylesheet"></link>
+
+    <link href="../../static/css/animate.css" rel="stylesheet"></link>
+    <link href="../../static/css/style.css" rel="stylesheet"></link>
+
+<style>
+    .table{
+        width: 100%;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="wrapper">
+
+    <div id="page-wrapper" class="gray-bg">
+        <div class="wrapper wrapper-content animated fadeInRight">
+
+            <div class="ibox">
+                <div class="ibox-content">
+                    <fieldset class="border p-2">
+                        <legend class="w-auto"><h1>Performance Report</h1></legend>
+
+                        <div class="row">
+                            <div class="col-6">
+                                <img src="../../static/img/zimlogo.png" class="logo" style="height: 100px !important; width: 200px !important;"/>
+                            </div>
+                            <div class="col-6">
+                                <table class="table" style="border: none; width: 100%">
+                                    <tr>
+                                        <th>Name</th>
+                                        <td th:text="${owner.fullName}"></td>
+                                        <th>Position</th>
+                                        <td th:text="${owner.position}"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Date</th>
+                                        <td th:text="${endDate}"></td>
+                                        <th>Department</th>
+                                        <td th:text="${owner.department?.name}"></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        <h3>Contribution Towards the attainment of Strategic Objectives</h3>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped" border="1">
+                                <tbody>
+                                   <tr th:each="objective : ${strategicObjectivesList}">
+                                       <td th:text="${objective.name}"></td>
+                                       <td th:text="${objective.weightedScore} + '%'"></td>
+                                   </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h2>Performance Improvement Plan</h2>
+                        <h4>Confidential</h4>
+
+                        <p>1. The purpose of this Performance Improvement Plan (PIP) is to define performance deficiencies, clarify performance expectations, and allow you the
+                            opportunity to demonstrate your ability to meet the performance expectations outlined below. To facilitate sustained improvement, the following plan has been
+                            established. This plan may be modified as necessary depending on your progress.</p>
+
+                        <!--                    <div th:if="${not #lists.isEmpty(pips)}">-->
+                        <!--                        <table class="table">-->
+                        <!--                            <thead>-->
+                        <!--                            <tr>-->
+                        <!--                                <td class="italic"><b>Target area</b>-->
+                        <!--                                    Detail specific area where performance standards have not been met</td>-->
+                        <!--                                <td class="italic"><b>Performance concern</b>-->
+                        <!--                                    Detail specific dates and examples of where the standards have not been met</td>-->
+                        <!--                                <td class="italic"><b>Expected standard of performance</b>-->
+                        <!--                                    Detail what is expected of the employee in terms of their performance i.e., what does ‘good’</td>-->
+                        <!--                                <td class="italic"><b>Agreed improvement actions</b>-->
+                        <!--                                    Detail what actions need to be taken to meet expected standard of performance</td>-->
+                        <!--                                <td class="italic"><b>Support</b>-->
+                        <!--                                    Detail what has been agreed in terms of support required to achieve the expected standard of performance</td>-->
+                        <!--                                <td class="italic"><b>Review Date</b></td>-->
+                        <!--                                <td class="italic"><b>Review notes</b>-->
+                        <!--                                    Detail improvement made and any future review dates</td>-->
+                        <!--                                <td class="italic">Date</td>-->
+                        <!--                            </tr>-->
+                        <!--                            </thead>-->
+                        <!--                            <tbody>-->
+                        <!--                            <tr th:each="pip : ${pips}">-->
+                        <!--                                <td th:text="${pip.targetArea}"></td>-->
+                        <!--                                <td th:text="${pip.concern}"></td>-->
+                        <!--                                <td th:text="${pip.expectedStandard}"></td>-->
+                        <!--                                <td th:text="${pip.agreedAction}"></td>-->
+                        <!--                                <td th:text="${pip.requiredSupport}"></td>-->
+                        <!--                                <td th:text="${pip.endDate}"></td>-->
+                        <!--                                <td th:text="${pip.reviewNotes}"></td>-->
+                        <!--                                <td th:text="${pip.endDate}"></td>-->
+                        <!--                            </tr>-->
+                        <!--                            </tbody>-->
+                        <!--                        </table>-->
+                        <!--                    </div>-->
+                        <div th:if="${not #lists.isEmpty(pips)}">
+                            <div class="row">
+                                <div class="col-4" th:each="pip : ${pips}">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">
+                                            <b>Target area:</b> <span th:text="${pip.targetArea}"></span>
+                                        </div>
+                                        <div class="panel-body">
+                                            <b>Performance concern:</b> <span th:text="${pip.concern}"></span>
+                                        </div>
+                                        <div class="panel-footer">
+                                            <b>Expected standard of performance:</b> <span th:text="${pip.expectedStandard}"></span>
+                                        </div>
+                                        <div class="panel-footer">
+                                            <b>Agreed improvement actions:</b> <span th:text="${pip.agreedAction}"></span>
+                                        </div>
+                                        <div class="panel-footer">
+                                            <b>Support Required:</b> <span th:text="${pip.requiredSupport}"></span>
+                                        </div>
+                                        <div class="panel-footer">
+                                            <b>Review Date:</b> <span th:text="${pip.endDate}"></span>
+                                        </div>
+                                        <div class="panel-footer">
+                                            <b>Date:</b> <span th:text="${pip.endDate}"></span>
+                                        </div>
+                                        <div class="panel-footer">
+                                            <b>Review Notes:</b> <span th:text="${pip.reviewNotes}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p><b>2. Follow-up Updates:</b> You will receive feedback on your progress according to the following schedule: </p>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" style="width: 50%">
+                                <tr>
+                                    <th>Date Scheduled</th>
+                                    <th>Activity</th>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td>30-day Update</td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td>60-day Update</td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td>90-day Update and Status </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <p>3. By signing below, you acknowledge that you and your supervisor has discussed this performance improvement plan.</p>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>This action plan has been agreed by</th>
+                                    <td>Signed</td>
+                                    <td>Date</td>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <th>Manager</th>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <th>Subordinate</th>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p>4. PROGRESS SUMMARY 30-day/60-day/90-day Updates</p>
+
+                        <div class="table table-responsive">
+                            <table class="table table-bordered" border="1" style="word-wrap: break-word">
+                                <thead>
+                                <tr>
+                                    <th>Performance Concern</th>
+                                    <th>Date of Review</th>
+                                    <td><b>Progress/Review Notes</b>
+                                        (Detail the status of the
+                                        progress made at the review
+                                        meeting i.e. (Satisfactory
+                                        improvement, partial
+                                        improvement) or (Insufficient/No improvement))</td>
+                                    <th>Next Action Required</th>
+                                    <th>Due Date</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h4>Final Rating / Review</h4>
+                        <table class="table">
+                            <tr>
+                                <td>Employee has achieved required improvements as described above.</td>
+                                <td><input type="checkbox" checked="checked" /></td>
+                            </tr>
+                            <tr>
+                                <td>Employee has not achieved required improvements as described above.</td>
+                                <td><input type="checkbox" /></td>
+                            </tr>
+                        </table>
+
+                        <table class="table" style="width: 50%">
+                            <tr>
+                                <th>Supervisor:</th>
+                                <td></td>
+                                <th>Date:</th>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <th>Employee:</th>
+                                <td></td>
+                                <th>Date:</th>
+                                <td></td>
+                            </tr>
+                        </table>
+                        <fieldset class="border p-2">
+                            <legend class="w-auto">Additional Comments</legend>
+                            <p></p>
+                        </fieldset>
+                    </fieldset>
+                </div>
+                <div class="ibox-footer">
+                    <h2>Footer</h2>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+</div>
+<!-- Mainly scripts -->
+<script src="../../static/js/jquery-3.1.1.min.js"></script>
+<script src="../../static/js/popper.min.js"></script>
+<script src="../../static/js/bootstrap.js"></script>
+<script src="../../static/js/plugins/metisMenu/jquery.metisMenu.js"></script>
+<script src="../../static/js/plugins/slimscroll/jquery.slimscroll.min.js"></script>
+<script src="../../static/js/plugins/select2/select2.full.min.js"></script>
+<script src="../../static/js/plugins/iCheck/icheck.min.js"></script>
+
+<!-- Custom and plugin javascript -->
+<script src="../../static/js/inspinia.js"></script>
+<script src="../../static/js/plugins/pace/pace.min.js"></script>
+
+</body>
+
+</html>

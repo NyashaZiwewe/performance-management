@@ -23,6 +23,11 @@ public class ScorecardModelService {
         return scorecardModelList;
     }
 
+    public ScorecardModel getScorecardModelById(long id){
+        ScorecardModel model = scorecardModelRepository.findScorecardModelById(id);
+        return model;
+    }
+
     public ScorecardModel getActiveScorecardModel(){
         Account loggedUser = (Account) session.getAttribute("loggedUser");
         ScorecardModel scorecardModel = scorecardModelRepository.findScorecardModelByClientIdAndStatus(loggedUser.getClientId(), "ACTIVE");
@@ -40,13 +45,36 @@ public class ScorecardModelService {
     }
 
     public void saveScorecardModel(ScorecardModel model) {
-
+        if(model.getStatus().equalsIgnoreCase("ACTIVE")){
+            Account loggedUser = (Account) session.getAttribute("loggedUser");
+            List<ScorecardModel> scorecardModelList = scorecardModelRepository.findScorecardModelsByClientId(loggedUser.getClientId());
+            for(ScorecardModel scorecardModel: scorecardModelList){
+                scorecardModel.setStatus("IN_ACTIVE");
+                scorecardModelRepository.save(scorecardModel);
+            }
+        }
         scorecardModelRepository.save(model);
     }
 
     @Transactional
-    public void deleteScorecardModel(ScorecardModel model){
-        scorecardModelRepository.delete(model);
+    public int deleteScorecardModel(ScorecardModel model){
+        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        List<ScorecardModel> scorecardModelList = scorecardModelRepository.findScorecardModelsByClientId(loggedUser.getClientId());
+        if(scorecardModelList.size() == 1){
+            return 0;
+        } else if (scorecardModelList.size() == 2) {
+            scorecardModelRepository.delete(model);
+            List<ScorecardModel> scorecardModels = scorecardModelRepository.findScorecardModelsByClientId(loggedUser.getClientId());
+            for(ScorecardModel scorecardModel: scorecardModels){
+                scorecardModel.setStatus("ACTIVE");
+                saveScorecardModel(scorecardModel);
+            }
+            return 1;
+        }else {
+            scorecardModelRepository.delete(model);
+            return 1;
+        }
+
     }
 
 }

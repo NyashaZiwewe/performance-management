@@ -35,6 +35,18 @@
             let actualScore = document.getElementById("actualScore"+targetId).value;
             let evidence = document.getElementById("evidence"+targetId).value;
             let justification = document.getElementById("justification"+targetId).value;
+            if((employeeScore !== "" && Number(employeeScore) !== 0.0)  && (Number(employeeScore) < 1 || Number(employeeScore) > 5)){
+                alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
+                return false;
+            }
+            if((managerScore !== "" && Number(managerScore) !== 0.0) && (Number(managerScore) < 1 || Number(managerScore) > 5)){
+                alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
+                return false;
+            }
+            if((actualScore !== "" && Number(actualScore) !== 0.0)  && (Number(actualScore) < 1 || Number(actualScore) > 5)){
+                alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
+                return false;
+            }
 
             $.ajax({
                 url : '/scorecards/save-value-based-score',
@@ -120,16 +132,16 @@
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"  th:text="${target.allocatedWeight}"></a>
                                                 </td>
                                                 <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.actual == null ? '' + target.id : target.employeeScore}"></a>
+                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.employeeScore == null ? ' ' : target.employeeScore}"></a>
                                                 </td>
                                                 <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.actual == null ? '' + target.id : target.managerScore}"></a>
+                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.managerScore == null ? ' ' : target.managerScore}"></a>
                                                 </td>
                                                 <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.actual == null ? '' + target.id : target.actualScore}"></a>
+                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.actualScore == null ? ' ' : target.actualScore}"></a>
                                                 </td>
                                                 <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.weightedScore == null ? '' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}" th:attr="class = ${target.weightedScore > 0 ? 'pass' : 'fail' }"></a>
+                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.weightedScore == null ? ' ' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}" th:attr="class = ${target.weightedScore > 0 ? 'pass' : 'fail' }"></a>
                                                 </td>
 
                                                 <td>
@@ -241,12 +253,20 @@
                                                     <th>Unit</th>
                                                     <th>Target</th>
                                                     <th>KPI Weight</th>
-                                                    <th>Employee Score</th>
-                                                    <th>Manager Score</th>
-                                                    <th>Actual Score</th>
+                                                    <th th:if="${isOwner}">Employee Score</th>
+                                                    <div th:if="${isSupervisor}">
+                                                        <th>Employee Score</th>
+                                                        <th>Manager Score</th>
+                                                    </div>
+                                                    <div th:if="${canModerate}">
+                                                        <th>Employee Score</th>
+                                                        <th>Manager Score</th>
+                                                        <th>Agreed Score</th>
+                                                    </div>
                                                     <th>Weighted Score</th>
                                                     <th>Evidence</th>
                                                     <th>Justification</th>
+                                                    <th></th>
                                                 </tr>
                                                 </thead>
                                                 <tbody>
@@ -260,24 +280,54 @@
                                                     <td th:text="${target.unit}"></td>
                                                     <td th:text="${target.normalTarget}"></td>
                                                     <td th:text="${target.allocatedWeight}"></td>
-                                                    <td>
-                                                        <input type="number" step="any" th:id="'employeeScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" required>
+                                                    <td th:if="${isOwner}">
+                                                        <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" required>
                                                     </td>
+                                                    <div th:if="${isSupervisor}">
+                                                        <td>
+                                                            <span th:text="${target.currentEmployeeScore}"></span>
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" step="any" min="1" max="5" th:id="'managerScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentManagerScore}" required>
+                                                            <input type="hidden" th:id="'actualScore' + ${target.id}"  th:value="${target.currentActualScore}">
+                                                        </td>
+                                                    </div>
+                                                    <div th:if="${canModerate}">
+                                                        <td>
+                                                            <span th:text="${target.currentEmployeeScore}"></span>
+                                                        </td>
+                                                        <td>
+                                                            <span th:text="${target.currentManagerScore}"></span>
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" step="any" min="1" max="5" th:id="'actualScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentActualScore}" required>
+                                                            <input type="hidden" th:id="'managerScore' + ${target.id}" th:value="${target.currentManagerScore}">
+                                                        </td>
+                                                    </div>
                                                     <td>
-                                                        <input type="number" step="any" th:id="'managerScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentManagerScore}" required>
+                                                        <span th:text="${target.currentWeightedScore + '%'}"></span>
                                                     </td>
-                                                    <td>
-                                                        <input type="number" step="any" th:id="'actualScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentActualScore}" required>
-                                                    </td>
-                                                    <td>
-                                                        <span th:text="${target.currentWeightedScore}"></span>
-                                                    </td>
-                                                    <td>
-                                                        <input type="text" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
-                                                    </td>
-                                                    <td>
-                                                        <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">
-                                                    </td>
+                                                    <div th:if="${isOwner}">
+                                                        <td>
+                                                            <input type="text" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">
+                                                        </td>
+                                                        <td>
+                                                            <input type="hidden" th:id="'managerScore'+ ${target.id}" th:value="${target.currentManagerScore}">
+                                                            <input type="hidden" th:id="'actualScore'+ ${target.id}" th:value="${target.currentActualScore}">
+                                                        </td>
+                                                    </div>
+                                                    <div th:if="${!isOwner}">
+<!--                                                        <td th:text="${target.currentEmployeeScore}"></td>-->
+                                                        <td th:text="${target.currentEvidence}"></td>
+                                                        <td th:text="${target.currentJustification}"></td>
+
+                                                        <input type="hidden" th:id="'employeeScore'+ ${target.id}" th:value="${target.currentEmployeeScore}">
+                                                        <input type="hidden" th:id="'evidence'+ ${target.id}" th:value="${target.currentEvidence}">
+                                                        <input type="hidden" th:id="'justification'+ ${target.id}" th:value="${target.currentJustification}">
+                                                    </div>
                                                 </tr>
                                                 </tbody>
 

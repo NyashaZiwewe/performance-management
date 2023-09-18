@@ -41,10 +41,10 @@
             <div class="ibox-content m-b-sm border-bottom col-8">
                 <form th:action="@{/reporting-periods/add-reporting-period}" method="post" th:object="${reportingPeriod}">
                     <div class="row">
-                        <div class="col-sm-12">
+                        <div class="col-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Reporting Period Start Date</label>
-                                <div class="col-lg-8">
+                                <label class="col-form-label col-4 required">Reporting Period Start Date</label>
+                                <div class="col-8">
                                     <div class="input-group m-b">
                                          <input type="date" class="form-control" th:field="*{startDate}" required>
                                     </div>
@@ -53,10 +53,10 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-sm-12">
+                        <div class="col-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Reporting Period End Date</label>
-                                <div class="col-lg-8">
+                                <label class="col-form-label col-4 required">Reporting Period End Date</label>
+                                <div class="col-8">
                                     <div class="input-group m-b">
                                         <input type="date" class="form-control" th:field="*{endDate}" required>
                                     </div>
@@ -65,10 +65,10 @@
                         </div>
                     </div>
                     <div class="form-group row">
-                        <div class="col-lg-4">
+                        <div class="col-4">
 
                         </div>
-                        <div class="col-lg-8">
+                        <div class="col-8">
                                 <a th:href="@{/reporting-periods}" class="btn btn-warning">Cancel</a>
 
                             <button class="btn btn-success" type="submit">Save</button>

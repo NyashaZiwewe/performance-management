@@ -74,11 +74,26 @@ public class ScorecardModelController {
         }
     }
 
+    @RequestMapping(value = "/update-scorecard-model", method = RequestMethod.POST)
+    public String updateScorecardModel(HttpServletRequest request, ScorecardModel model){
+
+        ScorecardModel model1 = scorecardModelService.getScorecardModelById(model.getId());
+        model.setClientId(model1.getClientId());
+        model.setDate(model1.getDate());
+        scorecardModelService.saveScorecardModel(model);
+        PortletUtils.addInfoMsg("You have successfully updated "+ model.getName(), request);
+        return "redirect:/scorecard-models";
+    }
+
     @RequestMapping(value = "/delete-model", method = RequestMethod.POST)
     public String deleteScorecardModel(HttpServletRequest request, ScorecardModel scorecardModel) {
 
-        scorecardModelService.deleteScorecardModel(scorecardModel);
-        PortletUtils.addInfoMsg("Scorecard Model was successfully deleted", request);
+        int response = scorecardModelService.deleteScorecardModel(scorecardModel);
+        if(response == 0){
+            PortletUtils.addErrorMsg("You cannot delete the only scorecard Model you have. add a different one if you want to delete this one", request);
+        }else {
+            PortletUtils.addInfoMsg("Scorecard Model was successfully deleted", request);
+        }
         return "redirect:/scorecard-models";
     }
 

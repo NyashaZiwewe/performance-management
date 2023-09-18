@@ -23,7 +23,6 @@
     <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet"
           th:href="@{/css/plugins/select2/select2-bootstrap4.min.css}">
 
-
 </head>
 
 <body>
@@ -38,60 +37,33 @@
         <div th:replace="fragments/template :: alerts"></div>
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
-            <div class="ibox-content m-b-sm border-bottom col-8">
-                <form th:action="@{/scorecards/save-scorecard}" method="post" th:object="${scorecard}">
-
+            <div class="ibox-content m-b-sm border-bottom col-10">
+                <form th:action="@{/performance-review/view-individual-trends}" method="post">
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Scorecard Owner</label>
+                                <div class="col-lg-4">
+                                    <label>Employee</label>
+                                </div>
                                 <div class="col-lg-8">
-                                    <select class=" select2_demo_1 form-control " required name="owner" th:field="*{owner}">
-                                        <option selected value="">--Owner--</option>
+                                    <select class="form-control select2_demo_1" size="20" name="employeeId">
                                         <option th:each="account :${accountsList}" th:value="${account.id}"
                                                 th:text="${account.fullName}">Option 1
                                         </option>
                                     </select>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Reporting Period</label>
-                                <div class="col-lg-8">
-                                    <select class="select2_demo_1 form-control" name="reportingPeriod" required
-                                            th:field="*{reportingPeriod}">
-                                        <option th:each="period :${reportingPeriodsList.?[#this.status eq 'ACTIVE']}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
-                                            1
-                                        </option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-12">
-                            <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Scorecard Model</label>
-                                <div class="col-lg-8">
-                                    <select class="select2_demo_1 form-control" name="scorecardModel" required>
-                                        <option selected th:value="${scorecardModel.id}" th:text="${scorecardModel.name}"></option>
-<!--                                        <option th:each="model : ${scorecardModelsList}">Option 1</option>-->
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-
-                    <div class="form-group row">
                         <div class="col-lg-4">
 
                         </div>
                         <div class="col-lg-8">
-                                <a th:href="@{/scorecards}" class="btn btn-warning">Cancel</a>
+                                <a th:href="@{/}" class="btn btn-warning">Cancel</a>
 
-                            <button class="btn btn-success" type="submit">Save</button>
+                            <button class="btn btn-success" type="submit">Next</button>
+                        </div>
+                    </div>
                         </div>
                     </div>
                 </form>
@@ -120,6 +92,8 @@
         th:src="@{/js/inspinia.js}"></script>
 <script src="../../../static/js/plugins/pace/pace.min.js"
         th:src="@{/js/plugins/pace/pace.min.js}"></script>
+<script src="../../../js/plugins/dualListbox/jquery.bootstrap-duallistbox.js"
+        th:src="@{/js/plugins/dualListbox/jquery.bootstrap-duallistbox.js}"></script>
 
 <script>
 
@@ -136,7 +110,6 @@
     $(document).on('select2:open', () => {
         document.querySelector('.select2-search__field').focus();
     });
-
 
 
 </script>

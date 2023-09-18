@@ -40,100 +40,61 @@
 
             <div class="row">
 
-                    <div class="col-lg-2">
+                    <div class="col-3" onclick="location.href = '/action-plans';">
                         <div class="ibox ">
                             <div class="ibox-title">
-                                <div class="ibox-tools">
-                                    <span class="label label-primary float-right">Completed</span>
-                                </div>
-                                <h5>Scorecards</h5>
+                                <h5>Action Plans</h5>
                             </div>
                             <div class="ibox-content">
                                 <span class="label label-primary">12</span>
-                                <div class="stat-percent font-bold text-success">98% <i class="fa fa-bolt"></i></div>
-                                <small>Completed Scorecards</small>
+                                <div class="stat-percent font-bold text-success">98%</div>
+                                <small>Tasks</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-2">
+                    <div class="col-3">
                         <div class="ibox ">
                             <div class="ibox-title">
-                                <div class="ibox-tools">
-                                    <span class="label label-info float-right">Outstanding</span>
-                                </div>
-                                <h5>Scorecards</h5>
+                                <h5>Improvement Plans</h5>
                             </div>
                             <div class="ibox-content">
                                 <span class="label label-primary">2</span>
-                                <div class="stat-percent font-bold text-info">20% <i class="fa fa-level-up"></i></div>
-                                <small>Outstanding Scorecards</small>
+                                <div class="stat-percent font-bold text-info">20%</div>
+                                <small>Tasks</small>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-lg-4">
-                        <div class="ibox ">
-                            <div class="ibox-title">
-                                <div class="ibox-tools">
-                                    <span class="label label-primary float-right">Count</span>
-                                </div>
-                                <h5>Suggestion Box</h5>
-                            </div>
-                            <div class="ibox-content">
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <span class="label label-primary">14</span>
-                                        <div class="stat-percent font-bold text-info">44% <i class="fa fa-level-up"></i></div>
-                                        <small>Complaints</small>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <span class="label label-primary">12</span>
-                                        <div class="stat-percent font-bold text-info">22% <i class="fa fa-level-up"></i></div>
-                                            <small>Recommendations</small>
-                                    </div>
-                                </div>
-
-
-                            </div>
+                <div class="col-3">
+                    <div class="ibox ">
+                        <div class="ibox-title">
+                            <h5>Suggestion Box</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <span class="label label-primary">2</span>
+                            <div class="stat-percent font-bold text-info">20%</div>
+                            <small>Recommendations</small>
                         </div>
                     </div>
-                    <div class="col-lg-4">
-                        <div class="ibox ">
-                            <div class="ibox-title">
-                                <h5>360° Assessments</h5>
-                                <div class="ibox-tools">
-                                    <span class="label label-primary">Updated 06.2023</span>
-                                </div>
-                            </div>
-                            <div class="ibox-content">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <span class="label label-primary">14</span>
-                                        <div class="stat-percent font-bold text-info">20% <i class="fa fa-level-up"></i></div>
-                                        <small>Peer to Peer</small>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <span class="label label-primary">12</span>
-                                        <div class="stat-percent font-bold text-info">22% <i class="fa fa-level-up"></i></div>
-                                        <small>Supervisor Subordinate</small>
-                                    </div>
-                                </div>
-
-                            </div>
-
+                </div>
+                <div class="col-3">
+                    <div class="ibox ">
+                        <div class="ibox-title">
+                            <h5>360° Assessments</h5>
+                        </div>
+                        <div class="ibox-content">
+                            <span class="label label-primary">2</span>
+                            <div class="stat-percent font-bold text-info">20%</div>
+                            <small>Progress</small>
                         </div>
                     </div>
+                </div>
 
 
-                <div class="col-lg-9">
+                <div class="col-12">
                     <div class="ibox ">
                         <div class="ibox-title">
                             <h5>Latest Organisational Performance</h5>
                             <div class="ibox-tools">
-                                <h4>
-                                    Project Beta progress
-                                </h4>
                                 <p>
                                     Categorized scorecards by performance
                                 </p>
@@ -141,75 +102,75 @@
                         </div>
                         <div class="ibox-content">
                             <div class="row">
-                                <div class="col-lg-9">
+                                <div class="col-8">
                                     <canvas id="barChart" height="84"></canvas>
                                 </div>
-                                <div class="col-lg-3">
-                                    <canvas id="doughnutChart" height="180" style="margin: 1% auto 0"></canvas>
+                                <div class="col-4">
+                                    <canvas id="doughnutChart" style="height: 260px"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3">
-                    <div class="ibox ">
-                        <div class="ibox-title">
-                            <span class="label label-warning float-right">Data has changed</span>
-                            <h5>User activity</h5>
-                        </div>
-                        <div class="ibox-content">
-                            <div class="row">
-                                <div class="col-12"><a th:href="@{/scorecards}">SCORED SCORECARDS</a> </div>
-                                <div class="col-4">
-                                    <small class="stats-label">BY EMPLOYEE</small>
-                                    <h4>436 547.20</h4>
-                                </div>
+<!--                <div class="col-3">-->
+<!--                    <div class="ibox ">-->
+<!--                        <div class="ibox-title">-->
+<!--                            <span class="label label-warning float-right">Data has changed</span>-->
+<!--                            <h5>User activity</h5>-->
+<!--                        </div>-->
+<!--                        <div class="ibox-content">-->
+<!--                            <div class="row">-->
+<!--                                <div class="col-12"><a th:href="@{/scorecards}">SCORED SCORECARDS</a> </div>-->
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">BY EMPLOYEE</small>-->
+<!--                                    <h4>436 547.20</h4>-->
+<!--                                </div>-->
 
-                                <div class="col-4">
-                                    <small class="stats-label">BY MANAGER</small>
-                                    <h4>150.23%</h4>
-                                </div>
-                                <div class="col-4">
-                                    <small class="stats-label">BY HR</small>
-                                    <h4>124.990</h4>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-12"><a th:href="@{/action-plans}">ACTION PLANS</a></div>
-                                <div class="col-4">
-                                    <small class="stats-label">NEW</small>
-                                    <h4>236 321.80</h4>
-                                </div>
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">BY MANAGER</small>-->
+<!--                                    <h4>150.23%</h4>-->
+<!--                                </div>-->
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">BY HR</small>-->
+<!--                                    <h4>124.990</h4>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                            <div class="row">-->
+<!--                                <div class="col-12"><a th:href="@{/action-plans}">ACTION PLANS</a></div>-->
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">NEW</small>-->
+<!--                                    <h4>236 321.80</h4>-->
+<!--                                </div>-->
 
-                                <div class="col-4">
-                                    <small class="stats-label">IN PROGRESS</small>
-                                    <h4>46.11%</h4>
-                                </div>
-                                <div class="col-4">
-                                    <small class="stats-label">COMPLETED</small>
-                                    <h4>432.021</h4>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-12"><a th:href="@{/performance-improvement-plans}">PERFORMANCE IMPROVEMENT PLANS</a></div>
-                                <div class="col-4">
-                                    <small class="stats-label">NEW</small>
-                                    <h4>643 321.10</h4>
-                                </div>
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">IN PROGRESS</small>-->
+<!--                                    <h4>46.11%</h4>-->
+<!--                                </div>-->
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">COMPLETED</small>-->
+<!--                                    <h4>432.021</h4>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                            <div class="row">-->
+<!--                                <div class="col-12"><a th:href="@{/performance-improvement-plans}">PERFORMANCE IMPROVEMENT PLANS</a></div>-->
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">NEW</small>-->
+<!--                                    <h4>643 321.10</h4>-->
+<!--                                </div>-->
 
-                                <div class="col-4">
-                                    <small class="stats-label">IN PROGRESS</small>
-                                    <h4>92.43%</h4>
-                                </div>
-                                <div class="col-4">
-                                    <small class="stats-label">COMPLETED</small>
-                                    <h4>564.554</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-12">
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">IN PROGRESS</small>-->
+<!--                                    <h4>92.43%</h4>-->
+<!--                                </div>-->
+<!--                                <div class="col-4">-->
+<!--                                    <small class="stats-label">COMPLETED</small>-->
+<!--                                    <h4>564.554</h4>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+                <div class="col-12">
                     <div class="ibox ">
                         <div class="ibox-title">
                             <h5>Task Completion over time</h5>
@@ -218,10 +179,10 @@
                         </div>
                         <div class="ibox-content">
                             <div class="row">
-                                <div class="col-lg-9">
+                                <div class="col-9">
                                     <canvas id="lineChart" height="70"></canvas>
                                 </div>
-                                <div class="col-lg-3">
+                                <div class="col-3">
                                     <ul class="stat-list">
                                         <li>
                                             <h2 class="no-margins">2,346</h2>

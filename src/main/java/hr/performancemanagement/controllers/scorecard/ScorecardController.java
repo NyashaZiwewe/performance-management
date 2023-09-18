@@ -1,7 +1,6 @@
 package hr.performancemanagement.controllers.scorecard;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.ScoreCardRepository;
 import hr.performancemanagement.service.*;
 import hr.performancemanagement.service.ScoreService.StandardScorecardScoreService;
 import hr.performancemanagement.service.ScoreService.ValueBasedScoreService;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,8 +28,6 @@ import java.util.List;
 @RequestMapping(value="/scorecards")
 public class ScorecardController {
 
-    @Autowired
-    private final ScoreCardRepository scoreCardRepository;
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
     @Autowired
@@ -61,11 +57,10 @@ public class ScorecardController {
     @Autowired
     private final ScorecardModelService scorecardModelService;
     @Autowired
-    HttpSession session;
+    private final CommonService commonService;
 
 
-    public ScorecardController(ScoreCardRepository scoreCardRepository, ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, Mailservice mailservice, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService) {
-        this.scoreCardRepository = scoreCardRepository;
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, Mailservice mailservice, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService) {
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
         this.scorecardService = scorecardService;
@@ -80,6 +75,7 @@ public class ScorecardController {
         this.standardScorecardScoreService = standardScorecardScoreService;
         this.valueBasedScoreService = valueBasedScoreService;
         this.scorecardModelService = scorecardModelService;
+        this.commonService = commonService;
     }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request, HttpSession session) {
@@ -87,7 +83,7 @@ public class ScorecardController {
         List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
         List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
         List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives((Long) session.getAttribute("clientId"));
-        Account loggedUser = getLoggedUser();
+        Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
@@ -118,7 +114,7 @@ public class ScorecardController {
     public ModelAndView viewUserScorecards(@PathVariable("id") Long userId, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_USER_SCORECARDS);
         Account owner = accountService.getAccountById(userId);
-        modelAndView.addObject("pageTitle", "View " + owner.getFullName() + "\'s Scorecards");
+        modelAndView.addObject("pageTitle", "View " + owner.getFullName() + "'s Scorecards");
         List<Scorecard> scorecards = scorecardService.getScorecardsByOwner(owner);
 
         modelAndView.addObject("scorecards", scorecards);
@@ -128,10 +124,11 @@ public class ScorecardController {
 
     @RequestMapping("/add-scorecard")
     public ModelAndView addAScorecard(HttpServletRequest request, HttpSession session) {
-
+        ScorecardModel scorecardModel = scorecardModelService.getActiveScorecardModel();
         ModelAndView modelAndView = new ModelAndView(Pages.ADD_SCORECARD);
         modelAndView.addObject("pageTitle", "New Scorecard");
         modelAndView.addObject("scorecard", new Scorecard());
+        modelAndView.addObject("scorecardModel", scorecardModel);
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -139,7 +136,7 @@ public class ScorecardController {
     @RequestMapping(value = "/save-scorecard", method = RequestMethod.POST)
     public String saveScorecard(HttpServletRequest request, Scorecard newScorecard) throws UnsupportedEncodingException {
 
-         Account loggedUser = getLoggedUser();
+         Account loggedUser = commonService.getLoggedUser();
 
         if(scorecardService.countActiveScorecards(newScorecard.getOwner(), newScorecard.getReportingPeriod()) >= 1){
             PortletUtils.addErrorMsg(newScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + newScorecard.getReportingPeriod().getStartDate() +" - "+ newScorecard.getReportingPeriod().getEndDate() +")", request);
@@ -158,7 +155,13 @@ public class ScorecardController {
                     + "You can now login and approve\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+
 
             if(newScorecard.getOwner().getId() == loggedUser.getId()){
                 PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with capturing targets", request);
@@ -174,7 +177,7 @@ public class ScorecardController {
     public ModelAndView captureTargets(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
-        String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
+        String scorecardModel = scorecard.getScorecardModel().getName();
         long reportingPeriodId = scorecard.getReportingPeriod().getId();
         List<Goal> GOALS_LIST = goalService.listAllGoals(id);
         List<StrategicObjective> STRATEGIC_OBJECTIVES_LIST = strategicObjectiveService.listAllStrategicObjectives(reportingPeriodId);
@@ -189,7 +192,7 @@ public class ScorecardController {
         if(loggedId == ownerId && "NEW".equals(approvalStatus) && "ACTIVE".equals(status) && "OPEN".equals(lockStatus)){
 
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
-            modelAndView.addObject("pageTitle", "Capture Targets");
+            modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("goalsList", GOALS_LIST);
             modelAndView.addObject("strategicObjectivesList", STRATEGIC_OBJECTIVES_LIST);
@@ -211,11 +214,11 @@ public class ScorecardController {
     public ModelAndView captureScores(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
-        String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
+        String scorecardModel = scorecard.getScorecardModel().getName();
         ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
-        Account loggedUser = getLoggedUser();
+        Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         long ownerId = scorecard.getOwner().getId();
         long supervisorId = scorecard.getOwner().getSupervisor().getId();
@@ -226,7 +229,7 @@ public class ScorecardController {
         boolean canCapture = false;
         boolean isOwner = false;
         boolean isSupervisor = false;
-        boolean isModerator = false;
+        boolean canModerate = false;
         String url = "";
 
         double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
@@ -251,9 +254,8 @@ public class ScorecardController {
                 canCapture = true;
                 isSupervisor = true;
                 url = "submit-scorecard-for-moderation";
-            } else if ("MODERATOR".equals(role) && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
-                canCapture = true;
-                isModerator = true;
+            } else if(loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)){
+                canModerate = true;
                 url = "submit-moderated-scorecard";
             }else{
                 System.out.println("User can not capture scores");
@@ -265,7 +267,7 @@ public class ScorecardController {
 
         ModelAndView modelAndView;
 
-        if(!canCapture){
+        if(!canCapture && !canModerate){
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
             PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard at this moment", request);
         }else{
@@ -283,7 +285,7 @@ public class ScorecardController {
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("isOwner", isOwner);
             modelAndView.addObject("isSupervisor", isSupervisor);
-            modelAndView.addObject("isModerator", isModerator);
+            modelAndView.addObject("canModerate", canModerate);
             modelAndView.addObject("url", url);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             modelAndView.addObject("targetsList", targetsList);
@@ -302,7 +304,7 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
-    public String saveTarget(HttpServletRequest request, GoalWrapper goalWrapper) {
+    public String saveTarget(GoalWrapper goalWrapper) {
 
         long scorecardId = goalWrapper.getScorecardId();
         Goal goal;
@@ -341,16 +343,16 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-target-to-existing-goal", method = RequestMethod.POST)
-    public String saveTargetToExistingGoal(HttpServletRequest request, Target target) {
+    public String saveTargetToExistingGoal(Target target) {
 
         long scorecardId = target.getGoal().getScorecardId();
-        Target savedTarget = targetService.saveTarget(target);
+        targetService.saveTarget(target);
 
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
     @RequestMapping(value = "/save-overall-comment", method = RequestMethod.POST)
-    public String saveComment(HttpServletRequest request, Long scorecardId, String userType, String comment) {
+    public void saveComment(HttpServletResponse response, Long scorecardId, String userType, String comment) {
 
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
 
@@ -360,11 +362,20 @@ public class ScorecardController {
             scorecard.setSupervisorComment(comment);
         } else if ("moderator".equalsIgnoreCase(userType)) {
             scorecard.setModeratorComment(comment);
-        }else {
-
         }
         scorecardService.saveScorecard(scorecard);
-        return "";
+        JSONObject jsonObject = new JSONObject();
+
+        jsonObject.put("alreadyExists", false);
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
     }
 
     @RequestMapping(value = "/delete-target", method = RequestMethod.POST)
@@ -398,15 +409,21 @@ public class ScorecardController {
         scorecard.setLockStatus("LOCKED");
         scorecardService.saveScorecard(scorecard);
 
-//        String recipient = scorecard.getOwner().getSupervisor().getEmail();
-        String recipient = "ziwewend@gmail.com";
+        String recipient = scorecard.getOwner().getSupervisor().getEmail();
+//        String recipient = "ziwewend@gmail.com";
         String subject = "Scorecard Approval,";
         String template = "Good day, \n\n"
                 + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for your approval. "
                 + "You can now login and approve\n\n"
                 + "Best regards,\n"
                 + "The ZimTrade Team";
-        mailservice.sendEmail(recipient, subject, template);
+
+        try {
+            mailservice.sendEmail(recipient, subject, template);
+            PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
 
         PortletUtils.addInfoMsg("Scorecard successfully submitted for approval. An email was sent to your supervisor", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -421,15 +438,20 @@ public class ScorecardController {
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
 
-//        String recipient = supervisor.getEmail();
-        String recipient = "ziwewend@gmail.com";
+        String recipient = supervisor.getEmail();
+//        String recipient = "ziwewend@gmail.com";
         String subject = "Scorecard Scoring,";
         String template = "Good day, \n\n"
                 + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for scoring by supervisor. "
                 + "You can now login and add your scores\n\n"
                 + "Best regards,\n"
                 + "The ZimTrade Team";
-        mailservice.sendEmail(recipient, subject, template);
+        try {
+            mailservice.sendEmail(recipient, subject, template);
+            PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
 
         PortletUtils.addInfoMsg("Scorecard successfully submitted for scoring by supervisor. An email was sent to "+ supervisor.getFullName(), request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -453,7 +475,12 @@ public class ScorecardController {
                 + "You can now login and add your scores\n\n"
                 + "Best regards,\n"
                 + "The ZimTrade Team";
-        mailservice.sendEmail(recipient, subject, template);
+        try {
+            mailservice.sendEmail(recipient, subject, template);
+            PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
 
         PortletUtils.addInfoMsg("Scorecard successfully submitted for moderation by HR. An email was sent to them", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -464,15 +491,15 @@ public class ScorecardController {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
         scorecard.setApprovalStatus("MODERATED_BY_HR");
-        Account loggedUser = getLoggedUser();
+        Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
 
         try {
             scorecardService.saveScorecard(scorecard);
 
-//        String recipient = owner.getEmail();
-            String recipient = "ziwewend@gmail.com";
+        String recipient = owner.getEmail();
+//            String recipient = "ziwewend@gmail.com";
             String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has moderated your scorecard. "
@@ -480,8 +507,8 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
 
-          //  String recipient2 = supervisor.getEmail();
-            String recipient2 = "ziwewend@gmail.com";
+            String recipient2 = supervisor.getEmail();
+//            String recipient2 = "ziwewend@gmail.com";
             String subject2 = "Scorecard Moderation,";
             String template2 = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
@@ -489,21 +516,37 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
 
-            mailservice.sendEmail(recipient, subject, template);
-            mailservice.sendEmail(recipient2, subject2, template2);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+            try {
+                mailservice.sendEmail(recipient2, subject2, template2);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+
             PortletUtils.addInfoMsg("Scorecard successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
 
         }catch (Exception e){
 
-            //        String recipient = "amkwazhe@zimtrade.co.zw";
-            String recipient = "ziwewend@gmail.com";
+                    String recipient = "amkwazhe@zimtrade.co.zw";
+//            String recipient = "ziwewend@gmail.com";
             String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
                     + "Please note that " + loggedUser.getFullName() + " has failed to submit a moderated scorecard for" + owner.getFullName() + ". "
                     + "Kindly assist\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception x){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
             PortletUtils.addErrorMsg("Scorecard wasn't submitted. An Email was sent to the administrator", request);
         }
 
@@ -516,14 +559,14 @@ public class ScorecardController {
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
-//        String recipient = scorecard.getOwner().getEmail();
-        String recipient = "ziwewend@gmail.com";
+        String recipient = scorecard.getOwner().getEmail();
+//        String recipient = "ziwewend@gmail.com";
         scorecard.setApprovalStatus("APPROVED_BY_SUPERVISOR");
 
         try {
             scorecardService.saveScorecard(scorecard);
             try {
-                Account loggedUser = getLoggedUser();
+                Account loggedUser = commonService.getLoggedUser();
                 Approval approval = new Approval();
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
@@ -539,7 +582,12 @@ public class ScorecardController {
                             + "We are now waiting for HR to approve so that you can proceed with capturing scores. \n\n"
                             + "Best regards,\n"
                             + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
 
 
             String recipient2 = "ziwewend@gmail.com";
@@ -549,7 +597,12 @@ public class ScorecardController {
                             + "You are now eligible to review and approve so that they can proceed with capturing scores. \n\n"
                             + "Best regards,\n"
                             + "The ZimTrade Team";
-            mailservice.sendEmail(recipient2, subject2, template2);
+            try {
+                mailservice.sendEmail(recipient2, subject2, template2);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
 
 
             PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to HR for further approval and to "+ owner + " as feedback", request);
@@ -564,7 +617,12 @@ public class ScorecardController {
                             + e.getMessage() +"\n\n"
                             + "Best regards,\n"
                             + "The ZimTrade Team";
-            mailservice.sendEmail(admin, subject, template);
+            try {
+                mailservice.sendEmail(admin, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception x){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
             PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }
@@ -584,7 +642,7 @@ public class ScorecardController {
             scorecardService.saveScorecard(scorecard);
 
             try {
-                Account loggedUser = getLoggedUser();
+                Account loggedUser = commonService.getLoggedUser();
                 Approval approval = new Approval();
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
@@ -604,7 +662,12 @@ public class ScorecardController {
                     + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
 
             PortletUtils.addInfoMsg("Scorecard successfully rejected. An email was sent to "+ owner + " as feedback", request);
 
@@ -618,7 +681,12 @@ public class ScorecardController {
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(admin, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception x){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
             PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
         }
 
@@ -631,9 +699,9 @@ public class ScorecardController {
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
-//        String recipient = scorecard.getOwner().getSupervisor().getEmail();
-        String recipient = "ziwewend@gmail.com";
-        Account loggedUser = getLoggedUser();
+        String recipient = scorecard.getOwner().getSupervisor().getEmail();
+//        String recipient = "ziwewend@gmail.com";
+        Account loggedUser = commonService.getLoggedUser();
         scorecard.setApprovalStatus("APPROVED_BY_HR");
         scorecard.setLockStatus("OPEN");
 
@@ -655,18 +723,28 @@ public class ScorecardController {
                     + "The owner is now eligible for capturing scores. \n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
 
 
-//            String recipient2 = scorecard.getOwner().getEmail();
-            String recipient2 = "ziwewend@gmail.com";
+            String recipient2 = scorecard.getOwner().getEmail();
+//            String recipient2 = "ziwewend@gmail.com";
             String subject2 = "Scorecard Approval,";
             String template2 = "Good day "+owner+", \n\n"
                     + "Please note that "+ loggedUser.getFullName() +" has your scorecard. "
                     + "You are now eligible to capture scores. \n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient2, subject2, template2);
+            try {
+                mailservice.sendEmail(recipient2, subject2, template2);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
 
 
             PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to "+supervisor+" and to "+ owner + " as feedback", request);
@@ -681,7 +759,12 @@ public class ScorecardController {
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(admin, subject, template);
+            try {
+                mailservice.sendEmail(admin, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception x){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
             PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }
@@ -693,10 +776,10 @@ public class ScorecardController {
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
-//        String recipient = scorecard.getOwner().getSupervisor().getEmail();
-        String recipient = "ziwewend@gmail.com";
+        String recipient = scorecard.getOwner().getSupervisor().getEmail();
+//        String recipient = "ziwewend@gmail.com";
         scorecard.setApprovalStatus("REJECTED_BY_HR");
-        Account loggedUser = getLoggedUser();
+        Account loggedUser = commonService.getLoggedUser();
 
         try{
             scorecardService.saveScorecard(scorecard);
@@ -722,7 +805,12 @@ public class ScorecardController {
                     + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
 
             PortletUtils.addInfoMsg("Scorecard successfully rejected. An email was sent to "+ supervisor + " as feedback", request);
 
@@ -736,7 +824,12 @@ public class ScorecardController {
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(admin, subject, template);
+            try {
+                mailservice.sendEmail(admin, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception x){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
             PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
         }
 
@@ -746,62 +839,81 @@ public class ScorecardController {
     @RequestMapping("/view-scorecard/{id}")
     public ModelAndView viewScorecard(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARD);
-        String scorecardModel = scorecardModelService.getActiveScorecardModel().getName();
-        double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
-        double averageManagerScore = goalService.getAverageManagerScore(id);
-        double averageModeratedScore = goalService.getAverageModeratorScore(id);
-        double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
-        Scorecard scorecard = scorecardService.getScorecardById(id);
-        double weightedScore;
         try {
-             weightedScore = (averageModeratedScore / 5 ) * 100;
+            Scorecard scorecard = scorecardService.getScorecardById(id);
+            String scorecardModel = scorecard.getScorecardModel().getName();
+            double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
+            double averageManagerScore = goalService.getAverageManagerScore(id);
+            double averageModeratedScore = goalService.getAverageModeratorScore(id);
+            double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+            double totalWeightedScore = 0.0;
+            for(Target target: targetsList){
+                totalWeightedScore += target.getWeightedScore();
+            }
+
+//            double weightedScore;
+//            try {
+//                weightedScore = (averageModeratedScore / 5 ) * 100;
+//            }catch (Exception e){
+//                weightedScore = 0;
+//            }
+
+            String approvalStatus = scorecard.getApprovalStatus();
+            String status = scorecard.getStatus();
+            String lockStatus = scorecard.getLockStatus();
+            Account loggedUser = commonService.getLoggedUser();
+            String role = loggedUser.getRole();
+
+            boolean isOwner = false;
+            boolean isSupervisor = false;
+            boolean isModerator = false;
+
+                if (loggedUser.getId() == scorecard.getOwner().getId()) {
+                    isOwner = true;
+                } else if (loggedUser.getId() == scorecard.getOwner().getSupervisor().getId()) {
+                    isSupervisor = true;
+                } else if ("MODERATOR".equals(role)) {
+                    isModerator = true;
+                }
+
+            boolean canModerate = false;
+
+            if("ACTIVE".equals(status) && "OPEN".equals(lockStatus)) {
+                if ("MODERATOR".equals(role) && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
+                    canModerate = true;
+                }
+            }
+
+            modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
+            modelAndView.addObject("scorecard", scorecard);
+            modelAndView.addObject("scorecardModel", scorecardModel);
+            modelAndView.addObject("targetsList", targetsList);
+            modelAndView.addObject("comment", new Comment());
+            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
+            modelAndView.addObject("averageManagerScore", averageManagerScore);
+            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
+            modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
+            modelAndView.addObject("totalWeightedScore", totalWeightedScore);
+            modelAndView.addObject("isOwner", isOwner);
+            modelAndView.addObject("isSupervisor", isSupervisor);
+            modelAndView.addObject("isModerator", isModerator);
+            modelAndView.addObject("canModerate", canModerate);
         }catch (Exception e){
-             weightedScore = 0;
+            PortletUtils.addErrorMsg("That scorecard cannot be found", request);
+            modelAndView = new ModelAndView(Pages.BLANK_PAGE);
         }
 
-        String approvalStatus = scorecard.getApprovalStatus();
-        String status = scorecard.getStatus();
-        String lockStatus = scorecard.getLockStatus();
-        Account account = getLoggedUser();
-        long loggedId = account.getId();
-        long ownerId = scorecard.getOwner().getId();
-        long scorecardOwnerSupervisor = account.getSupervisor().getId();
-        String role = account.getRole();
-
-        boolean canModerate = false;
-
-        if("ACTIVE".equals(status) && "OPEN".equals(lockStatus)) {
-            if(loggedId == ownerId || loggedId == scorecardOwnerSupervisor){
-                canModerate = false;
-            }
-            else if ("MODERATOR".equals(role) && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
-                canModerate = true;
-            } else{
-                canModerate = false;
-            }
-        }
-
-        modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
-        modelAndView.addObject("scorecard", scorecard);
-        modelAndView.addObject("scorecardModel", scorecardModel);
-        List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
-        modelAndView.addObject("targetsList", targetsList);
-        modelAndView.addObject("comment", new Comment());
-        modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
-        modelAndView.addObject("averageManagerScore", averageManagerScore);
-        modelAndView.addObject("averageModeratedScore", averageModeratedScore);
-        modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
-        modelAndView.addObject("weightedScore", weightedScore);
-        modelAndView.addObject("canModerate", canModerate);
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
 
     @RequestMapping(value = "/save-comment", method = RequestMethod.POST)
-    public String saveComment(HttpServletRequest request, Comment comment, @RequestParam("scorecardId") long scorecardId) {
-
-        comment.setSender(accountService.getAccountById(1));
+    public String saveComment(HttpServletRequest request, Comment comment) {
+        Account loggedUser = commonService.getLoggedUser();
+        comment.setSender(loggedUser);
         commentService.saveComment(comment);
+        Long scorecardId = comment.getTarget().getGoal().getScorecardId();
         PortletUtils.addInfoMsg("Comment successfully saved", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }
@@ -818,7 +930,7 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-standard-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveStandardScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double actual, String evidence, String justification) {
+    public void saveStandardScore( HttpServletResponse response, Long targetId, Double actual, String evidence, String justification) {
 
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         Target target = targetService.getTargetById(targetId);
@@ -832,28 +944,14 @@ public class ScorecardController {
 
         JSONObject jsonObject = new JSONObject();
 
-//        boolean alreadyExists = standardScorecardScoreService.scoreExists(score);
-//        if(alreadyExists){
-//            jsonObject.put("alreadyExists", true);
-//        }else{
             standardScorecardScoreService.saveScore(score);
             jsonObject.put("alreadyExists", false);
-//            jsonObject.put("reportingDate",reportingDate.getEndDate());
-//            jsonObject.put("baseTarget",target.getBaseTarget());
-//            jsonObject.put("stretchTarget",target.getStretchTarget());
-//            jsonObject.put("evidence",evidence);
-//            jsonObject.put("justification",justification);
-//            jsonObject.put("actual",actual);
-//            jsonObject.put("weightedScore",score.getWeightedScore());
-//        }
 
 
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
-            StringBuilder builder = new StringBuilder();
-            builder.append(jsonString);
-            outputStream.write(builder.toString().getBytes());
+            outputStream.write(jsonString.getBytes());
 
         }catch (IOException e){
             throw  new RuntimeException();
@@ -867,32 +965,50 @@ public class ScorecardController {
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         Target target = targetService.getTargetById(targetId);
 
+        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+        Account loggedUser = commonService.getLoggedUser();
+        long loggedUserId = loggedUser.getId();
+        long ownerId = scorecard.getOwner().getId();
+        long supervisorId = scorecard.getOwner().getSupervisor().getId();
+        String role = loggedUser.getRole();
+        String approvalStatus = scorecard.getApprovalStatus();
+        boolean isOwner = false;
+        boolean isSupervisor = false;
+        boolean isModerator = false;
+
+        if (loggedUserId == ownerId) {
+            isOwner = true;
+        } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
+            isSupervisor = true;
+        } else if (loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
+            isModerator = true;
+        }else{
+            System.out.println("User can not capture scores");
+        }
+
+
         Score score = new Score();
         score.setTarget(target);
         score.setReportingDate(reportingDate);
-        score.setEmployeeScore(employeeScore);
-        score.setManagerScore(managerScore);
-        score.setActualScore(actualScore);
-        score.setEvidence(evidence);
-        score.setJustification(justification);
+
+        if(isOwner){
+            score.setEmployeeScore(employeeScore);
+            score.setEvidence(evidence);
+            score.setJustification(justification);
+        }else if(isSupervisor){
+            score.setManagerScore(managerScore);
+        }else if(isModerator){
+            score.setActualScore(actualScore);
+        }
 
         JSONObject jsonObject = new JSONObject();
 
         valueBasedScoreService.saveScore(score);
         jsonObject.put("alreadyExists", false);
-
-//        jsonObject.put("employeeScore",employeeScore);
-//        jsonObject.put("targetId",targetId);
-//        jsonObject.put("managerScore",managerScore);
-//        jsonObject.put("evidence",evidence);
-//        jsonObject.put("justification",justification);
-
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
-            StringBuilder builder = new StringBuilder();
-            builder.append(jsonString);
-            outputStream.write(builder.toString().getBytes());
+            outputStream.write(jsonString.getBytes());
 
         }catch (IOException e){
             throw  new RuntimeException();
@@ -929,7 +1045,7 @@ public class ScorecardController {
         Account owner = accountService.getAccountById(id);
         try {
             Scorecard scorecard = scorecardService.getActiveEmployeeScorecardByOwner(owner);
-            PortletUtils.addInfoMsg("You have selected "+ owner.getFullName()+ "\'s scorecard", request);
+            PortletUtils.addInfoMsg("You have selected "+ owner.getFullName()+ "'s scorecard", request);
             return "redirect:/scorecards/clone-scorecard/"+ scorecard.getId();
         }catch (Exception e){
             PortletUtils.addErrorMsg(owner.getFullName()+ " Does not have an active scorecard. Please try another employee or You may go to view scorecards and select the scorecard you want from the archives", request);
@@ -995,14 +1111,14 @@ public class ScorecardController {
                     + "You can now login and modify targets to match your performance goals\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
-            mailservice.sendEmail(recipient, subject, template);
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
             return "redirect:/scorecards/view-scorecard/" + id;
         }
-    }
-
-    public Account getLoggedUser(){
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
-        return loggedUser;
     }
 
 }

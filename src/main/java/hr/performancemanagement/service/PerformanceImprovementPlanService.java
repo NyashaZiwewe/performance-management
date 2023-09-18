@@ -28,6 +28,13 @@ public class PerformanceImprovementPlanService {
         return performanceImprovementPlanList;
     }
 
+    public List<PerformanceImprovementPlan> listAllPerformanceImprovementPlans(ReportingPeriod period){
+        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
+        performanceImprovementPlanRepository.findPerformanceImprovementPlansByClientIdAndReportingPeriod(loggedUser.getClientId(), period).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
+        return performanceImprovementPlanList;
+    }
+
     public List<PerformanceImprovementPlan> listPerformanceImprovementPlansByEmployee(Account employee, ReportingPeriod reportingPeriod){
         List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
         performanceImprovementPlanRepository.findPerformanceImprovementPlansByEmployeeAndReportingPeriod(employee, reportingPeriod).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));

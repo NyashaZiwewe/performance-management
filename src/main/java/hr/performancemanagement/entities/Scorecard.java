@@ -28,6 +28,9 @@ public class Scorecard {
     @ManyToOne
     @JoinColumn(name = "reporting_period_id")
     private ReportingPeriod reportingPeriod;
+    @ManyToOne
+    @JoinColumn(name = "scorecard_model_id")
+    private ScorecardModel scorecardModel;
     private String status;
     @Transient
     private double employeeScore;
@@ -35,6 +38,8 @@ public class Scorecard {
     private double managerScore;
     @Transient
     private double actualScore;
+    @Transient
+    private double weightedScore;
     @Column(columnDefinition = "varchar(50) default 'NEW'")
     private String approvalStatus;
     private String ownerComment;

@@ -75,7 +75,7 @@
                                         <td th:text="${model.date}"></td>
 
                                         <td th:if="${session.loggedUser.admin == 'IS_ADMIN'}">
-                                            <a th:href="@{/scorecard-models/edit-model/} + ${model.id}">
+                                            <a data-toggle="modal" th:data-target="'#editModal'+ ${stat.index}">
                                             <button class="btn btn-success btn-sm">Edit</button>
                                             </a>
                                         </td>
@@ -109,6 +109,61 @@
                                                         <div class="modal-footer">
                                                             <button type="button" class="btn btn-waring" data-dismiss="modal">Cancel</button>
                                                             <button type="submit" class="btn btn-danger">Yes Delete</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal fade" th:id="'editModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog" role="document">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Update Scorecard Model</h5>
+                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true">&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <form th:action="@{/scorecard-models/update-scorecard-model}" method="post" th:object="${model}">
+                                                        <div class="modal-body">
+                                                           <div class="row">
+                                                            <div class="col-sm-12">
+                                                                <div class="form-group row">
+                                                                    <label class="col-form-label col-lg-4 required">Scorecard Model</label>
+                                                                    <div class="col-lg-8">
+                                                                        <select class="select2_demo_1 form-control" required name="name">
+                                                                            <option selected th:value="${model.name}" th:text="${model.name}"></option>
+                                                                            <option th:each="model : ${T(hr.performancemanagement.utils.enums.ScorecardModels).values()}"
+                                                                                    th:value="${model}" th:text="${model}"></option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="col-sm-12">
+                                                                <div class="form-group row">
+                                                                    <label class="col-form-label col-lg-4 required">Status</label>
+                                                                    <div class="col-lg-8">
+                                                                        <select class="select2_demo_1 form-control" required name="status">
+                                                                            <option selected th:value="${model.status}" th:text="${model.status}"></option>
+                                                                            <option value="IN_ACTIVE">IN_ACTIVE</option>
+                                                                            <option value="ACTIVE">ACTIVE</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                           <div class="form-group row">
+                                                            <div class="col-lg-1">
+                                                               <input type="hidden" name="id" th:value="${model.id}">
+                                                            </div>
+                                                            <div class="col-lg-11">
+                                                                <a th:href="@{/scorecard-models}" class="btn btn-warning">Cancel</a>
+
+                                                                <button class="btn btn-success" type="submit">Save</button>
+                                                            </div>
+                                                        </div>
                                                         </div>
                                                     </form>
                                                 </div>

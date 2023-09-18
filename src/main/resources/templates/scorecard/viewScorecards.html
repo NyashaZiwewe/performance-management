@@ -58,6 +58,7 @@
                                     <tr>
                                         <th>Owner</th>
                                         <th>Reporting Period</th>
+                                        <th>Model</th>
                                         <th>Status</th>
                                         <th>Lock Status</th>
                                         <th>Approval Status</th>
@@ -70,6 +71,7 @@
                                     <tr th:each="scorecard :${scorecards}">
                                         <td th:text="${scorecard.owner?.fullName}"></td>
                                         <td th:text="${scorecard.reportingPeriod?.startDate} +' - '+ ${scorecard.reportingPeriod?.endDate}"></td>
+                                        <td th:text="${scorecard.scorecardModel?.name}"></td>
                                         <td>
                                             <div th:switch="${scorecard.status}">
                                                 <label class="label label-primary" th:case="ACTIVE" th:text="${scorecard.status}"></label>
@@ -109,7 +111,7 @@
                                                  <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
-                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
+                                                <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
                                                 <span th:if="${loggedUserId == scorecard.owner.id && scorecard.lockStatus == 'OPEN'}">

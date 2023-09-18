@@ -31,6 +31,14 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     Double findAverageActualScore(@Param("scorecardId") long scorecardId);
 
     @Nullable
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    Double findAverageWeightedScore(@Param("scorecardId") long scorecardId);
+
+    @Nullable
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE s.reportingDate = :date AND g.scorecardId = :scorecardId")
+    Double findAverageWeightedScoreByReportingDate(@Param("date") ReportingDate date, @Param("scorecardId") long scorecardId);
+
+    @Nullable
     @Query("SELECT coalesce(AVG(t.allocatedWeight), 0) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
     Double findAverageAllocatedWeightPerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
 

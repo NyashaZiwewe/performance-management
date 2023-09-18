@@ -41,7 +41,7 @@
     <div class="wrapper wrapper-content animated fadeInRight ecommerce">
 
       <div class="row">
-        <div class="col-lg-12 ">
+        <div class="col-12 ">
           <div class="ibox ">
             <div class="ibox-title">
               <h4>Reporting Period : <span th:text="${reportingPeriod.startDate} + ' - ' + ${reportingPeriod.endDate}" class="text-success"></span></h4>
@@ -82,20 +82,20 @@
                               <form method="post" th:object="${reportingDate}" th:action="@{/reporting-periods/save-reporting-date}">
                                 <div class="modal-body">
                                   <div class="row">
-                                    <div class="col-sm-12">
+                                    <div class="col-12">
                                       <div class="form-group row">
-                                        <label class="col-form-label col-lg-4">Reporting Date</label>
-                                        <div class="col-lg-8">
+                                        <label class="col-form-label col-4">Reporting Date</label>
+                                        <div class="col-8">
                                           <div class="input-group m-b">
                                             <input type="text" name="endDate" id="endDate" class="form-control" th:value="${reportingDate.endDate}">
                                           </div>
                                         </div>
                                       </div>
                                     </div>
-                                    <div class="col-sm-12">
+                                    <div class="col-12">
                                       <div class="form-group row">
-                                        <label class="col-form-label col-lg-4">Reporting Period</label>
-                                        <div class="col-lg-8">
+                                        <label class="col-form-label col-4">Reporting Period</label>
+                                        <div class="col-8">
                                           <div class="input-group m-b">
                                             <select name="reportingPeriod" class="form-control">
                                             <option th:value="${reportingDate.reportingPeriod?.id}" th:text="${reportingDate.reportingPeriod?.startDate} +' - '+ ${reportingDate.reportingPeriod?.endDate}" selected></option>
@@ -108,10 +108,10 @@
                                         </div>
                                       </div>
                                     </div>
-                                    <div class="col-sm-12">
+                                    <div class="col-12">
                                       <div class="form-group row">
-                                        <label class="col-form-label col-lg-4">Status</label>
-                                        <div class="col-lg-8">
+                                        <label class="col-form-label col-4">Status</label>
+                                        <div class="col-8">
                                           <div class="input-group m-b">
                                             <select name="status" id="status" class="form-control">
                                               <option value="IN_ACTIVE">IN ACTIVE</option>
@@ -163,20 +163,20 @@
       <form method="post" th:object="${reportingDate}" th:action="@{/reporting-periods/add-reporting-date}">
         <div class="modal-body">
           <div class="row">
-            <div class="col-sm-12">
+            <div class="col-12">
               <div class="form-group row">
-                <label class="col-form-label col-lg-4">Reporting Date</label>
-                <div class="col-lg-8">
+                <label class="col-form-label col-4">Reporting Date</label>
+                <div class="col-8">
                   <div class="input-group m-b">
                     <input type="date" name="endDate" class="form-control">
                   </div>
                 </div>
               </div>
             </div>
-            <div class="col-sm-12">
+            <div class="col-12">
               <div class="form-group row">
-                <label class="col-form-label col-lg-4">Reporting Period</label>
-                <div class="col-lg-8">
+                <label class="col-form-label col-4">Reporting Period</label>
+                <div class="col-8">
                   <div class="input-group m-b">
                     <select name="reportingPeriod" class="form-control">
                       <option th:value="${reportingPeriod.id}" th:text="${reportingPeriod.startDate} +' - '+${reportingPeriod.endDate}" selected></option>

@@ -1,9 +1,6 @@
 package hr.performancemanagement.service;
 
-import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.ReportingPeriod;
-import hr.performancemanagement.entities.Scorecard;
-import hr.performancemanagement.entities.StrategicObjective;
+import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreCardRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -84,9 +81,16 @@ public class ScorecardService {
             scorecard.setEmployeeScore(scoreCardRepository.findAverageEmployeeScore(scorecard.getId()));
             scorecard.setManagerScore(scoreCardRepository.findAverageManagerScore(scorecard.getId()));
             scorecard.setActualScore(scoreCardRepository.findAverageActualScore(scorecard.getId()));
+            scorecard.setWeightedScore(scoreCardRepository.findAverageWeightedScore(scorecard.getId()));
         }
 
         return scorecardList;
+    }
+
+    public Double getScoresByReportingDateAndScorecardId(ReportingDate date, Scorecard scorecard){
+
+        Double weightedScore = scoreCardRepository.findAverageWeightedScoreByReportingDate(date, scorecard.getId());
+        return weightedScore;
     }
 
     public int countPassedScorecardsByPeriodId(ReportingPeriod reportingPeriod){
@@ -151,6 +155,11 @@ public class ScorecardService {
     public Scorecard getScorecardById(long id){
 
         Scorecard scorecard = scoreCardRepository.findScorecardById(id);
+        scorecard.setEmployeeScore(scoreCardRepository.findAverageEmployeeScore(scorecard.getId()));
+        scorecard.setManagerScore(scoreCardRepository.findAverageManagerScore(scorecard.getId()));
+        scorecard.setActualScore(scoreCardRepository.findAverageActualScore(scorecard.getId()));
+        scorecard.setWeightedScore(scoreCardRepository.findAverageWeightedScore(scorecard.getId()));
+
         return scorecard;
     }
     public Scorecard getActiveEmployeeScorecardByOwner(Account account){
