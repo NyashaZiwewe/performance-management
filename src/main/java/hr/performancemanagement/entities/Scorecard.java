@@ -32,13 +32,10 @@ public class Scorecard {
     @JoinColumn(name = "scorecard_model_id")
     private ScorecardModel scorecardModel;
     private String status;
-    @Transient
     private double employeeScore;
-    @Transient
     private double managerScore;
-    @Transient
-    private double actualScore;
-    @Transient
+    private double agreedScore;
+    private double moderatedScore;
     private double weightedScore;
     @Column(columnDefinition = "varchar(50) default 'NEW'")
     private String approvalStatus;

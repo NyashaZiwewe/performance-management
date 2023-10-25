@@ -19,7 +19,10 @@ public class Pages {
     public static final String ADD_SCORECARD_MODEL = "scorecard-model/addScorecardModel";
     public static final String CAPTURE_TARGETS = "scorecard/captureTargets";
     public static final String CAPTURE_SCORES_STANDARD = "scorecard/captureScoresStandard";
-    public static final String CAPTURE_SCORES_VALUE_BASED = "scorecard/captureScoresValueBased";
+    public static final String CAPTURE_EMPLOYEE_SCORE = "scorecard/captureEmployeeScore";
+    public static final String CAPTURE_MANAGER_SCORE = "scorecard/captureManagerScore";
+    public static final String CAPTURE_AGREED_SCORE = "scorecard/captureAgreedScore";
+    public static final String CAPTURE_MODERATED_SCORE = "scorecard/captureModeratedScore";
     public static final String VIEW_PERSPECTIVES = "perspective/viewPerspectives";
     public static final String ADD_PERSPECTIVE = "perspective/addPerspective";
     public static final String EDIT_PERSPECTIVE = "perspective/editPerspective";

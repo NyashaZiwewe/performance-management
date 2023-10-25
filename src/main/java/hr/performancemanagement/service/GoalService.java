@@ -71,6 +71,15 @@ public class GoalService {
         }
     }
 
+    public double getAverageAgreedScore(long scorecardId){
+        try {
+            double total = goalRepository.averageModeratedScore(scorecardId);
+            return total;
+        }catch (Exception e){
+            return 0.0;
+        }
+    }
+
     @Transactional
     public void deleteGoal(Goal goal){
         goalRepository.delete(goal);

@@ -33,7 +33,8 @@ public class TargetService {
                 target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
                 target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
                 target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
-                target.setCurrentActualScore(targetRepository.currentActualScore(target,reportingDate));
+                target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
+                target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
                 target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
                 target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
                 target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));

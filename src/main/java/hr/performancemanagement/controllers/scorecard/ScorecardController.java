@@ -229,11 +229,13 @@ public class ScorecardController {
         boolean canCapture = false;
         boolean isOwner = false;
         boolean isSupervisor = false;
+        boolean isSupervisor2 = false;
         boolean canModerate = false;
         String url = "";
 
         double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
         double averageManagerScore = goalService.getAverageManagerScore(id);
+        double averageAgreedScore = goalService.getAverageAgreedScore(id);
         double averageModeratedScore = goalService.getAverageModeratorScore(id);
         double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
 
@@ -249,15 +251,21 @@ public class ScorecardController {
             if (loggedUserId == ownerId && "APPROVED_BY_HR".equals(approvalStatus)) {
                 canCapture = true;
                 isOwner = true;
-                url = "submit-scorecard-for-scoring";
+                url = "submit-employee-scores";
             } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
                 canCapture = true;
                 isSupervisor = true;
-                url = "submit-scorecard-for-moderation";
+                url = "submit-manager-scores";
             } else if(loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)){
+                isSupervisor2 = true;
+                canCapture = true;
+                url = "submit-agreed-scores";
+            }
+            else if("MODERATOR".equalsIgnoreCase(role) && "AGREED_BY_TWO".equals(approvalStatus)){
                 canModerate = true;
-                url = "submit-moderated-scorecard";
-            }else{
+                url = "submit-moderated-scores";
+            }
+            else{
                 System.out.println("User can not capture scores");
             }
         }else{
@@ -275,7 +283,18 @@ public class ScorecardController {
             if("STANDARD_SCORECARD".equalsIgnoreCase(scorecardModel)){
                 modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
             }else if("VALUE_BASED".equalsIgnoreCase(scorecardModel)){
-                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_VALUE_BASED);
+                if(isOwner){
+                    modelAndView = new ModelAndView(Pages.CAPTURE_EMPLOYEE_SCORE);
+                } else if (isSupervisor) {
+                    modelAndView = new ModelAndView(Pages.CAPTURE_MANAGER_SCORE);
+                } else if (isSupervisor2) {
+                    modelAndView = new ModelAndView(Pages.CAPTURE_AGREED_SCORE);
+                } else if (canModerate) {
+                    modelAndView = new ModelAndView(Pages.CAPTURE_MODERATED_SCORE);
+                }else {
+                    modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+                    PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
+                }
             }else{
                 modelAndView = new ModelAndView(Pages.BLANK_PAGE);
                 PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
@@ -291,6 +310,7 @@ public class ScorecardController {
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
+            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("weightedScore", weightedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
@@ -429,8 +449,8 @@ public class ScorecardController {
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
-    @RequestMapping(value = "/submit-scorecard-for-scoring", method = RequestMethod.POST)
-    public String submitScorecardForScoring(HttpServletRequest request, Scorecard updatedScorecard) throws UnsupportedEncodingException {
+    @RequestMapping(value = "/submit-employee-scores", method = RequestMethod.POST)
+    public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard){
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
@@ -457,8 +477,8 @@ public class ScorecardController {
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
-    @RequestMapping(value = "/submit-scorecard-for-moderation", method = RequestMethod.POST)
-    public String submitScorecardForModeration(HttpServletRequest request, Scorecard updatedScorecard) throws UnsupportedEncodingException {
+    @RequestMapping(value = "/submit-manager-scores", method = RequestMethod.POST)
+    public String submitManagerScore(HttpServletRequest request, Scorecard updatedScorecard) {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
@@ -486,8 +506,74 @@ public class ScorecardController {
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
-    @RequestMapping(value = "/submit-moderated-scorecard", method = RequestMethod.POST)
-    public String submitModeratedScorecard(HttpServletRequest request, Scorecard updatedScorecard) throws UnsupportedEncodingException {
+    @RequestMapping(value = "/submit-agreed-scores", method = RequestMethod.POST)
+    public String submitAgreedScore(HttpServletRequest request, Scorecard updatedScorecard)  {
+
+        Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        scorecard.setApprovalStatus("AGREED_BY_TWO");
+        Account loggedUser = commonService.getLoggedUser();
+        Account supervisor = scorecard.getOwner().getSupervisor();
+        Account owner = scorecard.getOwner();
+
+        try {
+            scorecardService.saveScorecard(scorecard);
+
+            String recipient = owner.getEmail();
+//            String recipient = "ziwewend@gmail.com";
+            String subject = "Scorecard Moderation,";
+            String template = "Good day, \n\n"
+                    + "Please note that " + supervisor.getFullName() + " has moderated your scorecard. "
+                    + "You can now login and see results\n\n"
+                    + "Best regards,\n"
+                    + "The ZimTrade Team";
+
+            String recipient2 = supervisor.getEmail();
+//            String recipient2 = "ziwewend@gmail.com";
+            String subject2 = "Scorecard Moderation,";
+            String template2 = "Good day, \n\n"
+                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
+                    + "You can now login and see results\n\n"
+                    + "Best regards,\n"
+                    + "The ZimTrade Team";
+
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+            try {
+                mailservice.sendEmail(recipient2, subject2, template2);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+
+            PortletUtils.addInfoMsg("Scorecard successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
+
+        }catch (Exception e){
+
+                    String recipient = "amkwazhe@zimtrade.co.zw";
+//            String recipient = "ziwewend@gmail.com";
+            String subject = "Scorecard Moderation,";
+            String template = "Good day, \n\n"
+                    + "Please note that " + loggedUser.getFullName() + " has failed to submit a moderated scorecard for" + owner.getFullName() + ". "
+                    + "Kindly assist\n\n"
+                    + "Best regards,\n"
+                    + "The ZimTrade Team";
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception x){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+            PortletUtils.addErrorMsg("Scorecard wasn't submitted. An Email was sent to the administrator", request);
+        }
+
+        return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
+    }
+ @RequestMapping(value = "/submit-moderated-scores", method = RequestMethod.POST)
+    public String submitModeratedScorecard(HttpServletRequest request, Scorecard updatedScorecard) {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
         scorecard.setApprovalStatus("MODERATED_BY_HR");
@@ -844,20 +930,17 @@ public class ScorecardController {
             String scorecardModel = scorecard.getScorecardModel().getName();
             double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
             double averageManagerScore = goalService.getAverageManagerScore(id);
+            double averageAgreedScore = goalService.getAverageAgreedScore(id);
             double averageModeratedScore = goalService.getAverageModeratorScore(id);
             double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             double totalWeightedScore = 0.0;
             for(Target target: targetsList){
-                totalWeightedScore += target.getWeightedScore();
-            }
+                if(target.getWeightedScore() !=null){
+                    totalWeightedScore += target.getWeightedScore();
+                }
 
-//            double weightedScore;
-//            try {
-//                weightedScore = (averageModeratedScore / 5 ) * 100;
-//            }catch (Exception e){
-//                weightedScore = 0;
-//            }
+            }
 
             String approvalStatus = scorecard.getApprovalStatus();
             String status = scorecard.getStatus();
@@ -878,12 +961,18 @@ public class ScorecardController {
                 }
 
             boolean canModerate = false;
+            boolean canApprove = false;
 
             if("ACTIVE".equals(status) && "OPEN".equals(lockStatus)) {
-                if ("MODERATOR".equals(role) && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
+                if ("MODERATOR".equals(role) && "AGREED_BY_TWO".equals(approvalStatus) && !isOwner && !isSupervisor) {
                     canModerate = true;
                 }
             }
+
+            if ("MODERATOR".equals(role) && "APPROVED_BY_SUPERVISOR".equals(approvalStatus) && !isOwner && !isSupervisor) {
+                canApprove = true;
+            }
+
 
             modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
@@ -892,6 +981,7 @@ public class ScorecardController {
             modelAndView.addObject("comment", new Comment());
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
+            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
@@ -899,6 +989,7 @@ public class ScorecardController {
             modelAndView.addObject("isSupervisor", isSupervisor);
             modelAndView.addObject("isModerator", isModerator);
             modelAndView.addObject("canModerate", canModerate);
+            modelAndView.addObject("canApprove", canApprove);
         }catch (Exception e){
             PortletUtils.addErrorMsg("That scorecard cannot be found", request);
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
@@ -959,51 +1050,32 @@ public class ScorecardController {
 
     }
 
-    @RequestMapping(value = "/save-value-based-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveScore(HttpServletResponse response, Long targetId, Double employeeScore, Double managerScore, Double actualScore, String evidence, String justification) {
+    @RequestMapping(value = "/save-value-based-employee-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveEmployeeScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double employeeScore, String evidence, String justification) {
 
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-        Target target = targetService.getTargetById(targetId);
+        try {
 
-        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-        Account loggedUser = commonService.getLoggedUser();
-        long loggedUserId = loggedUser.getId();
-        long ownerId = scorecard.getOwner().getId();
-        long supervisorId = scorecard.getOwner().getSupervisor().getId();
-        String role = loggedUser.getRole();
-        String approvalStatus = scorecard.getApprovalStatus();
-        boolean isOwner = false;
-        boolean isSupervisor = false;
-        boolean isModerator = false;
+            Target target = targetService.getTargetById(targetId);
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            Account loggedUser = commonService.getLoggedUser();
+            long loggedUserId = loggedUser.getId();
+            long ownerId = scorecard.getOwner().getId();
 
-        if (loggedUserId == ownerId) {
-            isOwner = true;
-        } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
-            isSupervisor = true;
-        } else if (loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
-            isModerator = true;
-        }else{
-            System.out.println("User can not capture scores");
-        }
+            if(loggedUserId == ownerId){
+                Score score = new Score();
+                score.setTarget(target);
+                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setEmployeeScore(employeeScore);
+                score.setEvidence(evidence);
+                score.setJustification(justification);
+                valueBasedScoreService.saveEmployeeScore(score);
+            }
+        }catch (Exception ignored){
 
-
-        Score score = new Score();
-        score.setTarget(target);
-        score.setReportingDate(reportingDate);
-
-        if(isOwner){
-            score.setEmployeeScore(employeeScore);
-            score.setEvidence(evidence);
-            score.setJustification(justification);
-        }else if(isSupervisor){
-            score.setManagerScore(managerScore);
-        }else if(isModerator){
-            score.setActualScore(actualScore);
         }
 
         JSONObject jsonObject = new JSONObject();
 
-        valueBasedScoreService.saveScore(score);
         jsonObject.put("alreadyExists", false);
         String jsonString = jsonObject.toString();
 
@@ -1014,6 +1086,163 @@ public class ScorecardController {
             throw  new RuntimeException();
         }
     }
+
+    @RequestMapping(value = "/save-value-based-manager-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveManagerScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double managerScore) {
+
+        try {
+            Target target = targetService.getTargetById(targetId);
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+
+            if(commonService.getLoggedUser().getId() == scorecard.getOwner().getSupervisor().getId()){
+                Score score = new Score();
+                score.setTarget(target);
+                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setManagerScore(managerScore);
+                valueBasedScoreService.saveManagerScore(score);
+            }
+        }catch (Exception ignored){
+
+        }
+
+        JSONObject jsonObject = new JSONObject();
+
+        jsonObject.put("alreadyExists", false);
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+    }
+
+    @RequestMapping(value = "/save-value-based-agreed-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveAgreedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double agreedScore) {
+
+        try {
+            Target target = targetService.getTargetById(targetId);
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+
+            if(commonService.getLoggedUser().getId() == scorecard.getOwner().getSupervisor().getId()){
+                Score score = new Score();
+                score.setTarget(target);
+                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setAgreedScore(agreedScore);
+                valueBasedScoreService.saveAgreedScore(score);
+            }
+        }catch (Exception ignored){
+
+        }
+
+        JSONObject jsonObject = new JSONObject();
+
+        jsonObject.put("alreadyExists", false);
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+    }
+
+    @RequestMapping(value = "/save-value-based-moderated-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveModeratedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double moderatedScore) {
+
+        try {
+            Target target = targetService.getTargetById(targetId);
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+
+            if(commonService.getLoggedUser().getId() == scorecard.getOwner().getSupervisor().getId()){
+                Score score = new Score();
+                score.setTarget(target);
+                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setModeratedScore(moderatedScore);
+                valueBasedScoreService.saveModeratedScore(score);
+            }
+        }catch (Exception ignored){
+
+        }
+
+        JSONObject jsonObject = new JSONObject();
+
+        jsonObject.put("alreadyExists", false);
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+    }
+
+//    @RequestMapping(value = "/save-value-based-score", method = RequestMethod.POST, consumes = {"*/*"})
+//    public void saveScore(HttpServletResponse response, Long targetId, Double employeeScore, Double managerScore, Double agreedScore, Double moderatedScore, String evidence, String justification) {
+//
+//        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+//        Target target = targetService.getTargetById(targetId);
+//
+//        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+//        Account loggedUser = commonService.getLoggedUser();
+//        long loggedUserId = loggedUser.getId();
+//        long ownerId = scorecard.getOwner().getId();
+//        long supervisorId = scorecard.getOwner().getSupervisor().getId();
+//        String role = loggedUser.getRole();
+//        String approvalStatus = scorecard.getApprovalStatus();
+//        boolean isOwner = false;
+//        boolean isSupervisor = false;
+//        boolean isSupervisor2 = false;
+//        boolean isModerator = false;
+//
+//        if (loggedUserId == ownerId) {
+//            isOwner = true;
+//        } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
+//            isSupervisor = true;
+//        } else if (loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
+//            isSupervisor2 = true;
+//        }
+//        else if (role != null) {
+//            if("MODERATOR".equalsIgnoreCase(role) && "SET_ACTUAL_SCORE".equals(approvalStatus))
+//                isModerator = true;
+//        }else{
+//            System.out.println("User can not capture scores");
+//        }
+//
+//
+//        Score score = new Score();
+//        score.setTarget(target);
+//        score.setReportingDate(reportingDate);
+//
+//        if(isOwner){
+//            score.setEmployeeScore(employeeScore);
+//            score.setEvidence(evidence);
+//            score.setJustification(justification);
+//        }else if(isSupervisor){
+//            score.setManagerScore(managerScore);
+//        }
+//        else if(isSupervisor2){
+//            score.setAgreedScore(agreedScore);
+//        }else if(isModerator){
+//            score.setModeratedScore(moderatedScore);
+//        }
+//
+//        JSONObject jsonObject = new JSONObject();
+//
+//        valueBasedScoreService.saveScore(score);
+//        jsonObject.put("alreadyExists", false);
+//        String jsonString = jsonObject.toString();
+//
+//        try(OutputStream outputStream = response.getOutputStream()){
+//            outputStream.write(jsonString.getBytes());
+//
+//        }catch (IOException e){
+//            throw  new RuntimeException();
+//        }
+//    }
 
     @RequestMapping(value = "/fake-save-scorecard", method = RequestMethod.POST)
     public String fakeSaveScorecard(HttpServletRequest request, Scorecard scorecard) {
@@ -1056,7 +1285,7 @@ public class ScorecardController {
 
 
     @RequestMapping(value = "/copy-scorecard", method = RequestMethod.POST)
-    public String copyScorecard(HttpServletRequest request,Scorecard imaginaryScorecard) throws UnsupportedEncodingException {
+    public String copyScorecard(HttpServletRequest request,Scorecard imaginaryScorecard) {
 
         if (scorecardService.countActiveScorecards(imaginaryScorecard.getOwner(), imaginaryScorecard.getReportingPeriod()) >= 1) {
             PortletUtils.addErrorMsg(imaginaryScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + imaginaryScorecard.getReportingPeriod().getStartDate() + " - " + imaginaryScorecard.getReportingPeriod().getEndDate() + ")", request);

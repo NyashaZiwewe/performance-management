@@ -80,7 +80,8 @@ public class ScorecardService {
         for(Scorecard scorecard : scorecardList){
             scorecard.setEmployeeScore(scoreCardRepository.findAverageEmployeeScore(scorecard.getId()));
             scorecard.setManagerScore(scoreCardRepository.findAverageManagerScore(scorecard.getId()));
-            scorecard.setActualScore(scoreCardRepository.findAverageActualScore(scorecard.getId()));
+            scorecard.setAgreedScore(scoreCardRepository.findAverageAgreedScore(scorecard.getId()));
+            scorecard.setModeratedScore(scoreCardRepository.findAverageModeratedScore(scorecard.getId()));
             scorecard.setWeightedScore(scoreCardRepository.findAverageWeightedScore(scorecard.getId()));
         }
 
@@ -99,8 +100,8 @@ public class ScorecardService {
         int passedScorecards = 0;
 
         for(Scorecard scorecard : scorecardList){
-            double actualScore = scoreCardRepository.findAverageActualScore(scorecard.getId());
-            if(actualScore >= 2.5){
+            double moderatedScore = scoreCardRepository.findAverageModeratedScore(scorecard.getId());
+            if(moderatedScore >= 2.5){
                 passedScorecards ++;
             }
         }
@@ -113,8 +114,8 @@ public class ScorecardService {
         int failedScorecards = 0;
 
         for(Scorecard scorecard : scorecardList){
-            double actualScore = scoreCardRepository.findAverageActualScore(scorecard.getId());
-            if(actualScore < 2.5){
+            double moderatedScore = scoreCardRepository.findAverageModeratedScore(scorecard.getId());
+            if(moderatedScore < 2.5){
                 failedScorecards ++;
             }
         }
@@ -157,7 +158,8 @@ public class ScorecardService {
         Scorecard scorecard = scoreCardRepository.findScorecardById(id);
         scorecard.setEmployeeScore(scoreCardRepository.findAverageEmployeeScore(scorecard.getId()));
         scorecard.setManagerScore(scoreCardRepository.findAverageManagerScore(scorecard.getId()));
-        scorecard.setActualScore(scoreCardRepository.findAverageActualScore(scorecard.getId()));
+        scorecard.setAgreedScore(scoreCardRepository.findAverageAgreedScore(scorecard.getId()));
+        scorecard.setModeratedScore(scoreCardRepository.findAverageModeratedScore(scorecard.getId()));
         scorecard.setWeightedScore(scoreCardRepository.findAverageWeightedScore(scorecard.getId()));
 
         return scorecard;

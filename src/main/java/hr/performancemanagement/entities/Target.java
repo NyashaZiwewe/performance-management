@@ -39,17 +39,14 @@ public class Target {
     private Double actual;
     private Double employeeScore;
     private Double managerScore;
-    private Double actualScore;
+    private Double agreedScore;
+    private Double moderatedScore;
     private Double weightedScore;
-    @Transient
     private Double currentActual;
-    @Transient
     private Double currentEmployeeScore;
-    @Transient
     private Double currentManagerScore;
-    @Transient
-    private Double currentActualScore;
-    @Transient
+    private Double currentAgreedScore;
+    private Double currentModeratedScore;
     private Double currentWeightedScore;
     @Transient
     private String currentEvidence;

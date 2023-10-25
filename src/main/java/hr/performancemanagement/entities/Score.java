@@ -28,7 +28,8 @@ public class Score implements Serializable {
     private double actual;
     private double employeeScore;
     private double managerScore;
-    private double actualScore;
+    private double agreedScore;
+    private double moderatedScore;
     private double weightedScore;
     private String evidence;
     private String justification;

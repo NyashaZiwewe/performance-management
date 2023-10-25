@@ -31,28 +31,19 @@
         function saveScore(targetId){
 
             let employeeScore = document.getElementById("employeeScore"+targetId).value;
-            let managerScore = document.getElementById("managerScore"+targetId).value;
-            let actualScore = document.getElementById("actualScore"+targetId).value;
             let evidence = document.getElementById("evidence"+targetId).value;
             let justification = document.getElementById("justification"+targetId).value;
+
             if((employeeScore !== "" && Number(employeeScore) !== 0.0)  && (Number(employeeScore) < 1 || Number(employeeScore) > 5)){
-                alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
-                return false;
-            }
-            if((managerScore !== "" && Number(managerScore) !== 0.0) && (Number(managerScore) < 1 || Number(managerScore) > 5)){
-                alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
-                return false;
-            }
-            if((actualScore !== "" && Number(actualScore) !== 0.0)  && (Number(actualScore) < 1 || Number(actualScore) > 5)){
                 alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
                 return false;
             }
 
             $.ajax({
-                url : '/scorecards/save-value-based-score',
+                url : '/scorecards/save-value-based-employee-score',
                 method: "POST",
                 data: {
-                    targetId, employeeScore, managerScore, actualScore, evidence, justification
+                    targetId, employeeScore, evidence, justification
                 },
                 success: function (data) {
                     console.log("data" + data);
@@ -100,15 +91,13 @@
                                             <thead>
                                             <tr>
                                                 <th>Key Focus Area</th>
-                                                <th> Strategic Objective</th>
+                                                <th>Strategic Objective</th>
                                                 <th>Goal</th>
                                                 <th>Performance Measure</th>
                                                 <th>Unit</th>
                                                 <th>Target</th>
                                                 <th>KPI Weight</th>
                                                 <th>Employee Score</th>
-                                                <th>Manager Score</th>
-                                                <th>Actual Score</th>
                                                 <th>Weighted Score</th>
                                             </tr>
                                             </thead>
@@ -135,12 +124,6 @@
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.employeeScore == null ? ' ' : target.employeeScore}"></a>
                                                 </td>
                                                 <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.managerScore == null ? ' ' : target.managerScore}"></a>
-                                                </td>
-                                                <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.actualScore == null ? ' ' : target.actualScore}"></a>
-                                                </td>
-                                                <td>
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.weightedScore == null ? ' ' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}" th:attr="class = ${target.weightedScore > 0 ? 'pass' : 'fail' }"></a>
                                                 </td>
 
@@ -161,9 +144,7 @@
                                                                         <tr>
                                                                             <th>Report Date</th>
                                                                             <th>Target</th>
-                                                                            <th>Employee Target</th>
-                                                                            <th>Manager Score</th>
-                                                                            <th>Actual Score</th>
+                                                                            <th>Employee Score</th>
                                                                             <th>Weighted Score</th>
                                                                             <th>Link - Evidence</th>
                                                                             <th>Justification</th>
@@ -175,8 +156,6 @@
                                                                             <td th:text="${score.reportingDate?.endDate}"></td>
                                                                             <td th:text="${target.normalTarget}"></td>
                                                                             <td th:text="${target.employeeScore}"></td>
-                                                                            <td th:text="${target.managerScore}"></td>
-                                                                            <td th:text="${score.actualScore}"></td>
                                                                             <td th:text="${score.weightedScore == null ? '' : #numbers.formatDecimal(score.weightedScore, 0, 2) + '%'}" th:attr="class = ${score.weightedScore > 0 ? 'pass' : 'fail' }"></td>
                                                                             <td>
                                                                                 <a th:href="${score.evidence}" target="_blank" th:text="${score.evidence}"></a>
@@ -206,12 +185,6 @@
                                                 </td>
                                                 <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
                                                     <h4 th:text="${averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
-                                                </td>
-                                                <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
-                                                    <h4 th:text="${averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}" th:if="${!isOwner == true}"></h4>
-                                                </td>
-                                                <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
-                                                    <h4 th:text="${averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}" th:if="${isModerator == true}"></h4>
                                                 </td>
                                                 <td th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
                                                     <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}" th:if="${isModerator == true}"></h4>
@@ -253,16 +226,7 @@
                                                     <th>Unit</th>
                                                     <th>Target</th>
                                                     <th>KPI Weight</th>
-                                                    <th th:if="${isOwner}">Employee Score</th>
-                                                    <div th:if="${isSupervisor}">
-                                                        <th>Employee Score</th>
-                                                        <th>Manager Score</th>
-                                                    </div>
-                                                    <div th:if="${canModerate}">
-                                                        <th>Employee Score</th>
-                                                        <th>Manager Score</th>
-                                                        <th>Agreed Score</th>
-                                                    </div>
+                                                    <th>Employee Score</th>
                                                     <th>Weighted Score</th>
                                                     <th>Evidence</th>
                                                     <th>Justification</th>
@@ -280,54 +244,16 @@
                                                     <td th:text="${target.unit}"></td>
                                                     <td th:text="${target.normalTarget}"></td>
                                                     <td th:text="${target.allocatedWeight}"></td>
-                                                    <td th:if="${isOwner}">
-                                                        <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" required>
-                                                    </td>
-                                                    <div th:if="${isSupervisor}">
-                                                        <td>
-                                                            <span th:text="${target.currentEmployeeScore}"></span>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" step="any" min="1" max="5" th:id="'managerScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentManagerScore}" required>
-                                                            <input type="hidden" th:id="'actualScore' + ${target.id}"  th:value="${target.currentActualScore}">
-                                                        </td>
-                                                    </div>
-                                                    <div th:if="${canModerate}">
-                                                        <td>
-                                                            <span th:text="${target.currentEmployeeScore}"></span>
-                                                        </td>
-                                                        <td>
-                                                            <span th:text="${target.currentManagerScore}"></span>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" step="any" min="1" max="5" th:id="'actualScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentActualScore}" required>
-                                                            <input type="hidden" th:id="'managerScore' + ${target.id}" th:value="${target.currentManagerScore}">
-                                                        </td>
-                                                    </div>
                                                     <td>
-                                                        <span th:text="${target.currentWeightedScore + '%'}"></span>
+                                                        <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" required>
                                                     </td>
-                                                    <div th:if="${isOwner}">
-                                                        <td>
-                                                            <input type="text" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
-                                                        </td>
-                                                        <td>
-                                                            <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">
-                                                        </td>
-                                                        <td>
-                                                            <input type="hidden" th:id="'managerScore'+ ${target.id}" th:value="${target.currentManagerScore}">
-                                                            <input type="hidden" th:id="'actualScore'+ ${target.id}" th:value="${target.currentActualScore}">
-                                                        </td>
-                                                    </div>
-                                                    <div th:if="${!isOwner}">
-<!--                                                        <td th:text="${target.currentEmployeeScore}"></td>-->
-                                                        <td th:text="${target.currentEvidence}"></td>
-                                                        <td th:text="${target.currentJustification}"></td>
-
-                                                        <input type="hidden" th:id="'employeeScore'+ ${target.id}" th:value="${target.currentEmployeeScore}">
-                                                        <input type="hidden" th:id="'evidence'+ ${target.id}" th:value="${target.currentEvidence}">
-                                                        <input type="hidden" th:id="'justification'+ ${target.id}" th:value="${target.currentJustification}">
-                                                    </div>
+                                                    <td th:text="${target.currentWeightedScore + '%'}"></td>
+                                                    <td>
+                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" th:id="'justification' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">
+                                                    </td>
                                                 </tr>
                                                 </tbody>
 
@@ -353,24 +279,10 @@
                 </div>
 
                 <div class="form-group row">
-                    <div class="col-4" th:if="${isOwner == true}">
+                    <div class="col-4">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Owner's Overall Comment</legend>
-                            <textarea th:text="${scorecard.ownerComment}" id="ownerComment" class="form-control" oninput="saveComment('owner')"></textarea>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4" th:if="${isSupervisor == true}">
-                        <fieldset class="border p-2">
-                            <legend class="w-auto">Supervisor's Overall Comment</legend>
-                            <textarea th:text="${scorecard.supervisorComment}" id="supervisorComment" class="form-control" oninput="saveComment('supervisor')"></textarea>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4" th:if="${isModerator == true}">
-                        <fieldset class="border p-2">
-                            <legend class="w-auto">Moderator's Overall Comment</legend>
-                            <textarea th:text="${scorecard.moderatorComment}" id="moderatorComment"  class="form-control" oninput="saveComment('moderator')"></textarea>
+                            <textarea th:text="${scorecard.ownerComment}" id="ownerComment"  class="form-control" oninput="saveComment('owner')"></textarea>
                         </fieldset>
                     </div>
                 </div>
@@ -422,25 +334,7 @@
     function saveComment(userType){
 
         let scorecardId = document.getElementById("id").value;
-        let comment = null;
-
-        if(userType === "owner"){
-
-            comment = document.getElementById("ownerComment").value;
-
-        }else if(userType === "supervisor"){
-
-            comment = document.getElementById("supervisorComment").value;
-
-        }else if(userType === "moderator") {
-
-            comment = document.getElementById("moderatorComment").value;
-
-        } else {
-
-            return;
-        }
-        console.log("the comment: "+ comment);
+        let comment = document.getElementById("ownerComment").value;
 
         $.ajax({
             url : '/scorecards/save-overall-comment',
@@ -449,7 +343,6 @@
                 scorecardId, userType, comment
             },
             success: function (data) {
-                //location.reload();
                 console.log(data);
             },
             error : function(data) {

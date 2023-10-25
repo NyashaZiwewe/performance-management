@@ -27,6 +27,9 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
     @Query("SELECT AVG(s.managerScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     double averageManagerScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.actualScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    @Query("SELECT AVG(s.agreedScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    double averageAgreedScore(@Param("scorecardId") long scorecardId);
+
+    @Query("SELECT AVG(s.moderatedScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     double averageModeratedScore(@Param("scorecardId") long scorecardId);
 }

@@ -22,8 +22,10 @@ public interface TargetRepository extends JpaRepository<Target, Long> {
     Double currentEmployeeScore(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
     @Query("SELECT coalesce(s.managerScore, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
     Double currentManagerScore(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT coalesce(s.actualScore, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
-    Double currentActualScore(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
+    @Query("SELECT coalesce(s.agreedScore, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
+    Double currentAgreedScore(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
+    @Query("SELECT coalesce(s.moderatedScore, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
+    Double currentModeratedScore(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
     @Query("SELECT coalesce(s.weightedScore, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
     Double currentWeightedScore(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
     @Query("SELECT s.evidence FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")

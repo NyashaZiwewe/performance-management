@@ -97,7 +97,8 @@
                             <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Actual</th>
                             <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances" th:if="${scorecardModel == 'VALUE_BASED'}">Employee Score</th>
                             <th data-toggle="popover" data-placement="top" data-content="Manager Score" th:if="${scorecardModel == 'VALUE_BASED'}">Manager Score</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Actual Score" th:if="${scorecardModel == 'VALUE_BASED'}">Moderated Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Agreed Score" th:if="${scorecardModel == 'VALUE_BASED'}">Agreed Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Moderated Score" th:if="${scorecardModel == 'VALUE_BASED'}">Moderated Score</th>
                             <th data-toggle="popover" data-placement="top" data-content="Weighted Score">Weighted Score (%)</th>
                             <th data-toggle="popover" data-placement="top" data-content="Conversational comments between supervisor and subordinate">Manager\'s Comment</th>
                         </tr>
@@ -118,7 +119,8 @@
 
                             <td th:text="${target.employeeScore <= 0.0 || target.employeeScore == null ? '' : #numbers.formatDecimal(target.employeeScore, 0,  2)}" th:attr="class = ${target.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>
                             <td th:text="${target.managerScore <= 0.0 || target.managerScore == null ? '' : #numbers.formatDecimal(target.managerScore, 0, 2)}" th:attr="class = ${target.managerScore < 2.5 ? 'fail' : 'pass'}"></td>
-                            <td th:text="${target.actualScore <= 0.0 || target.actualScore == null ? '' : #numbers.formatDecimal(target.actualScore, 0, 2)}" th:attr="class = ${target.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
+                            <td th:text="${target.agreedScore <= 0.0 || target.agreedScore == null ? '' : #numbers.formatDecimal(target.agreedScore, 0, 2)}" th:attr="class = ${target.agreedScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${target.moderatedScore <= 0.0 || target.moderatedScore == null ? '' : #numbers.formatDecimal(target.moderatedScore, 0, 2)}" th:attr="class = ${target.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
                             <td th:text="${target.weightedScore <= 0.0 || target.weightedScore == null ? '' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}"></td>
 <!--                            <td th:text="${target.supportingDocument}"></td>-->
 <!--                            <td th:text="${target.justification}"></td>-->
@@ -226,6 +228,9 @@
                             <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
                                 <h4 th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>
                             </td>
+                            <td th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageAgreedScore <= 0.0 || averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>
+                            </td>
                             <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
                                 <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
                             </td>
@@ -244,20 +249,20 @@
                         <input type="hidden" name="scorecardId" th:value="${id}">
                     </div>
 
-                    <div class="col-lg-2" th:if="${session.loggedUser?.id == scorecard.owner?.supervisor?.id && scorecard.approvalStatus == 'PENDING_APPROVAL'}">
+                    <div class="col-lg-2" th:if="${isSupervisor && scorecard.approvalStatus == 'PENDING_APPROVAL'}">
                         <a data-toggle="modal" data-target="#rejectModal"><button class="btn btn-danger" type="button">Reject Scorecard</button></a>
                     </div>
-                    <div class="col-2"  th:if="${session.loggedUser?.id == scorecard.owner?.supervisor?.id && scorecard.approvalStatus == 'PENDING_APPROVAL'}" >
+                    <div class="col-2"  th:if="${isSupervisor && scorecard.approvalStatus == 'PENDING_APPROVAL'}" >
                         <form method="post" th:action="@{/scorecards/supervisor-approve}">
                             <input type="hidden" name="id" th:value="${id}">
                             <button class="btn btn-success" type="submit">Approve Scorecard</button>
                         </form>
                     </div>
 
-                    <div class="col-lg-2" th:if="${session.loggedUser?.role == 'MODERATOR' && scorecard.approvalStatus == 'APPROVED_BY_SUPERVISOR'}">
+                    <div class="col-lg-2" th:if="${canApprove}">
                         <a data-toggle="modal" data-target="#hrRejectModal"><button class="btn btn-danger" type="button">Reject Scorecard</button></a>
                     </div>
-                    <div class="col-2"  th:if="${session.loggedUser?.role == 'MODERATOR' && scorecard.approvalStatus == 'APPROVED_BY_SUPERVISOR'}" >
+                    <div class="col-2"  th:if="${canApprove}" >
                         <form method="post" th:action="@{/scorecards/hr-approve}">
                             <input type="hidden" name="id" th:value="${id}">
                             <button class="btn btn-success" type="submit">Approve Scorecard</button>
@@ -267,6 +272,8 @@
                     <div class="col-5">
                         <a th:if="${isOwner && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
                         <a th:if="${isSupervisor && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
+                        <a th:if="${isSupervisor && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
+                        <a th:if="${isSupervisor && scorecard.approvalStatus == 'AGREED_BY_TWO'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
                         <a th:if="${canModerate == true}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Moderate Scores</a>
                         <a th:if="${isOwner && scorecard.approvalStatus == 'NEW'}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
                     </div>

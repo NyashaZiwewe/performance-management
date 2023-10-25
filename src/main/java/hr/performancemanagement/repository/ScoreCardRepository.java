@@ -27,8 +27,12 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     @Query("SELECT coalesce(AVG(s.managerScore),0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
     Double findAverageManagerScore(@Param("scorecardId") long scorecardId);
     @Nullable
-    @Query("SELECT coalesce(AVG(s.actualScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
-    Double findAverageActualScore(@Param("scorecardId") long scorecardId);
+    @Query("SELECT coalesce(AVG(s.agreedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    Double findAverageAgreedScore(@Param("scorecardId") long scorecardId);
+
+    @Nullable
+    @Query("SELECT coalesce(AVG(s.moderatedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    Double findAverageModeratedScore(@Param("scorecardId") long scorecardId);
 
     @Nullable
     @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
