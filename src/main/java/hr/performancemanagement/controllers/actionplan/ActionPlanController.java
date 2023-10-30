@@ -65,18 +65,18 @@ public class ActionPlanController {
 
     }
 
-    @RequestMapping
-    public ModelAndView viewActionPlans(HttpServletRequest request) {
-        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_ACTION_PLANS);
-        modelAndView.addObject("pageTitle", "View All");
-        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<ActionPlan> plansList = actionPlanService.listAllActionPlans(reportingPeriod);
-        modelAndView.addObject("plansList", plansList);
-        modelAndView.addObject("actionPlan", new ActionPlan());
-        preparePage(modelAndView, request);
-        return modelAndView;
-    }
-    @RequestMapping(value = "/view-action-plans-2")
+//    @RequestMapping
+//    public ModelAndView viewActionPlans(HttpServletRequest request) {
+//        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_ACTION_PLANS);
+//        modelAndView.addObject("pageTitle", "View All");
+//        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+//        List<ActionPlan> plansList = actionPlanService.listAllActionPlans(reportingPeriod);
+//        modelAndView.addObject("plansList", plansList);
+//        modelAndView.addObject("actionPlan", new ActionPlan());
+//        preparePage(modelAndView, request);
+//        return modelAndView;
+//    }
+    @RequestMapping()
     public ModelAndView viewActionPlans2(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_ACTION_PLANS2);
         modelAndView.addObject("pageTitle", "View All");
@@ -157,7 +157,7 @@ public class ActionPlanController {
         System.out.println(actionPlan);
         actionPlanService.addActionPlan(actionPlan);
         PortletUtils.addInfoMsg("Action Plan successfully created.", request);
-        return "redirect:/action-plans/view-action-plans-2";
+        return "redirect:/action-plans";
     }
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)

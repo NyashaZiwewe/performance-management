@@ -23,21 +23,21 @@ public class TargetService {
         List<Target> targetList = new ArrayList<>();
 
         List<Goal> goalList = goalRepository.findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(scorecardId);
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+//        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
 
         for(Goal goal: goalList){
            List<Target> targets = targetRepository.findTargetsByGoalId(goal.getId());
             for(Target target: targets){
                 target.setPerspective(goal.getPerspective());
                 target.setStrategicObjective(goal.getStrategicObjective());
-                target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
-                target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
-                target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
-                target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
-                target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
-                target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
-                target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
-                target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));
+//                target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
+//                target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
+//                target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
+//                target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
+//                target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
+//                target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
+//                target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
+//                target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));
                 targetList.add(target);
             }
         }

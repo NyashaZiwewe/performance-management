@@ -65,18 +65,18 @@ public class performanceImprovementPlanController {
 
     }
 
-    @RequestMapping
-    public ModelAndView viewPerformanceImprovementPlans(HttpServletRequest request) {
-        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS);
-        modelAndView.addObject("pageTitle", "View");
-        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlans();
-        modelAndView.addObject("plansList", plansList);
-        modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
-        preparePage(modelAndView, request);
-        return modelAndView;
-    }
+//    @RequestMapping
+//    public ModelAndView viewPerformanceImprovementPlans(HttpServletRequest request) {
+//        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS);
+//        modelAndView.addObject("pageTitle", "View");
+//        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlans();
+//        modelAndView.addObject("plansList", plansList);
+//        modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
+//        preparePage(modelAndView, request);
+//        return modelAndView;
+//    }
 
-    @RequestMapping(value = "/view-performance-improvement-plans-2")
+    @RequestMapping
     public ModelAndView viewPerformanceImprovementPlans2(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS2);
         modelAndView.addObject("pageTitle", "View All");
@@ -161,8 +161,18 @@ public class performanceImprovementPlanController {
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
     public String updatePlan(HttpServletRequest request, PerformanceImprovementPlan newPlan) {
+        PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(newPlan.getId());
+        plan.setEmployee(newPlan.getEmployee());
+        plan.setAgreedAction(newPlan.getAgreedAction());
+        plan.setConcern(newPlan.getConcern());
+        plan.setEndDate(newPlan.getEndDate());
+        plan.setExpectedStandard(newPlan.getExpectedStandard());
+        plan.setProgress(newPlan.getProgress());
+        plan.setRequiredSupport(newPlan.getRequiredSupport());
+        plan.setReviewNotes(newPlan.getReviewNotes());
+        plan.setTargetArea(newPlan.getTargetArea());
 
-        performanceImprovementPlanService.addPerformanceImprovementPlan(newPlan);
+        performanceImprovementPlanService.addPerformanceImprovementPlan(plan);
         PortletUtils.addInfoMsg("Performance Improvement Plan successfully updated.", request);
         return "redirect:/performance-improvement-plans";
     }

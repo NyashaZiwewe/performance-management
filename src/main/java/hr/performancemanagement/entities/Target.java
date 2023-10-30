@@ -48,9 +48,7 @@ public class Target {
     private Double currentAgreedScore;
     private Double currentModeratedScore;
     private Double currentWeightedScore;
-    @Transient
     private String currentEvidence;
-    @Transient
     private String currentJustification;
 
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)

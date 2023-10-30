@@ -276,6 +276,7 @@
                         <a th:if="${isSupervisor && scorecard.approvalStatus == 'AGREED_BY_TWO'}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Scores</a>
                         <a th:if="${canModerate == true}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Moderate Scores</a>
                         <a th:if="${isOwner && scorecard.approvalStatus == 'NEW'}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
+                        <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success" type="button">View Report</a>
                     </div>
                  </div>
                 <div class="form-group row">

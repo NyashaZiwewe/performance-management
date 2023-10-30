@@ -1156,7 +1156,7 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
 
-            if(commonService.getLoggedUser().getId() == scorecard.getOwner().getSupervisor().getId()){
+            if("MODERATOR".equalsIgnoreCase(commonService.getLoggedUser().getRole()) && "AGREED_BY_TWO".equalsIgnoreCase(scorecard.getApprovalStatus())){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
@@ -1298,6 +1298,7 @@ public class ScorecardController {
             newScorecard.setClientId(scorecard.getClientId());
             newScorecard.setOwner(imaginaryScorecard.getOwner());
             newScorecard.setReportingPeriod(imaginaryScorecard.getReportingPeriod());
+            newScorecard.setScorecardModel(scorecardModelService.getActiveScorecardModel());
             newScorecard.setStatus("ACTIVE");
             newScorecard.setApprovalStatus("NEW");
             newScorecard.setLockStatus("OPEN");

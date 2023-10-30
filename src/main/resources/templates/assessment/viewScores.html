@@ -70,7 +70,8 @@
                                         <th>Full Name</th>
                                         <th>Employee Score</th>
                                         <th>Manager Score</th>
-                                        <th>Final Score</th>
+                                        <th>Agreed Score</th>
+                                        <th>Moderated Score</th>
                                         <th>Weighted Score</th>
                                         <th></th>
                                     </tr>
@@ -80,15 +81,16 @@
                                           <td th:text="${score.owner?.fullName}"></td>
                                           <td th:text="${score.employeeScore == 0.0 ? '' : #numbers.formatDecimal(score.employeeScore, 0, 2)}" th:attr="class = ${score.employeeScore < 2.5 ? 'fail' : 'pass' }"></td>
                                           <td th:text="${score.managerScore == 0.0 ? '' : #numbers.formatDecimal(score.managerScore, 0, 2)}" th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                          <td th:text="${score.actualScore == 0.0 ? '' : #numbers.formatDecimal(score.actualScore, 0, 2)}" th:attr="class = ${score.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                          <td th:text="${score.actualScore == 0.0 ? '' : #numbers.formatDecimal((score.actualScore / 5) * 100, 0, 2) + '%'}" th:attr="class = ${score.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${score.agreedScore == 0.0 ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}" th:attr="class = ${score.agreedScore < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${score.moderatedScore == 0.0 ? '' : #numbers.formatDecimal(score.moderatedScore, 0, 2)}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${score.moderatedScore == 0.0 ? '' : #numbers.formatDecimal((score.moderatedScore / 5) * 100, 0, 2) + '%'}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
                                            <td>
                                                <a th:if="${role == 'MODERATOR' AND score.managerScore != 0.0}" th:href="@{/scorecards/capture-scores/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">Moderate Scores</a>
                                                <a th:if="${loggedUserId == score.owner?.supervisor?.id AND score.employeeScore != 0.0 }" th:href="@{/scorecards/capture-scores/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">Capture Scores</a>
                                                <a th:if="${loggedUserId == score.owner?.id AND score.employeeScore == 0.0 }" th:href="@{/scorecards/capture-scores/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">Capture Scores</a>
                                                <a th:href="@{/scorecards/view-scorecard/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">View Scorecard</a>
                                                <a th:href="@{/performance-review/download-pdf/} + ${score.id}" class="btn btn-success btn-sm">View Report</a>
-                                               <a th:href="@{/performance-review/view-chart/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">View Chart</a>
+<!--                                               <a th:href="@{/performance-review/view-chart/} + ${score.id}" target="_blank" class="btn btn-success btn-sm">View Chart</a>-->
                                            </td>
                                        </tr>
                                     </tbody>

@@ -212,7 +212,7 @@
                                                     <h4 th:text="${averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
                                                 </td>
                                                 <td th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
-                                                    <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}" th:if="${isModerator == true}"></h4>
+                                                    <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}"></h4>
                                                 </td>
                                                 <td></td>
                                                 <td></td>
@@ -278,9 +278,9 @@
                                                     <td>
                                                         <input type="number" step="any" min="1" max="5" th:id="'moderatedScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentModeratedScore}" required>
                                                     </td>
-                                                    <td th:text="${target.currentWeightedScore + '%'}"></td>
-                                                    <td th:text="${target.target.currentEvidence}"></td>
-                                                    <td th:text="${target.target.currentJustification}"></td>
+                                                    <td th:text="${target.currentWeightedScore == null ? '': #numbers.formatDecimal(target.currentWeightedScore,0,2) + '%'}"></td>
+                                                    <td th:text="${target.currentEvidence}"></td>
+                                                    <td th:text="${target.currentJustification}"></td>
                                                 </tr>
                                                 </tbody>
 

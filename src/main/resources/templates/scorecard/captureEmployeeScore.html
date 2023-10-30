@@ -202,8 +202,8 @@
                                             <input type="hidden" name="id" th:value="${id}">
                                         </div>
                                         <div class="col-lg-8">
-                                            <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
-                                            <button onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
+                                            <a th:href="@{/scorecards}" class="btn btn-warning" type="button">View Scorecards</a>
+<!--                                            <button onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>-->
                                             <button class="btn btn-success" type="submit">Validate & Submit</button>
                                         </div>
                                     </div>
@@ -227,7 +227,6 @@
                                                     <th>Target</th>
                                                     <th>KPI Weight</th>
                                                     <th>Employee Score</th>
-                                                    <th>Weighted Score</th>
                                                     <th>Evidence</th>
                                                     <th>Justification</th>
                                                     <th></th>
@@ -247,7 +246,6 @@
                                                     <td>
                                                         <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" required>
                                                     </td>
-                                                    <td th:text="${target.currentWeightedScore + '%'}"></td>
                                                     <td>
                                                         <input type="url" th:id="'evidence' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
                                                     </td>

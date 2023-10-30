@@ -124,6 +124,7 @@
                                             <a th:href="@{/scorecards/view-scorecard/} + ${scorecard.id}">
                                                 <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
                                             </a>
+                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${scorecard.id}" class="btn btn-success btn-sm" type="button">View Report</a>
                                         </td>
                                     </tr>
 
