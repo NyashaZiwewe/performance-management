@@ -4,10 +4,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Department;
 import hr.performancemanagement.entities.Division;
 import hr.performancemanagement.repository.AccountRepository;
-import hr.performancemanagement.service.AccountService;
-import hr.performancemanagement.service.DepartmentService;
-import hr.performancemanagement.service.DivisionService;
-import hr.performancemanagement.service.PdfService;
+import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
@@ -22,6 +19,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,6 +38,10 @@ public class AccountsController {
 
     @Autowired
     private final PdfService pdfService;
+    @Autowired
+    CommonService cs;
+    @Autowired
+    Mailservice mailservice;
 
     public AccountsController(AccountRepository accountRepository, DepartmentService departmentService, DivisionService divisionService, AccountService accountService, PdfService pdfService) {
         this.accountRepository = accountRepository;
@@ -86,12 +88,31 @@ public class AccountsController {
     }
 
     @RequestMapping(value = "/save-account", method = RequestMethod.POST)
-    public String saveAccount(HttpServletRequest request, Account newAccount) {
+    public String saveAccount(HttpServletRequest request, Account newAccount) throws MalformedURLException {
 
         String password = RandomStringUtils.randomAlphanumeric(8);
         newAccount.setPassword(password);
-        newAccount.setClientId(Client.CLIENT_ID);
+        newAccount.setClientId(cs.getLoggedUser().getClientId());
         accountService.addAccount(newAccount);
+        String currentURL = cs.getCurrentUrl(request);
+
+        String recipient = newAccount.getEmail();
+        String subject = "Account Creation,";
+        String template = "Good day, \n\n"
+                + "Please note that your account has been created in the PM System.  "
+                + "You can now login and use the system\n\n"
+                + "Link :" + currentURL + "\n"
+                + "Username :" + newAccount.getEmail() + "\n"
+                + "Link :" + newAccount.getPassword() + "\n\n"
+                + "Best regards,\n"
+                + "The ZimTrade Team";
+        try {
+            mailservice.sendEmail(recipient, subject, template);
+            PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
+
         PortletUtils.addInfoMsg("Employee record was successfully created. ", request);
         return "redirect:/accounts/view-account/"+ newAccount.getId();
 

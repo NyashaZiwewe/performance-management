@@ -21,14 +21,14 @@ public class AccountService {
     @Autowired
     AccountRepository accountRepository;
     @Autowired
-    HttpSession session;
+    CommonService cs;
 
     public List<Account> listAllAccounts(){
         List<Account> accountList = new ArrayList<>();
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
 
-        if(loggedUser.getAdmin().equalsIgnoreCase("IS_ADMIN") || loggedUser.getSpecial().equalsIgnoreCase("HAS_SPECIAL_RIGHTS")){
+        if(cs.isAdmin() || cs.hasSpecialRights()){
             accountRepository.findAccountsByClientId(loggedUser.getClientId()).forEach(account -> accountList.add(account));
         }
         else if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){

@@ -109,6 +109,7 @@ public class HomeController {
             }
         }
         addErrorMessagesToLoginPage(modelAndView, request);
+        modelAndView.addObject("localDate", LocalDate.now());
         return modelAndView;
     }
 

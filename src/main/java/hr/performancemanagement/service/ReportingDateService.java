@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingDateRepository;
+import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,7 @@ public class ReportingDateService {
     @Autowired
     ReportingDateRepository reportingDateRepository;
     @Autowired
-    HttpSession session;
+    CommonService cs;
 
     public ReportingDate getReportingDateById(long id){
 
@@ -27,9 +28,8 @@ public class ReportingDateService {
 
     public ReportingDate getActiveReportingDate(){
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
-//        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatus(loggedUser.getClientId(), "ACTIVE");
-        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatusAndAndReportingPeriod_ClientId("ACTIVE", loggedUser.getClientId());
+        Account loggedUser = cs.getLoggedUser();
+        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
         return reportingDate;
     }
 
@@ -42,14 +42,14 @@ public class ReportingDateService {
     private void deactivateReportingDates(ReportingPeriod reportingPeriod){
         List<ReportingDate> reportingDateList = reportingDateRepository.findReportingDatesByReportingPeriod(reportingPeriod);
         for(ReportingDate reportingDate: reportingDateList){
-            reportingDate.setStatus("IN_ACTIVE");
+            reportingDate.setStatus(PMConstants.STATUS_IN_ACTIVE);
             saveReportingDate(reportingDate);
         }
     }
 
     public void saveReportingDate(ReportingDate reportingDate) {
         String status = reportingDate.getStatus();
-        if("ACTIVE".equalsIgnoreCase(status)){
+        if(PMConstants.STATUS_ACTIVE.equalsIgnoreCase(status)){
             deactivateReportingDates(reportingDate.getReportingPeriod());
         }
         reportingDateRepository.save(reportingDate);

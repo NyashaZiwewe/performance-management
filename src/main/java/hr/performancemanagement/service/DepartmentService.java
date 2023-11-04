@@ -2,6 +2,7 @@ package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.Department;
 import hr.performancemanagement.repository.DepartmentRepository;
+import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,18 +15,18 @@ public class DepartmentService {
     @Autowired
     DepartmentRepository departmentRepository;
     @Autowired
+    CommonService cs;
+    @Autowired
     HttpSession session;
 
     public List<Department> listAllDepartments()
     {
-        Long clientId = (Long) session.getAttribute("clientId");
+        Long clientId = cs.getLoggedUser().getClientId();
         List<Department> departmentList = new ArrayList<>();
-        String admin = (String) session.getAttribute("admin");
-        String special = (String) session.getAttribute("special");
 
-        if(!admin.equalsIgnoreCase("IS_ADMIN") || !special.equalsIgnoreCase("HAS_SPECIAL_RIGHTS")){
+        if(!cs.isAdmin() && !cs.hasSpecialRights()){
 
-            Department myDepartment = (Department) session.getAttribute("department");
+            Department myDepartment = cs.getLoggedUser().getDepartment();
             departmentList.add(myDepartment);
         }else{
             departmentRepository.findDepartmentsByClientId(clientId).forEach(department -> departmentList.add(department));

@@ -20,16 +20,18 @@ public class PerformanceImprovementPlanService {
     PerformanceImprovementPlanRepository performanceImprovementPlanRepository;
     @Autowired
     HttpSession session;
+    @Autowired
+    CommonService cs;
 
     public List<PerformanceImprovementPlan> listAllPerformanceImprovementPlans(){
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
         List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
         performanceImprovementPlanRepository.findPerformanceImprovementPlansByClientId(loggedUser.getClientId()).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
         return performanceImprovementPlanList;
     }
 
     public List<PerformanceImprovementPlan> listAllPerformanceImprovementPlans(ReportingPeriod period){
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
         List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
         performanceImprovementPlanRepository.findPerformanceImprovementPlansByClientIdAndReportingPeriod(loggedUser.getClientId(), period).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
         return performanceImprovementPlanList;

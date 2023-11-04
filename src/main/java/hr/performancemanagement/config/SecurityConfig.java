@@ -27,6 +27,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.sound.sampled.Port;
 import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -75,19 +76,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
                                 ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
                                 attr.getRequest().getSession().setAttribute("loggedUser", account);
-                                attr.getRequest().getSession().setAttribute("userId", account.getId());
-                                attr.getRequest().getSession().setAttribute("name", account.getFullName());
-                                attr.getRequest().getSession().setAttribute("position", account.getPosition());
-                                attr.getRequest().getSession().setAttribute("clientId", account.getClientId());
-                                attr.getRequest().getSession().setAttribute("accountType", account.getAccountType());
-                                attr.getRequest().getSession().setAttribute("email", account.getEmail());
-                                attr.getRequest().getSession().setAttribute("supervisor", account.getSupervisor());
-                                attr.getRequest().getSession().setAttribute("department", account.getDepartment());
-                                attr.getRequest().getSession().setAttribute("division", account.getDivision());
-                                attr.getRequest().getSession().setAttribute("special", account.getSpecial());
-                                attr.getRequest().getSession().setAttribute("accounts", account.getAccounts());
-                                attr.getRequest().getSession().setAttribute("admin", account.getAdmin());
-//                                attr.getRequest().getSession().setAttribute("role", account.getRole());
 
                                 Set<String> authorities = new HashSet<>();
                                 authorities.add(account.getAdmin());
@@ -96,13 +84,25 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                                 return new UsernamePasswordAuthenticationToken(name, password, roles);
                             } else {
 
-                            //PortletUtils.addErrorMsg("Invalid username or password ", request);
-
-                               throw new BadCredentialsException("Invalid username or password");
+                                try {
+                                    throw new Exception("Invalid username or password");
+                                } catch (Exception e) {
+                                    ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+                                    HttpServletRequest request = attr.getRequest();
+                                    PortletUtils.addErrorMsg("Invalid username or Password", request);
+                                    throw new RuntimeException(e.getMessage());
+                                }
                             }
                         }else {
-                 //           PortletUtils.addErrorMsg("Account doesn't exist", request);
-                            throw new BadCredentialsException("Account does not exist");
+
+                            try {
+                                throw new Exception("Account does not exist");
+                            } catch (Exception e) {
+                                ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+                                HttpServletRequest request = attr.getRequest();
+                                PortletUtils.addErrorMsg("Account does not exist", request);
+                                throw new RuntimeException(e.getMessage());
+                            }
                         }
                     }
                     @Override

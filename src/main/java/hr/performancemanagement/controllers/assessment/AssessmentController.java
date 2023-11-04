@@ -51,7 +51,9 @@ public class AssessmentController {
     @Autowired
     private SpringTemplateEngine templateEngine;
     @Autowired
-    HttpSession session;
+    CommonService commonService;
+    @Autowired
+    CommonService cs;
 
     public AssessmentController(TargetService targetService, StrategicObjectiveService strategicObjectiveService, GoalService goalService, AccountService accountService) {
         this.targetService = targetService;
@@ -133,7 +135,7 @@ public class AssessmentController {
         String endDate = reportingPeriod.getEndDate();
         List<Scorecard> scoresList = scorecardService.getScoresByPeriodId(reportingPeriod);
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
@@ -219,7 +221,7 @@ public class AssessmentController {
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = commonService.getLoggedUser();
         Account owner = scoreCard.getOwner();
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
@@ -268,7 +270,7 @@ public class AssessmentController {
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
         Account owner = scoreCard.getOwner();
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
@@ -327,7 +329,7 @@ public class AssessmentController {
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
 
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
         Account owner = scoreCard.getOwner();
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();

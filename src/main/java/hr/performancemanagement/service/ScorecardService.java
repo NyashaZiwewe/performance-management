@@ -2,6 +2,7 @@ package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreCardRepository;
+import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,8 @@ public class ScorecardService {
 
     @Autowired
     AccountService accountService;
+    @Autowired
+    CommonService cs;
     @Autowired
     HttpSession session;
 
@@ -45,9 +48,9 @@ public class ScorecardService {
     public List<Scorecard> getScorecardsByReportingPeriodId(ReportingPeriod reportingPeriod){
 
         List<Scorecard> scorecardList = new ArrayList<>();
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
 
-        if(loggedUser.getAdmin().equalsIgnoreCase("IS_ADMIN") || loggedUser.getSpecial().equalsIgnoreCase("HAS_SPECIAL_RIGHTS")){
+        if(cs.isAdmin() || cs.hasSpecialRights()){
             scoreCardRepository.findScorecardsByReportingPeriodAndClientId(reportingPeriod, loggedUser.getClientId()).forEach(scorecard -> scorecardList.add(scorecard));
         }
         else if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){

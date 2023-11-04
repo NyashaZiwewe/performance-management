@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.ScorecardModel;
 import hr.performancemanagement.repository.ScorecardModelRepository;
+import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +17,7 @@ public class ScorecardModelService {
     @Autowired
     ScorecardModelRepository scorecardModelRepository;
     @Autowired
-    HttpSession session;
+    CommonService cs;
 
     public List<ScorecardModel> getAllScorecardModels(long clientId){
         List<ScorecardModel> scorecardModelList = scorecardModelRepository.findAll();
@@ -29,8 +30,8 @@ public class ScorecardModelService {
     }
 
     public ScorecardModel getActiveScorecardModel(){
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
-        ScorecardModel scorecardModel = scorecardModelRepository.findScorecardModelByClientIdAndStatus(loggedUser.getClientId(), "ACTIVE");
+        Account loggedUser = cs.getLoggedUser();
+        ScorecardModel scorecardModel = scorecardModelRepository.findScorecardModelByClientIdAndStatus(loggedUser.getClientId(), PMConstants.STATUS_ACTIVE);
         return scorecardModel;
     }
 
@@ -45,11 +46,11 @@ public class ScorecardModelService {
     }
 
     public void saveScorecardModel(ScorecardModel model) {
-        if(model.getStatus().equalsIgnoreCase("ACTIVE")){
-            Account loggedUser = (Account) session.getAttribute("loggedUser");
+        if(model.getStatus().equalsIgnoreCase(PMConstants.STATUS_ACTIVE)){
+            Account loggedUser = cs.getLoggedUser();
             List<ScorecardModel> scorecardModelList = scorecardModelRepository.findScorecardModelsByClientId(loggedUser.getClientId());
             for(ScorecardModel scorecardModel: scorecardModelList){
-                scorecardModel.setStatus("IN_ACTIVE");
+                scorecardModel.setStatus(PMConstants.STATUS_IN_ACTIVE);
                 scorecardModelRepository.save(scorecardModel);
             }
         }
@@ -58,7 +59,7 @@ public class ScorecardModelService {
 
     @Transactional
     public int deleteScorecardModel(ScorecardModel model){
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
         List<ScorecardModel> scorecardModelList = scorecardModelRepository.findScorecardModelsByClientId(loggedUser.getClientId());
         if(scorecardModelList.size() == 1){
             return 0;
@@ -66,7 +67,7 @@ public class ScorecardModelService {
             scorecardModelRepository.delete(model);
             List<ScorecardModel> scorecardModels = scorecardModelRepository.findScorecardModelsByClientId(loggedUser.getClientId());
             for(ScorecardModel scorecardModel: scorecardModels){
-                scorecardModel.setStatus("ACTIVE");
+                scorecardModel.setStatus(PMConstants.STATUS_ACTIVE);
                 saveScorecardModel(scorecardModel);
             }
             return 1;

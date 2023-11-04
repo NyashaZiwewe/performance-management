@@ -15,13 +15,15 @@ public class DivisionService {
 
     @Autowired
     DivisionRepository divisionRepository;
+    @Autowired
+    CommonService cs;
 
     @Autowired
     HttpSession session;
 
     public List<Division> listAllDivisions()
     {
-        Long clientId = (Long) session.getAttribute("clientId");
+        Long clientId = cs.getLoggedUser().getClientId();
         List<Division> divisionsList = new ArrayList<>();
         divisionRepository.findDivisionsByClientId(clientId).forEach(division -> divisionsList.add(division));
         return divisionsList;

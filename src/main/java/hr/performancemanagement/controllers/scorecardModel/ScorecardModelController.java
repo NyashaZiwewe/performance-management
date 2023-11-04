@@ -1,6 +1,7 @@
 package hr.performancemanagement.controllers.scorecardModel;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.service.CommonService;
 import hr.performancemanagement.service.ScorecardModelService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
@@ -22,7 +23,7 @@ public class ScorecardModelController {
     @Autowired
     private final ScorecardModelService scorecardModelService;
     @Autowired
-    HttpSession session;
+    CommonService cs;
 
     public ScorecardModelController(ScorecardModelService scorecardModelService) {
         this.scorecardModelService = scorecardModelService;
@@ -40,7 +41,7 @@ public class ScorecardModelController {
     public ModelAndView viewScorecardModels(HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARD_MODELS);
         modelAndView.addObject("pageTitle", "View Scorecard Models");
-        Account loggedUser = getLoggedUser();
+        Account loggedUser = cs.getLoggedUser();
         List<ScorecardModel> scorecardModelList = scorecardModelService.getAllScorecardModels(loggedUser.getClientId());
         modelAndView.addObject("scorecardModelList", scorecardModelList);
         modelAndView.addObject("loggedUser", loggedUser);
@@ -61,7 +62,7 @@ public class ScorecardModelController {
     @RequestMapping(value = "/save-scorecard-model", method = RequestMethod.POST)
     public String saveScorecardModel(HttpServletRequest request, ScorecardModel scorecardModel) throws UnsupportedEncodingException {
 
-        Account loggedUser = getLoggedUser();
+        Account loggedUser = cs.getLoggedUser();
         boolean modelExists = scorecardModelService.checkIfClientModelExits(loggedUser.getClientId(), scorecardModel.getName());
         if(modelExists){
             PortletUtils.addErrorMsg("You already have "+ scorecardModel.getName() + " As a model for your organisation", request);
@@ -97,8 +98,4 @@ public class ScorecardModelController {
         return "redirect:/scorecard-models";
     }
 
-    public Account getLoggedUser(){
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
-        return loggedUser;
-    }
 }

@@ -6,7 +6,9 @@ import hr.performancemanagement.service.ScoreService.StandardScorecardScoreServi
 import hr.performancemanagement.service.ScoreService.ValueBasedScoreService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
+import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
+import hr.performancemanagement.utils.enums.ApprovalStatus;
 import hr.performancemanagement.utils.wrappers.GoalWrapper;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,7 +84,7 @@ public class ScorecardController {
 
         List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
         List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
-        List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives((Long) session.getAttribute("clientId"));
+        List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives(commonService.getLoggedUser().getClientId());
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
@@ -142,7 +144,7 @@ public class ScorecardController {
             PortletUtils.addErrorMsg(newScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + newScorecard.getReportingPeriod().getStartDate() +" - "+ newScorecard.getReportingPeriod().getEndDate() +")", request);
             return "redirect:/scorecards/add-scorecard";
         }else {
-            newScorecard.setClientId(Client.CLIENT_ID);
+            newScorecard.setClientId(commonService.getLoggedUser().getClientId());
             newScorecard.setLockStatus("OPEN");
             newScorecard.setStatus("ACTIVE");
             newScorecard.setApprovalStatus("NEW");
@@ -181,15 +183,9 @@ public class ScorecardController {
         long reportingPeriodId = scorecard.getReportingPeriod().getId();
         List<Goal> GOALS_LIST = goalService.listAllGoals(id);
         List<StrategicObjective> STRATEGIC_OBJECTIVES_LIST = strategicObjectiveService.listAllStrategicObjectives(reportingPeriodId);
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
-        long loggedId = loggedUser.getId();
-        long ownerId = scorecard.getOwner().getId();
-        String approvalStatus = scorecard.getApprovalStatus();
-        String status = scorecard.getStatus();
-        String lockStatus = scorecard.getLockStatus();
         ModelAndView modelAndView;
 
-        if(loggedId == ownerId && "NEW".equals(approvalStatus) && "ACTIVE".equals(status) && "OPEN".equals(lockStatus)){
+        if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS,scorecard)){
 
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
             modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
@@ -218,19 +214,6 @@ public class ScorecardController {
         ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
-        Account loggedUser = commonService.getLoggedUser();
-        long loggedUserId = loggedUser.getId();
-        long ownerId = scorecard.getOwner().getId();
-        long supervisorId = scorecard.getOwner().getSupervisor().getId();
-        String role = loggedUser.getRole();
-        String approvalStatus = scorecard.getApprovalStatus();
-        String status = scorecard.getStatus();
-        String lockStatus = scorecard.getLockStatus();
-        boolean canCapture = false;
-        boolean isOwner = false;
-        boolean isSupervisor = false;
-        boolean isSupervisor2 = false;
-        boolean canModerate = false;
         String url = "";
 
         double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
@@ -246,51 +229,23 @@ public class ScorecardController {
             weightedScore = 0;
         }
 
-        if("ACTIVE".equals(status) && "OPEN".equals(lockStatus)) {
-
-            if (loggedUserId == ownerId && "APPROVED_BY_HR".equals(approvalStatus)) {
-                canCapture = true;
-                isOwner = true;
-                url = "submit-employee-scores";
-            } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
-                canCapture = true;
-                isSupervisor = true;
-                url = "submit-manager-scores";
-            } else if(loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)){
-                isSupervisor2 = true;
-                canCapture = true;
-                url = "submit-agreed-scores";
-            }
-            else if("MODERATOR".equalsIgnoreCase(role) && "AGREED_BY_TWO".equals(approvalStatus)){
-                canModerate = true;
-                url = "submit-moderated-scores";
-            }
-            else{
-                System.out.println("User can not capture scores");
-            }
-        }else{
-
-            System.out.println("User can not capture scores");
-        }
-
         ModelAndView modelAndView;
 
-        if(!canCapture && !canModerate){
-            modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-            PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard at this moment", request);
-        }else{
-
-            if("STANDARD_SCORECARD".equalsIgnoreCase(scorecardModel)){
+            if(PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)){
                 modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
-            }else if("VALUE_BASED".equalsIgnoreCase(scorecardModel)){
-                if(isOwner){
+            }else if(PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)){
+                if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)){
                     modelAndView = new ModelAndView(Pages.CAPTURE_EMPLOYEE_SCORE);
-                } else if (isSupervisor) {
+                    url = "submit-employee-scores";
+                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)) {
                     modelAndView = new ModelAndView(Pages.CAPTURE_MANAGER_SCORE);
-                } else if (isSupervisor2) {
+                    url = "submit-manager-scores";
+                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)) {
                     modelAndView = new ModelAndView(Pages.CAPTURE_AGREED_SCORE);
-                } else if (canModerate) {
+                    url = "submit-agreed-scores";
+                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
                     modelAndView = new ModelAndView(Pages.CAPTURE_MODERATED_SCORE);
+                    url = "submit-moderated-scores";
                 }else {
                     modelAndView = new ModelAndView(Pages.BLANK_PAGE);
                     PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
@@ -302,9 +257,6 @@ public class ScorecardController {
 
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
-            modelAndView.addObject("isOwner", isOwner);
-            modelAndView.addObject("isSupervisor", isSupervisor);
-            modelAndView.addObject("canModerate", canModerate);
             modelAndView.addObject("url", url);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             modelAndView.addObject("targetsList", targetsList);
@@ -318,7 +270,7 @@ public class ScorecardController {
             modelAndView.addObject("reportingDate", reportingDate);
             modelAndView.addObject("scorecardModel", scorecardModel);
             modelAndView.addObject("reportingPeriod", reportingPeriod);
-        }
+
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -942,38 +894,6 @@ public class ScorecardController {
 
             }
 
-            String approvalStatus = scorecard.getApprovalStatus();
-            String status = scorecard.getStatus();
-            String lockStatus = scorecard.getLockStatus();
-            Account loggedUser = commonService.getLoggedUser();
-            String role = loggedUser.getRole();
-
-            boolean isOwner = false;
-            boolean isSupervisor = false;
-            boolean isModerator = false;
-
-                if (loggedUser.getId() == scorecard.getOwner().getId()) {
-                    isOwner = true;
-                } else if (loggedUser.getId() == scorecard.getOwner().getSupervisor().getId()) {
-                    isSupervisor = true;
-                } else if ("MODERATOR".equals(role)) {
-                    isModerator = true;
-                }
-
-            boolean canModerate = false;
-            boolean canApprove = false;
-
-            if("ACTIVE".equals(status) && "OPEN".equals(lockStatus)) {
-                if ("MODERATOR".equals(role) && "AGREED_BY_TWO".equals(approvalStatus) && !isOwner && !isSupervisor) {
-                    canModerate = true;
-                }
-            }
-
-            if ("MODERATOR".equals(role) && "APPROVED_BY_SUPERVISOR".equals(approvalStatus) && !isOwner && !isSupervisor) {
-                canApprove = true;
-            }
-
-
             modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
@@ -985,11 +905,11 @@ public class ScorecardController {
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
-            modelAndView.addObject("isOwner", isOwner);
-            modelAndView.addObject("isSupervisor", isSupervisor);
-            modelAndView.addObject("isModerator", isModerator);
-            modelAndView.addObject("canModerate", canModerate);
-            modelAndView.addObject("canApprove", canApprove);
+            modelAndView.addObject("isOwner", commonService.isOwner(scorecard));
+            modelAndView.addObject("isSupervisor", commonService.isSupervisor(scorecard.getOwner()));
+            modelAndView.addObject("isModerator", commonService.isModerator());
+            modelAndView.addObject("canModerate", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard));
+            modelAndView.addObject("canApprove", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard));
         }catch (Exception e){
             PortletUtils.addErrorMsg("That scorecard cannot be found", request);
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
@@ -1057,11 +977,8 @@ public class ScorecardController {
 
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-            Account loggedUser = commonService.getLoggedUser();
-            long loggedUserId = loggedUser.getId();
-            long ownerId = scorecard.getOwner().getId();
 
-            if(loggedUserId == ownerId){
+            if(commonService.isOwner(scorecard)){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
@@ -1094,7 +1011,7 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
 
-            if(commonService.getLoggedUser().getId() == scorecard.getOwner().getSupervisor().getId()){
+            if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
@@ -1125,7 +1042,7 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
 
-            if(commonService.getLoggedUser().getId() == scorecard.getOwner().getSupervisor().getId()){
+            if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
@@ -1156,7 +1073,7 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
 
-            if("MODERATOR".equalsIgnoreCase(commonService.getLoggedUser().getRole()) && "AGREED_BY_TWO".equalsIgnoreCase(scorecard.getApprovalStatus())){
+            if(commonService.isModerator() && PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(scorecard.getApprovalStatus())){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
@@ -1179,70 +1096,6 @@ public class ScorecardController {
             throw  new RuntimeException();
         }
     }
-
-//    @RequestMapping(value = "/save-value-based-score", method = RequestMethod.POST, consumes = {"*/*"})
-//    public void saveScore(HttpServletResponse response, Long targetId, Double employeeScore, Double managerScore, Double agreedScore, Double moderatedScore, String evidence, String justification) {
-//
-//        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-//        Target target = targetService.getTargetById(targetId);
-//
-//        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-//        Account loggedUser = commonService.getLoggedUser();
-//        long loggedUserId = loggedUser.getId();
-//        long ownerId = scorecard.getOwner().getId();
-//        long supervisorId = scorecard.getOwner().getSupervisor().getId();
-//        String role = loggedUser.getRole();
-//        String approvalStatus = scorecard.getApprovalStatus();
-//        boolean isOwner = false;
-//        boolean isSupervisor = false;
-//        boolean isSupervisor2 = false;
-//        boolean isModerator = false;
-//
-//        if (loggedUserId == ownerId) {
-//            isOwner = true;
-//        } else if (loggedUserId == supervisorId && "SCORED_BY_EMPLOYEE".equals(approvalStatus)) {
-//            isSupervisor = true;
-//        } else if (loggedUserId == supervisorId && "SCORED_BY_SUPERVISOR".equals(approvalStatus)) {
-//            isSupervisor2 = true;
-//        }
-//        else if (role != null) {
-//            if("MODERATOR".equalsIgnoreCase(role) && "SET_ACTUAL_SCORE".equals(approvalStatus))
-//                isModerator = true;
-//        }else{
-//            System.out.println("User can not capture scores");
-//        }
-//
-//
-//        Score score = new Score();
-//        score.setTarget(target);
-//        score.setReportingDate(reportingDate);
-//
-//        if(isOwner){
-//            score.setEmployeeScore(employeeScore);
-//            score.setEvidence(evidence);
-//            score.setJustification(justification);
-//        }else if(isSupervisor){
-//            score.setManagerScore(managerScore);
-//        }
-//        else if(isSupervisor2){
-//            score.setAgreedScore(agreedScore);
-//        }else if(isModerator){
-//            score.setModeratedScore(moderatedScore);
-//        }
-//
-//        JSONObject jsonObject = new JSONObject();
-//
-//        valueBasedScoreService.saveScore(score);
-//        jsonObject.put("alreadyExists", false);
-//        String jsonString = jsonObject.toString();
-//
-//        try(OutputStream outputStream = response.getOutputStream()){
-//            outputStream.write(jsonString.getBytes());
-//
-//        }catch (IOException e){
-//            throw  new RuntimeException();
-//        }
-//    }
 
     @RequestMapping(value = "/fake-save-scorecard", method = RequestMethod.POST)
     public String fakeSaveScorecard(HttpServletRequest request, Scorecard scorecard) {
@@ -1299,9 +1152,9 @@ public class ScorecardController {
             newScorecard.setOwner(imaginaryScorecard.getOwner());
             newScorecard.setReportingPeriod(imaginaryScorecard.getReportingPeriod());
             newScorecard.setScorecardModel(scorecardModelService.getActiveScorecardModel());
-            newScorecard.setStatus("ACTIVE");
-            newScorecard.setApprovalStatus("NEW");
-            newScorecard.setLockStatus("OPEN");
+            newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
+            newScorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_NEW);
+            newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
             scorecardService.saveScorecard(newScorecard);
             long id = newScorecard.getId();
@@ -1350,5 +1203,6 @@ public class ScorecardController {
             return "redirect:/scorecards/view-scorecard/" + id;
         }
     }
+
 
 }

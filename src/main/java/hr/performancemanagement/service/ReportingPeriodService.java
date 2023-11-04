@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Perspective;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
+import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,7 @@ public class ReportingPeriodService {
     @Autowired
     ReportingPeriodRepository reportingPeriodRepository;
     @Autowired
-    HttpSession session;
+    CommonService cs;
 
     public ReportingPeriod getReportingPeriodById(long id){
 
@@ -27,13 +28,14 @@ public class ReportingPeriodService {
 
     public ReportingPeriod getActiveReportingPeriod(){
 
-        ReportingPeriod reportingPeriod = reportingPeriodRepository.findReportingPeriodByStatus("ACTIVE");
+        ReportingPeriod reportingPeriod = reportingPeriodRepository.findReportingPeriodByStatus(PMConstants.STATUS_ACTIVE);
         return reportingPeriod;
     }
 
     public List<ReportingPeriod> listAllReportingPeriods(){
         List<ReportingPeriod> reportingPeriodList = new ArrayList<>();
-        Long clientId = (Long) session.getAttribute("clientId");
+        Account loggedUser = cs.getLoggedUser();
+        Long clientId = loggedUser.getClientId();
         reportingPeriodRepository.findAllReportingPeriodsByClientId(clientId).forEach(reportingPeriod -> reportingPeriodList.add(reportingPeriod));
         return reportingPeriodList;
     }

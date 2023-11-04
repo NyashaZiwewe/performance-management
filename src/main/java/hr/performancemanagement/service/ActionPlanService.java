@@ -19,13 +19,15 @@ public class ActionPlanService {
     ActionPlanRepository actionPlanRepository;
     @Autowired
     HttpSession session;
+    @Autowired
+    CommonService cs;
 
     public List<ActionPlan> listAllActionPlans(ReportingPeriod reportingPeriod){
 
         List<ActionPlan> actionPlanList = new ArrayList<>();
-        Account loggedUser = (Account) session.getAttribute("loggedUser");
+        Account loggedUser = cs.getLoggedUser();
 
-        if(loggedUser.getAdmin().equalsIgnoreCase("IS_ADMIN") || loggedUser.getSpecial().equalsIgnoreCase("HAS_SPECIAL_RIGHTS")){
+        if(cs.isAdmin() || cs.hasSpecialRights()){
             actionPlanRepository.findActionPlansByReportingPeriodAndClientId(reportingPeriod, loggedUser.getClientId()).forEach(actionPlan -> actionPlanList.add(actionPlan));
         }
         else if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){
