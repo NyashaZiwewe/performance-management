@@ -134,7 +134,33 @@ public class HomeController {
         }
         modelAndView.addObject("changePasswordWrapper", wrapper);
         PortletUtils.addMessagesToPage(modelAndView, request);
+        modelAndView.addObject("localDate", LocalDate.now());
         return modelAndView;
+    }
+
+    @RequestMapping("/change-password")
+    public ModelAndView changePassword(HttpServletRequest request){
+        ModelAndView modelAndView = new ModelAndView("changePassword");
+        ChangePasswordWrapper wrapper = new ChangePasswordWrapper();
+        try {
+            Account account = commonService.getLoggedUser();
+            String reset = RandomStringUtils.randomAlphanumeric(40);
+            account.setResetPassword(reset);
+            account = accountService.saveAccount(account);
+
+            wrapper.setResetPassword(reset);
+            wrapper.setEmail(account.getEmail());
+            modelAndView.addObject("changePasswordWrapper", wrapper);
+            PortletUtils.addMessagesToPage(modelAndView, request);
+            return modelAndView;
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Failed with error: "+ e.getMessage(), request);
+            PortletUtils.addMessagesToPage(modelAndView, request);
+            modelAndView.addObject("localDate", LocalDate.now());
+            return modelAndView;
+        }
+
+
     }
 
     @RequestMapping(value = "/save-password", method = RequestMethod.POST)

@@ -25,12 +25,11 @@
 
 
 <div class="middle-box text-center animated fadeInDown">
-    <h1>Unspecified Error</h1>
-    <h3 class="font-bold">Unspecified Error</h3>
+    <h4>Unspecified Error</h4>
 
-    <div class="error-desc">
+    <div style="font-size: small">
         The server encountered something unexpected that didn't allow it to complete the request. We apologize.<br/>
-        You can go back to main page: <br/><a th:href="@{/}" class="btn btn-primary m-t">Home</a>
+        You can go back to main page: <br/><a th:href="@{/login}" class="btn btn-primary m-t">Start Afresh</a>
     </div>
     <div class="row" th:if="${exceptionMessage != null}">
         <table class="col-lg-8 nowrap table" >

@@ -4,6 +4,8 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.service.AccountService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Pages;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,6 +36,7 @@ import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +47,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     AccountService accountService;
+    private Logger logger = LoggerFactory.getLogger(getClass());
 
     @Override
     public void configure(AuthenticationManagerBuilder auth) throws Exception {
@@ -101,6 +105,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                                 HttpServletRequest request = attr.getRequest();
                                 PortletUtils.addErrorMsg("Account does not exist", request);
                                 throw new RuntimeException(e.getMessage());
+
                             }
                         }
                     }
@@ -145,5 +150,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    private void removeSessionAttributesAfterError(HttpServletRequest request) {
+        Enumeration<String> attributeNames = request.getSession().getAttributeNames();
+        while (attributeNames.hasMoreElements()){
+            String attribute = attributeNames.nextElement();
+            logger.info(">>>> Session Attribute : "+ attribute);
+            if(!attribute.equals("SPRING_SECURITY_CONTEXT")){
+                request.getSession().removeAttribute(attribute);
+                logger.error(">>>> Removed session Attribute : "+ attribute);
+            }
+        }
     }
 }

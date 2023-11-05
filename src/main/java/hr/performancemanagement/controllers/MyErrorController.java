@@ -35,11 +35,11 @@ public class MyErrorController implements ErrorController {
                 return "error-404";
             }
             else if(statusCode == HttpStatus.INTERNAL_SERVER_ERROR.value()) {
-//                removeSessionAttributesAfterError(request);
+                removeSessionAttributesAfterError(request);
                 return "error-500";
             }
         }
-
+        removeSessionAttributesAfterError(request);
         return "error";
     }
 
