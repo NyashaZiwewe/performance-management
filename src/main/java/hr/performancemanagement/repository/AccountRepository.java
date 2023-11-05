@@ -17,6 +17,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 //    List<Account> findAccountsByAccountsEqualsIgnoreCase(String accountType);
 //    List<Account> findAccountsByAccountTypeNotContainingIgnoreCase(String accountType);
     Account findAccountById(long id);
+    Account findAccountByResetPassword(String reset);
+    Account findAccountByEmailAndResetPassword(String email, String reset);
 
     public Account findAccountByEmail(String email);
 

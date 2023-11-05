@@ -61,6 +61,18 @@ public class AccountService {
        return account;
     }
 
+    public Account getAccountToReset(String reset){
+
+        Account account = accountRepository.findAccountByResetPassword(reset);
+        return account;
+    }
+
+    public Account getAccountToReset(String email, String reset){
+
+        Account account = accountRepository.findAccountByEmailAndResetPassword(email, reset);
+        return account;
+    }
+
    public void addAccount(Account account) {
 
         accountRepository.save(account);

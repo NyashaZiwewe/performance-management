@@ -91,7 +91,7 @@ public class AccountsController {
     public String saveAccount(HttpServletRequest request, Account newAccount) throws MalformedURLException {
 
         String password = RandomStringUtils.randomAlphanumeric(8);
-        newAccount.setPassword(password);
+        newAccount.setPassword(cs.encryptPassword(password));
         newAccount.setClientId(cs.getLoggedUser().getClientId());
         accountService.addAccount(newAccount);
         String currentURL = cs.getCurrentUrl(request);
@@ -103,7 +103,7 @@ public class AccountsController {
                 + "You can now login and use the system\n\n"
                 + "Link :" + currentURL + "\n"
                 + "Username :" + newAccount.getEmail() + "\n"
-                + "Link :" + newAccount.getPassword() + "\n\n"
+                + "Link :" + password + "\n\n"
                 + "Best regards,\n"
                 + "The ZimTrade Team";
         try {

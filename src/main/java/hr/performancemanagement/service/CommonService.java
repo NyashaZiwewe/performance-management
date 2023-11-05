@@ -7,12 +7,17 @@ import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import javax.xml.bind.DatatypeConverter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 
 @Service
 public class CommonService {
@@ -21,7 +26,11 @@ public class CommonService {
     HttpSession session;
     @Autowired
     ReportingDateRepository repository;
+    private final Environment environment;
 
+    public CommonService(Environment environment) {
+        this.environment = environment;
+    }
 
     public String getInitials(String fullName) {
         String words[] = fullName.split(" ");
@@ -170,11 +179,25 @@ public class CommonService {
         URL url = new URL(urlString);
         String host = url.getHost();
         String protocol = url.getProtocol();
-        Integer port = url.getPort();
-        if(port != null){
-            host = protocol.concat("://"+ host.concat(":"+ port));
+//        Integer port = url.getPort();
+        Integer port = Integer.valueOf(Objects.requireNonNull(environment.getProperty("server.port")));
+        host = protocol.concat("://"+ host.concat(":"+ port));
 
-        }
         return host;
+    }
+
+    public String encryptPassword(String pass){
+        MessageDigest md = null;
+
+        try {
+            md = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        md.update(pass.getBytes());
+        byte[] digest = md.digest();
+        String password = DatatypeConverter.printHexBinary(digest).toLowerCase();
+        return password;
     }
 }
