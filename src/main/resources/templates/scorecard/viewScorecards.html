@@ -118,7 +118,7 @@
                                                 <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'AGREED_BY_TWO'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
-                                                <span th:if="${loggedUserId == scorecard.owner.id && scorecard.lockStatus == 'OPEN'}">
+                                                <span th:if="${(loggedUserId == scorecard.owner.id || loggedUser.special == 'HAS_SPECIAL_RIGHTS') && scorecard.lockStatus == 'OPEN'}">
                                                     <a th:if="${scorecard.approvalStatus == 'NEW' || scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-targets/} + ${scorecard.id}">
                                                     <button class="btn btn-success btn-sm">Edit Targets</button>
                                                 </a>

@@ -95,6 +95,7 @@ public class ScorecardController {
         modelAndView.addObject("accountsList", ACCOUNTS_LIST);
         modelAndView.addObject("perspectivesList", PERSPECTIVES_LIST);
         modelAndView.addObject("loggedUserId", loggedUserId);
+        modelAndView.addObject("loggedUser", loggedUser);
         modelAndView.addObject("role", role);
         PortletUtils.addMessagesToPage(modelAndView, request);
 

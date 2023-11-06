@@ -83,7 +83,7 @@ public class CommonService {
         }
 
         if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_TARGETS)){
-            if(PMConstants.APPROVAL_STATUS_NEW.equalsIgnoreCase(approval_status)){
+            if(PMConstants.APPROVAL_STATUS_NEW.equalsIgnoreCase(approval_status) || PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(approval_status)){
                 if(isOwner(scorecard) || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())){
                     isUserAllowed = true;
                 }
