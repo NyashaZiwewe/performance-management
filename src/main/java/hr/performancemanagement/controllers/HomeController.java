@@ -114,7 +114,6 @@ public class HomeController {
                 PortletUtils.addErrorMsg(ex.getMessage(), request);
             }
         }
-        String referrer = request.getHeader("referer");
         addErrorMessagesToLoginPage(modelAndView, request);
         PortletUtils.addMessagesToPage(modelAndView, request);
         modelAndView.addObject("localDate", LocalDate.now());

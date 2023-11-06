@@ -156,7 +156,7 @@ public class performanceImprovementPlanController {
         System.out.println(performanceImprovementPlan);
         performanceImprovementPlanService.addPerformanceImprovementPlan(performanceImprovementPlan);
         PortletUtils.addInfoMsg("PerformanceImprovementPlan Plan successfully created.", request);
-        return "redirect:/performance-improvement-plans/view-performance-improvement-plans-2";
+        return "redirect:/performance-improvement-plans";
     }
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
@@ -171,6 +171,7 @@ public class performanceImprovementPlanController {
         plan.setRequiredSupport(newPlan.getRequiredSupport());
         plan.setReviewNotes(newPlan.getReviewNotes());
         plan.setTargetArea(newPlan.getTargetArea());
+        plan.setStatus(newPlan.getStatus());
 
         performanceImprovementPlanService.addPerformanceImprovementPlan(plan);
         PortletUtils.addInfoMsg("Performance Improvement Plan successfully updated.", request);
@@ -186,15 +187,28 @@ public class performanceImprovementPlanController {
     }
 
     @RequestMapping(value = "/save-task", method = RequestMethod.POST)
-    public String saveTask(HttpServletRequest request, long performanceImprovementPlanId, String task) {
+    public void saveTask(HttpServletRequest request, HttpServletResponse response, long performanceImprovementPlanId, String task) {
 
         PIPTask newTask = new PIPTask();
         newTask.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
         newTask.setName(task);
         newTask.setStatus("OPEN");
-        pipTaskService.savePIPTask(newTask);
-        PortletUtils.addInfoMsg("Task successfully created.", request);
-        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+        newTask = pipTaskService.savePIPTask(newTask);
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("status", newTask.getStatus());
+        jsonObject.put("taskName", newTask.getName());
+        jsonObject.put("id", newTask.getId());
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
+//        PortletUtils.addInfoMsg("Task successfully created.", request);
+//        return "redirect:/performance-improvement-plans";
     }
 
     @RequestMapping(value = "/save-issue", method = RequestMethod.POST)
@@ -291,7 +305,7 @@ public class performanceImprovementPlanController {
     }
 
     @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)
-    public String updateIssueStatus(HttpServletRequest request, long performanceImprovementPlanId, String issueId) {
+    public void updateIssueStatus(HttpServletResponse response, String issueId) {
 
         PIPIssue issue = pipIssueService.getPIPIssueById(Long.parseLong(issueId));
         if("OPEN".equals(issue.getStatus())){
@@ -300,7 +314,17 @@ public class performanceImprovementPlanController {
             issue.setStatus("OPEN");
         }
         pipIssueService.savePIPIssue(issue);
-        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("status", issue.getStatus());
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
     }
 
 

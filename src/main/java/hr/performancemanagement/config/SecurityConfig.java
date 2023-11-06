@@ -119,11 +119,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests().antMatchers("/login","/reset-password","/save-password","/change-password/**","/set-reset").permitAll()
+        http.authorizeRequests().antMatchers("/login","/logout","/error","/reset-password","/save-password","/change-password/**","/set-reset").permitAll()
                 .and().authorizeRequests().anyRequest().authenticated()
                 .and().formLogin().loginPage("/login")
                 .defaultSuccessUrl("/",false)
-//                .successHandler(successHandler())
                 .permitAll()
                 .and().logout()
                 .deleteCookies("remove")
@@ -131,8 +130,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/")
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
-                .and().csrf().disable().cors()
-        ;
+                .and().csrf().disable().cors();
     }
 
     @Bean
@@ -152,15 +150,4 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return new BCryptPasswordEncoder();
     }
 
-    private void removeSessionAttributesAfterError(HttpServletRequest request) {
-        Enumeration<String> attributeNames = request.getSession().getAttributeNames();
-        while (attributeNames.hasMoreElements()){
-            String attribute = attributeNames.nextElement();
-            logger.info(">>>> Session Attribute : "+ attribute);
-            if(!attribute.equals("SPRING_SECURITY_CONTEXT")){
-                request.getSession().removeAttribute(attribute);
-                logger.error(">>>> Removed session Attribute : "+ attribute);
-            }
-        }
-    }
 }

@@ -73,13 +73,13 @@
 
                             <ul class="sortable-list connectList agile-list" id="todo">
                                 <li class="secondary-element" th:id="${plan.id}" onmouseleave="updatePerformanceImprovementPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'todo']}" >
-                                    <span data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
+                                    <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
                                         <span th:text="${plan.agreedAction}"></span>
                                         <div class="agile-detail">
                                             <a class="float-right btn btn-xs btn-white" th:text="${plan.employee?.initials}">NDZ</a>
                                             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
                                         </div>
-                                    </span>
+                                    </div>
 
                                     <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-xl" role="document">
@@ -152,10 +152,10 @@
                                                                 <li>
                                                                     <input th:id="${issue.id}" type="checkbox" th:if="${issue.status =='COMPLETED'}" checked  style="zoom:1.3;" onchange="updateIssueStatus(this.id)"/>
                                                                     <input th:id="${issue.id}" type="checkbox" th:unless="${issue.status =='COMPLETED'}"  style="zoom:1.3;" onchange="updateIssueStatus(this.id)">
-                                                                    <span class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
-                                                                    <span class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
-                                                                    <small class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
-                                                                    <small class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
                                                             <ul class="todo-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
@@ -226,7 +226,7 @@
                                                                                     <label class="col-form-label col-lg-3 required">Expected Standard</label>
                                                                                     <div class="col-lg-9">
                                                                                         <div class="input-group m-b">
-                                                                                            <input class="form-control" name="expectedStandard" th:value="${expectedStandard}" required>
+                                                                                            <input class="form-control" name="expectedStandard" th:value="${plan.expectedStandard}" required>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -366,14 +366,14 @@
                             <h3>In Progress</h3>
 
                             <ul class="sortable-list connectList agile-list" id="inprogress">
-                                <li class="secondary-element" th:id="${plan.id}" onmouseleave="updatePerformanceImprovementPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'inprogress']}" >
-                                    <span data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
+                                <li class="warning-element" th:id="${plan.id}" onmouseleave="updatePerformanceImprovementPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'inprogress']}" >
+                                    <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
                                         <span th:text="${plan.agreedAction}"></span>
                                         <div class="agile-detail">
                                             <a class="float-right btn btn-xs btn-white" th:text="${plan.employee?.initials}">NDZ</a>
                                             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
                                         </div>
-                                    </span>
+                                    </div>
 
                                     <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-xl" role="document">
@@ -446,10 +446,10 @@
                                                                 <li>
                                                                     <input th:id="${issue.id}" type="checkbox" th:if="${issue.status =='COMPLETED'}" checked  style="zoom:1.3;" onchange="updateIssueStatus(this.id)"/>
                                                                     <input th:id="${issue.id}" type="checkbox" th:unless="${issue.status =='COMPLETED'}"  style="zoom:1.3;" onchange="updateIssueStatus(this.id)">
-                                                                    <span class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
-                                                                    <span class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
-                                                                    <small class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
-                                                                    <small class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
+                                                                    <span th:id="'issueName' + ${issue.id}"class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
                                                             <ul class="todo-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
@@ -520,7 +520,7 @@
                                                                                     <label class="col-form-label col-lg-3 required">Expected Standard</label>
                                                                                     <div class="col-lg-9">
                                                                                         <div class="input-group m-b">
-                                                                                            <input class="form-control" name="expectedStandard" th:value="${expectedStandard}" required>
+                                                                                            <input class="form-control" name="expectedStandard" th:value="${plan.expectedStandard}" required>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -639,14 +639,14 @@
                             <h3>Completed</h3>
 
                             <ul class="sortable-list connectList agile-list" id="completed">
-                                <li class="secondary-element" th:id="${plan.id}" onmouseleave="updatePerformanceImprovementPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'completed']}" >
-                                    <span data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
+                                <li class="success-element" th:id="${plan.id}" onmouseleave="updatePerformanceImprovementPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'completed']}" >
+                                    <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
                                         <span th:text="${plan.agreedAction}"></span>
                                         <div class="agile-detail">
                                             <a class="float-right btn btn-xs btn-white" th:text="${plan.employee?.initials}">NDZ</a>
                                             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
                                         </div>
-                                    </span>
+                                    </div>
 
                                     <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-xl" role="document">
@@ -719,10 +719,10 @@
                                                                 <li>
                                                                     <input th:id="${issue.id}" type="checkbox" th:if="${issue.status =='COMPLETED'}" checked  style="zoom:1.3;" onchange="updateIssueStatus(this.id)"/>
                                                                     <input th:id="${issue.id}" type="checkbox" th:unless="${issue.status =='COMPLETED'}"  style="zoom:1.3;" onchange="updateIssueStatus(this.id)">
-                                                                    <span class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
-                                                                    <span class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
-                                                                    <small class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
-                                                                    <small class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
                                                             <ul class="todo-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
@@ -793,7 +793,7 @@
                                                                                     <label class="col-form-label col-lg-3 required">Expected Standard</label>
                                                                                     <div class="col-lg-9">
                                                                                         <div class="input-group m-b">
-                                                                                            <input class="form-control" name="expectedStandard" th:value="${expectedStandard}" required>
+                                                                                            <input class="form-control" name="expectedStandard" th:value="${plan.expectedStandard}" required>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -950,6 +950,14 @@
             }
         }).disableSelection();
 
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        const plan = urlParams.get('plan');
+
+        if(plan != null){
+            $('#planModal'+ plan).modal('show');
+        }
+
     });
 
     function updatePerformanceImprovementPlanStatus(id, status){
@@ -998,8 +1006,7 @@
                 performanceImprovementPlanId, task
             },
             success: function (data) {
-                window.location.reload();
-
+                window.location.href = "/performance-improvement-plans?plan="+performanceImprovementPlanId;
             },
             error : function(data) {
 
@@ -1018,7 +1025,7 @@
                 performanceImprovementPlanId, issue
             },
             success: function (data) {
-                window.location.reload();
+                window.location.href = "/performance-improvement-plans?plan="+performanceImprovementPlanId;
             },
             error : function(data) {
 
@@ -1037,7 +1044,7 @@
                 performanceImprovementPlanId, note
             },
             success: function (data) {
-
+                window.location.href = "/performance-improvement-plans?plan="+performanceImprovementPlanId;
             },
             error : function(data) {
 
@@ -1077,14 +1084,29 @@
     }
 
     function updateIssueStatus(issueId){
-        let performanceImprovementPlanId = document.getElementById("performanceImprovementPlanId").value;
+
         $.ajax({
             url : '/performance-improvement-plans/update-issue-status',
             method: "POST",
             data: {
-                performanceImprovementPlanId, issueId
+                issueId
             },
             success: function (data) {
+                let response = JSON.parse(data);
+                if(response.status === "TODO"){
+                    document.getElementById("issueName"+ issueId).classList.remove("completed");
+                    document.getElementById("issueLabel"+ issueId).classList.replace("label-primary","label-warning");
+                    document.getElementById("issueLabel"+ issueId).innerText="pending";
+                }else if(response.status ==="COMPLETED"){
+                    document.getElementById("issueName"+ issueId).classList.add("completed");
+                    document.getElementById("issueLabel"+ issueId).classList.replace("label-warning","label-primary");
+                    document.getElementById("issueLabel"+ issueId).innerText="completed";
+
+                }else{
+                    document.getElementById("issueName"+ issueId).classList.remove("completed");
+                    document.getElementById("issueLabel"+ issueId).classList.replace("label-primary","label-warning");
+                    document.getElementById("issueLabel"+ issueId).innerText="pending";
+                }
             },
             error : function(data) {
 

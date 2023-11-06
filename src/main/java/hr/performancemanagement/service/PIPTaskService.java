@@ -29,8 +29,9 @@ public class PIPTaskService {
     }
 
 
-    public void savePIPTask(PIPTask pipTask) {
-        pipTaskRepository.save(pipTask);
+    public PIPTask savePIPTask(PIPTask pipTask) {
+        PIPTask task = pipTaskRepository.save(pipTask);
+        return task;
     }
 
     @Transactional

@@ -255,7 +255,7 @@ public class ActionPlanController {
     }
 
     @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)
-    public String updateIssueStatus(HttpServletRequest request, long actionPlanId, String issueId) {
+    public void updateIssueStatus(HttpServletResponse response, String issueId) {
 
         Issue issue = issueService.getIssueById(Long.parseLong(issueId));
         if("OPEN".equals(issue.getStatus())){
@@ -264,7 +264,17 @@ public class ActionPlanController {
             issue.setStatus("OPEN");
         }
         issueService.saveIssue(issue);
-        return "redirect:/action-plans/view-plan/"+ actionPlanId;
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("status", issue.getStatus());
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
     }
 
 
