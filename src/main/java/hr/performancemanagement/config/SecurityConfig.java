@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.service.AccountService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Pages;
+import hr.performancemanagement.utils.exceptions.PMException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -31,6 +34,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import javax.sound.sampled.Port;
 import javax.xml.bind.DatatypeConverter;
 import java.math.BigInteger;
@@ -54,7 +58,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         auth.authenticationProvider(
                 new AuthenticationProvider() {
                     @Override
-                    public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+                    public Authentication authenticate(Authentication authentication) {
 
                         MessageDigest md = null;
 
@@ -70,14 +74,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         md.update(pass.getBytes());
                         byte[] digest = md.digest();
                         String password = DatatypeConverter.printHexBinary(digest).toLowerCase();
-
+                        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
                         Account account = accountService.findAccountByEmail(name);
 
                         if(account !=null) {
 
                             if (name.equals(account.getEmail()) && password.equals(account.getPassword())) {
 
-                                ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
                                 attr.getRequest().getSession().setAttribute("loggedUser", account);
 
                                 Set<String> authorities = new HashSet<>();
@@ -87,27 +90,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                                 return new UsernamePasswordAuthenticationToken(name, password, roles);
                             } else {
 
-                                try {
-                                    throw new Exception("Invalid username or password");
-                                } catch (Exception e) {
-                                    ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
-                                    HttpServletRequest request = attr.getRequest();
-                                    PortletUtils.addErrorMsg("Invalid username or Password", request);
-                                    throw new RuntimeException(e.getMessage());
-                                }
+                                throw new PMException("Invalid username or Password");
                             }
                         }else {
 
-                            try {
-                                throw new Exception("Account does not exist");
-                            } catch (Exception e) {
-                                ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
-                                HttpServletRequest request = attr.getRequest();
-                                PortletUtils.addErrorMsg("Account does not exist", request);
-                                throw new RuntimeException(e.getMessage());
+                                throw new PMException("Account does not exist");
 
-                            }
                         }
+
                     }
                     @Override
                     public boolean supports(Class<?> aClass) {
@@ -119,7 +109,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests().antMatchers("/login","/logout","/error","/reset-password","/save-password","/change-password/**","/set-reset").permitAll()
+        http.authorizeRequests().antMatchers("/login**","/logout","/reset-password","/save-password","/change-password/**","/set-reset").permitAll()
                 .and().authorizeRequests().anyRequest().authenticated()
                 .and().formLogin().loginPage("/login")
                 .defaultSuccessUrl("/",false)
@@ -149,5 +139,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 
 }

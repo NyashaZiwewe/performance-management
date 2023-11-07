@@ -167,7 +167,7 @@
 
                                                                 </div>
                                                                 <footer>
-                                                                    <span th:if="${isOwner || isSupervisor || isModerator }">
+                                                                    <span>
                                                                         <input type="hidden" th:value="${target.id}" name="target">
                                                                         <textarea placeholder="Type your message" name="name"></textarea>
                                                                         <button class="btn btn-white" style="width: 100% !important" type="submit">Send</button>

@@ -24,6 +24,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.util.List;
 
 @Controller
@@ -325,18 +326,39 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-overall-comment", method = RequestMethod.POST)
-    public void saveComment(HttpServletResponse response, Long scorecardId, String userType, String comment) {
+    public void saveComment(HttpServletRequest request, HttpServletResponse response, Long scorecardId, String userType, String comment) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
 
-        if("owner".equalsIgnoreCase(userType)){
+        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
             scorecard.setOwnerComment(comment);
-        } else if ("supervisor".equalsIgnoreCase(userType)) {
+        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
             scorecard.setSupervisorComment(comment);
-        } else if ("moderator".equalsIgnoreCase(userType)) {
+        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
             scorecard.setModeratorComment(comment);
         }
         scorecardService.saveScorecard(scorecard);
+
+        if(!PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
+            String link = commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId);
+
+            String recipient = scorecard.getOwner().getEmail();
+            String subject = "Scorecard Comment,";
+            String template = "Good day, \n\n"
+                                + "Please note that"+ commonService.getLoggedUser().getFullName() +" added an overall comment on your scorecard. "
+                                + "Message: "+ comment + "\n"
+                                + "You can now login and response or action\n"
+                                + "Link: "+ link + "\n\n"
+                                + "Best regards,\n"
+                                + "The ZimTrade Team";
+            try {
+                mailservice.sendEmail(recipient, subject, template);
+                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+            }catch (Exception e){
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            }
+        }
+
         JSONObject jsonObject = new JSONObject();
 
         jsonObject.put("alreadyExists", false);
@@ -407,7 +429,7 @@ public class ScorecardController {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
-        scorecard.setApprovalStatus("SCORED_BY_EMPLOYEE");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE);
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
 
@@ -435,7 +457,7 @@ public class ScorecardController {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
-        scorecard.setApprovalStatus("SCORED_BY_SUPERVISOR");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR);
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
@@ -506,7 +528,7 @@ public class ScorecardController {
 
         }catch (Exception e){
 
-                    String recipient = "amkwazhe@zimtrade.co.zw";
+            String recipient = "amkwazhe@zimtrade.co.zw";
 //            String recipient = "ziwewend@gmail.com";
             String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
@@ -572,7 +594,7 @@ public class ScorecardController {
 
         }catch (Exception e){
 
-                    String recipient = "amkwazhe@zimtrade.co.zw";
+            String recipient = "amkwazhe@zimtrade.co.zw";
 //            String recipient = "ziwewend@gmail.com";
             String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
@@ -600,7 +622,7 @@ public class ScorecardController {
         String owner = scorecard.getOwner().getFullName();
         String recipient = scorecard.getOwner().getEmail();
 //        String recipient = "ziwewend@gmail.com";
-        scorecard.setApprovalStatus("APPROVED_BY_SUPERVISOR");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR);
 
         try {
             scorecardService.saveScorecard(scorecard);
@@ -609,7 +631,7 @@ public class ScorecardController {
                 Approval approval = new Approval();
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
-                approval.setStatus("APPROVED_BY_SUPERVISOR");
+                approval.setStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
                 e.printStackTrace();
@@ -674,8 +696,8 @@ public class ScorecardController {
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
         String recipient = scorecard.getOwner().getEmail();
-        scorecard.setApprovalStatus("REJECTED_BY_SUPERVISOR");
-        scorecard.setStatus("OPEN");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR);
+        scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
         try{
             scorecardService.saveScorecard(scorecard);
@@ -686,7 +708,7 @@ public class ScorecardController {
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
                 approval.setMessage(message);
-                approval.setStatus("REJECTED_BY_SUPERVISOR");
+                approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
                 e.printStackTrace();
@@ -741,8 +763,8 @@ public class ScorecardController {
         String recipient = scorecard.getOwner().getSupervisor().getEmail();
 //        String recipient = "ziwewend@gmail.com";
         Account loggedUser = commonService.getLoggedUser();
-        scorecard.setApprovalStatus("APPROVED_BY_HR");
-        scorecard.setLockStatus("OPEN");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR);
+        scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
         try {
             scorecardService.saveScorecard(scorecard);
@@ -750,7 +772,7 @@ public class ScorecardController {
                 Approval approval = new Approval();
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
-                approval.setStatus("APPROVED_BY_HR");
+                approval.setStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
                 e.printStackTrace();
@@ -817,7 +839,7 @@ public class ScorecardController {
         String owner = scorecard.getOwner().getFullName();
         String recipient = scorecard.getOwner().getSupervisor().getEmail();
 //        String recipient = "ziwewend@gmail.com";
-        scorecard.setApprovalStatus("REJECTED_BY_HR");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_HR);
         Account loggedUser = commonService.getLoggedUser();
 
         try{
@@ -829,7 +851,7 @@ public class ScorecardController {
                 approval.setScorecard(scorecard);
                 approval.setAccount(loggedUser);
                 approval.setMessage(message);
-                approval.setStatus("REJECTED_BY_HR");
+                approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
               e.printStackTrace();
@@ -921,22 +943,61 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-comment", method = RequestMethod.POST)
-    public String saveComment(HttpServletRequest request, Comment comment) {
+    public String saveComment(HttpServletRequest request, Comment comment) throws MalformedURLException {
         Account loggedUser = commonService.getLoggedUser();
         comment.setSender(loggedUser);
         commentService.saveComment(comment);
         Long scorecardId = comment.getTarget().getGoal().getScorecardId();
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        String link = commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId);
+
+        String recipient = scorecard.getOwner().getEmail();
+        String subject = "Scorecard Comment,";
+        String template = "Good day, \n\n"
+                + "Please note that"+ loggedUser.getFullName() +" added a comment on your scorecard. "
+                + "Goal - measure: [" + comment.getTarget().getGoal().getName() +" - "+ comment.getTarget().getMeasure() +"]\n"
+                + "Message: "+ comment.getName() + "\n"
+                + "You can now login and response or action\n"
+                + "Link: "+ link + "\n\n"
+                + "Best regards,\n"
+                + "The ZimTrade Team";
+        try {
+            mailservice.sendEmail(recipient, subject, template);
+            PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
         PortletUtils.addInfoMsg("Comment successfully saved", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }
 
     @RequestMapping(value = "/save-flag", method = RequestMethod.POST)
-    public String saveFlag(HttpServletRequest request, Target updatedTarget) {
+    public String saveFlag(HttpServletRequest request, Target updatedTarget) throws MalformedURLException {
 
         Target target = targetService.getTargetById(updatedTarget.getId());
         long scorecardId = target.getGoal().getScorecardId();
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
         target.setFlag(updatedTarget.getFlag());
         targetService.saveTarget(target);
+        String link = commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId);
+        String fullName = commonService.getLoggedUser().getFullName();
+
+        String recipient = scorecard.getOwner().getEmail();
+        String subject = "Scorecard Comment,";
+        String template = "Good day, \n\n"
+                + "Please note that"+ fullName +" flagged a goal on your scorecard. "
+                + "Goal - measure: [" + target.getGoal().getName() +" - "+ target.getMeasure() +"]\n"
+                + "Message: "+ target.getFlag() + "\n"
+                + "You can now login and response or action\n"
+                + "Link: "+ link + "\n\n"
+                + "Best regards,\n"
+                + "The ZimTrade Team";
+        try {
+            mailservice.sendEmail(recipient, subject, template);
+            PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
         PortletUtils.addInfoMsg("Measure successfully flagged and the reason was saved", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }

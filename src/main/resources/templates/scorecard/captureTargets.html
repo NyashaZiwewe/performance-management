@@ -366,7 +366,7 @@
                                     </td>
                                     <td></td>
                                 </tr>
-                                <form th:if="${totalAllocatedWeight != 100.0 && session.loggedUser?.id == scorecard.owner?.id} " th:action="@{/scorecards/save-target}" method="post" th:object="${goal}">
+                                <form th:if="${totalAllocatedWeight != 100.0}" th:action="@{/scorecards/save-target}" method="post" th:object="${goal}">
                                     <tr>
                                         <td>
                                             <select name="perspective" class="form-control select2_demo_1">
@@ -418,14 +418,12 @@
                         <div class="col-lg-4">
                             <input type="hidden" name="scorecardId" th:value="${id}">
                         </div>
-                        <div class="col-lg-8" th:if="${totalAllocatedWeight == 100.0 AND scorecard.approvalStatus == 'NEW' && session.loggedUser.id == scorecard.owner.id}">
+                        <div class="col-lg-8" th:if="${totalAllocatedWeight == 100.0}">
                             <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
-                            <button class="btn btn-success" type="button" onclick="submitScorecardForApproval()">Submit for Approval</button>
+                            <button class="btn btn-success" th:if="${scorecard.approvalStatus == 'NEW'}" type="button" onclick="submitScorecardForApproval()">Submit for Approval</button>
+                            <button class="btn btn-success" th:if="${scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" type="button" onclick="submitScorecardForApproval()">Re-Submit for Approval</button>
                         </div>
-                        <div class="col-lg-8" th:if="${totalAllocatedWeight == 100.0 AND scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR' && session.loggedUser.id == scorecard.owner.id}">
-                            <button class="btn btn-success" type="button" onclick="submitScorecardForApproval()">Resubmit for Approval</button>
-                        </div>
-                        <div class="col-lg-8" th:if="${totalAllocatedWeight != 100.0 AND scorecard.approvalStatus == 'NEW'}">
+                        <div class="col-lg-8" th:if="${totalAllocatedWeight != 100.0}">
                             <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
                             <button class="btn btn-secondary" type="button" disabled>Submit for Approval</button>
                         </div>

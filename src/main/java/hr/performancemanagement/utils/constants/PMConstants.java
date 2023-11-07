@@ -36,5 +36,10 @@ public class PMConstants {
     public static final String MODERATOR = "MODERATOR";
     public static final String STANDARD_SCORECARD = "STANDARD_SCORECARD";
     public static final String VALUE_BASED = "VALUE_BASED";
+    public static final String USER_TYPE_OWNER = "OWNER";
+    public static final String USER_TYPE_SUPERVISOR = "SUPERVISOR";
+    public static final String USER_TYPE_MODERATOR = "MODERATOR";
+
+
 
 }

@@ -132,6 +132,7 @@ public class HomeController {
             PortletUtils.addErrorMsg("Failed with error: "+ e.getMessage(), request);
         }
         modelAndView.addObject("changePasswordWrapper", wrapper);
+        modelAndView.addObject("reset", reset);
         PortletUtils.addMessagesToPage(modelAndView, request);
         modelAndView.addObject("localDate", LocalDate.now());
         return modelAndView;
@@ -150,10 +151,11 @@ public class HomeController {
             wrapper.setResetPassword(reset);
             wrapper.setEmail(account.getEmail());
             modelAndView.addObject("changePasswordWrapper", wrapper);
+            modelAndView.addObject("reset", null);
             PortletUtils.addMessagesToPage(modelAndView, request);
             return modelAndView;
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Failed with error: "+ e.getMessage(), request);
+            PortletUtils.addErrorMsg("Account not found. Please recheck your reset link: ", request);
             PortletUtils.addMessagesToPage(modelAndView, request);
             modelAndView.addObject("localDate", LocalDate.now());
             return modelAndView;
@@ -167,13 +169,19 @@ public class HomeController {
 
           try {
               Account employee = accountService.getAccountToReset(wrapper.getEmail(), wrapper.getResetPassword());
-              String oldPassword = commonService.encryptPassword(wrapper.getOldPassword());
+              String oldPassword = wrapper.getOldPassword();
+              if(oldPassword != null){
+                  oldPassword = commonService.encryptPassword(oldPassword);
+              }
+
               if(employee != null){
-                  if(!employee.getPassword().equalsIgnoreCase(oldPassword)){
-                      PortletUtils.addErrorMsg("Incorrect Old password", request);
-                      return "redirect:/change-password/"+ wrapper.getResetPassword();
+                  if(oldPassword != null){
+                      if(!employee.getPassword().equalsIgnoreCase(oldPassword)){
+                          PortletUtils.addErrorMsg("Incorrect Old password", request);
+                          return "redirect:/change-password/"+ wrapper.getResetPassword();
+                      }
                   }
-                  else if(!wrapper.getNewPassword().equalsIgnoreCase(wrapper.getRepeatPassword())){
+                  if(!wrapper.getNewPassword().equalsIgnoreCase(wrapper.getRepeatPassword())){
                       PortletUtils.addErrorMsg("Password mismatch. Check new & repeat Password ", request);
                       return "redirect:/change-password/"+ wrapper.getResetPassword();
                   }else {
@@ -195,6 +203,7 @@ public class HomeController {
     @RequestMapping("/reset-password")
     public ModelAndView resetPassword(HttpServletRequest request){
         ModelAndView modelAndView = new ModelAndView("resetPassword");
+        modelAndView.addObject("localDate", LocalDate.now());
         PortletUtils.addMessagesToPage(modelAndView, request);
         return modelAndView;
     }

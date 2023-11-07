@@ -38,9 +38,10 @@ public class MyErrorController implements ErrorController {
                 removeSessionAttributesAfterError(request);
                 return "error-500";
             }
+            removeSessionAttributesAfterError(request);
         }
-        removeSessionAttributesAfterError(request);
-        return "error";
+//        removeSessionAttributesAfterError(request);
+        return "redirect:/";
     }
 
     private void removeSessionAttributesAfterError(HttpServletRequest request) {

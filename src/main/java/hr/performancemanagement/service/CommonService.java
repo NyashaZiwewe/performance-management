@@ -174,15 +174,14 @@ public class CommonService {
     }
 
     public String getCurrentUrl(HttpServletRequest request) throws MalformedURLException {
-        String urlString = request.getRequestURL().toString();
-
-        URL url = new URL(urlString);
-        String host = url.getHost();
-        String protocol = url.getProtocol();
-//        Integer port = url.getPort();
-        Integer port = Integer.valueOf(Objects.requireNonNull(environment.getProperty("server.port")));
-        host = protocol.concat("://"+ host.concat(":"+ port));
-
+//        String urlString = request.getRequestURL().toString();
+//
+//        URL url = new URL(urlString);
+//        String host = url.getHost();
+//        String protocol = url.getProtocol();
+//        Integer port = Integer.valueOf(Objects.requireNonNull(environment.getProperty("server.port")));
+//        host = protocol.concat("://"+ host.concat(":"+ port));
+        String host = environment.getProperty("host.url");
         return host;
     }
 
