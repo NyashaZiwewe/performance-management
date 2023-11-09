@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.*;
 import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
+import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -182,7 +183,7 @@ public class ActionPlanController {
         Task newTask = new Task();
         newTask.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
         newTask.setName(task);
-        newTask.setStatus("OPEN");
+        newTask.setStatus(PMConstants.TASK_STATUS_OPEN);
         taskService.saveTask(newTask);
         PortletUtils.addInfoMsg("Task successfully created.", request);
         return "redirect:/action-plans/view-plan/"+ actionPlanId;
@@ -194,7 +195,7 @@ public class ActionPlanController {
         Issue newIssue = new Issue();
         newIssue.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
         newIssue.setName(issue);
-        newIssue.setStatus("OPEN");
+        newIssue.setStatus(PMConstants.TASK_STATUS_OPEN);
         issueService.saveIssue(newIssue);
         PortletUtils.addInfoMsg("Issue successfully created.", request);
         return "redirect:/action-plans/view-plan/"+ actionPlanId;
@@ -206,7 +207,7 @@ public class ActionPlanController {
         Note newNote = new Note();
         newNote.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
         newNote.setComment(note);
-        newNote.setStatus("OPEN");
+        newNote.setStatus(PMConstants.TASK_STATUS_OPEN);
         noteService.saveNote(newNote);
         PortletUtils.addInfoMsg("Comment successfully posted.", request);
         return "redirect:/action-plans/view-plan/"+ actionPlanId;
@@ -216,10 +217,10 @@ public class ActionPlanController {
     public void updateTaskStatus(HttpServletResponse response, String taskId) {
 
         Task task = taskService.getTaskById(Long.parseLong(taskId));
-        if("OPEN".equals(task.getStatus())){
-            task.setStatus("COMPLETED");
+        if(PMConstants.TASK_STATUS_OPEN.equals(task.getStatus())){
+            task.setStatus(PMConstants.TASK_STATUS_COMPLETED);
         }else {
-            task.setStatus("OPEN");
+            task.setStatus(PMConstants.TASK_STATUS_OPEN);
         }
         taskService.saveTask(task);
         JSONObject jsonObject = new JSONObject();
@@ -258,10 +259,10 @@ public class ActionPlanController {
     public void updateIssueStatus(HttpServletResponse response, String issueId) {
 
         Issue issue = issueService.getIssueById(Long.parseLong(issueId));
-        if("OPEN".equals(issue.getStatus())){
-            issue.setStatus("COMPLETED");
+        if(PMConstants.TASK_STATUS_OPEN.equals(issue.getStatus())){
+            issue.setStatus(PMConstants.TASK_STATUS_COMPLETED);
         }else {
-            issue.setStatus("OPEN");
+            issue.setStatus(PMConstants.TASK_STATUS_OPEN);
         }
         issueService.saveIssue(issue);
         JSONObject jsonObject = new JSONObject();

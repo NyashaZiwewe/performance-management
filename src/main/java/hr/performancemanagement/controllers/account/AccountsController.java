@@ -20,6 +20,7 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -94,18 +95,18 @@ public class AccountsController {
         newAccount.setPassword(cs.encryptPassword(password));
         newAccount.setClientId(cs.getLoggedUser().getClientId());
         accountService.addAccount(newAccount);
-        String currentURL = cs.getCurrentUrl(request);
+        URL currentURL = new URL(cs.getCurrentUrl(request));
 
         String recipient = newAccount.getEmail();
         String subject = "Account Creation,";
         String template = "Good day, \n\n"
-                + "Please note that your account has been created in the PM System.  "
-                + "You can now login and use the system\n\n"
-                + "Link :" + currentURL + "\n"
-                + "Username :" + newAccount.getEmail() + "\n"
-                + "Link :" + password + "\n\n"
-                + "Best regards,\n"
-                + "The ZimTrade Team";
+                            + "Please note that your account has been created in the PM System.  "
+                            + "You can now login and use the system\n\n"
+                            + "Link: " + currentURL + "\n"
+                            + "Username: " + newAccount.getEmail() + "\n"
+                            + "Password: " + password + "\n\n"
+                            + "Best regards,\n"
+                            + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);

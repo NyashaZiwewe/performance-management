@@ -45,5 +45,7 @@ public class PerformanceImprovementPlan {
     private List<PIPTask> taskList;
     @OneToMany(mappedBy = "performanceImprovementPlan", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PIPIssue> issueList;
+    @OneToMany(mappedBy = "performanceImprovementPlan", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<PIPNote> noteList;
 
 }

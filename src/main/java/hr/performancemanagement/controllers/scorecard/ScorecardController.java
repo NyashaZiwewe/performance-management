@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
 
 @Controller
@@ -340,7 +341,7 @@ public class ScorecardController {
         scorecardService.saveScorecard(scorecard);
 
         if(!PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
-            String link = commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId);
+            URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
 
             String recipient = scorecard.getOwner().getEmail();
             String subject = "Scorecard Comment,";
@@ -396,20 +397,21 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/submit-scorecard-for-approval", method = RequestMethod.POST)
-    public String submitScorecardForApproval(HttpServletRequest request, Scorecard updatedScorecard) throws UnsupportedEncodingException {
+    public String submitScorecardForApproval(HttpServletRequest request, Scorecard updatedScorecard) throws UnsupportedEncodingException, MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
         scorecard.setApprovalStatus("PENDING_APPROVAL");
         scorecard.setLockStatus("LOCKED");
         scorecardService.saveScorecard(scorecard);
-
+        URL currentURL = new URL(commonService.getCurrentUrl(request));
         String recipient = scorecard.getOwner().getSupervisor().getEmail();
 //        String recipient = "ziwewend@gmail.com";
         String subject = "Scorecard Approval,";
         String template = "Good day, \n\n"
                 + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for your approval. "
-                + "You can now login and approve\n\n"
+                + "You can now login and approve\n"
+                + "Link: "+ currentURL +"\n\n"
                 + "Best regards,\n"
                 + "The ZimTrade Team";
 
@@ -425,7 +427,7 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/submit-employee-scores", method = RequestMethod.POST)
-    public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard){
+    public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
@@ -433,14 +435,16 @@ public class ScorecardController {
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
 
+        URL currentURL = new URL(commonService.getCurrentUrl(request));
         String recipient = supervisor.getEmail();
 //        String recipient = "ziwewend@gmail.com";
         String subject = "Scorecard Scoring,";
         String template = "Good day, \n\n"
-                + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for scoring by supervisor. "
-                + "You can now login and add your scores\n\n"
-                + "Best regards,\n"
-                + "The ZimTrade Team";
+                        + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for scoring by supervisor. "
+                        + "You can now login and add your scores\n"
+                        + "Link: "+ currentURL +"\n\n"
+                        + "Best regards,\n"
+                        + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
@@ -453,7 +457,7 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/submit-manager-scores", method = RequestMethod.POST)
-    public String submitManagerScore(HttpServletRequest request, Scorecard updatedScorecard) {
+    public String submitManagerScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
@@ -461,13 +465,14 @@ public class ScorecardController {
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
-
+        URL currentURL = new URL(commonService.getCurrentUrl(request));
 //        String recipient = hr;
         String recipient = "ziwewend@gmail.com";
         String subject = "Scorecard Scoring,";
         String template = "Good day, \n\n"
                 + "Please note that "+ supervisor.getFullName() +" has submitted "+ owner.getFullName()+"'s scorecard for moderation by HR. "
-                + "You can now login and add your scores\n\n"
+                + "You can now login and add your scores\n"
+                + "Link: "+ currentURL + "\n\n"
                 + "Best regards,\n"
                 + "The ZimTrade Team";
         try {
@@ -485,31 +490,31 @@ public class ScorecardController {
     public String submitAgreedScore(HttpServletRequest request, Scorecard updatedScorecard)  {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
-        scorecard.setApprovalStatus("AGREED_BY_TWO");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_AGREED_BY_TWO);
         Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
 
         try {
             scorecardService.saveScorecard(scorecard);
-
+            URL currentURL = new URL(commonService.getCurrentUrl(request));
             String recipient = owner.getEmail();
-//            String recipient = "ziwewend@gmail.com";
-            String subject = "Scorecard Moderation,";
+            String subject = "Scorecard Scoring,";
             String template = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has moderated your scorecard. "
-                    + "You can now login and see results\n\n"
+                    + "You can now login and see results\n"
+                    + "Link: "+ currentURL +"\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
 
-            String recipient2 = supervisor.getEmail();
-//            String recipient2 = "ziwewend@gmail.com";
-            String subject2 = "Scorecard Moderation,";
-            String template2 = "Good day, \n\n"
-                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
-                    + "You can now login and see results\n\n"
-                    + "Best regards,\n"
-                    + "The ZimTrade Team";
+//            String recipient2 = supervisor.getEmail();
+////            String recipient2 = "ziwewend@gmail.com";
+//            String subject2 = "Scorecard Moderation,";
+//            String template2 = "Good day, \n\n"
+//                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
+//                    + "You can now login and see results\n\n"
+//                    + "Best regards,\n"
+//                    + "The ZimTrade Team";
 
             try {
                 mailservice.sendEmail(recipient, subject, template);
@@ -517,12 +522,12 @@ public class ScorecardController {
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            try {
-                mailservice.sendEmail(recipient2, subject2, template2);
-                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
-            }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
-            }
+//            try {
+//                mailservice.sendEmail(recipient2, subject2, template2);
+//                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+//            }catch (Exception e){
+//                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+//            }
 
             PortletUtils.addInfoMsg("Scorecard successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
 
@@ -551,7 +556,7 @@ public class ScorecardController {
     public String submitModeratedScorecard(HttpServletRequest request, Scorecard updatedScorecard) {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
-        scorecard.setApprovalStatus("MODERATED_BY_HR");
+        scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_MODERATED_BY_HR);
         Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
@@ -559,23 +564,24 @@ public class ScorecardController {
         try {
             scorecardService.saveScorecard(scorecard);
 
-        String recipient = owner.getEmail();
-//            String recipient = "ziwewend@gmail.com";
+            URL currentURL = new URL(commonService.getCurrentUrl(request));
+            String recipient = owner.getEmail();
             String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has moderated your scorecard. "
-                    + "You can now login and see results\n\n"
+                    + "You can now login and see results\n"
+                    + "Link: "+ currentURL + "\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
 
-            String recipient2 = supervisor.getEmail();
-//            String recipient2 = "ziwewend@gmail.com";
-            String subject2 = "Scorecard Moderation,";
-            String template2 = "Good day, \n\n"
-                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
-                    + "You can now login and see results\n\n"
-                    + "Best regards,\n"
-                    + "The ZimTrade Team";
+//            String recipient2 = supervisor.getEmail();
+////            String recipient2 = "ziwewend@gmail.com";
+//            String subject2 = "Scorecard Moderation,";
+//            String template2 = "Good day, \n\n"
+//                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
+//                    + "You can now login and see results\n\n"
+//                    + "Best regards,\n"
+//                    + "The ZimTrade Team";
 
             try {
                 mailservice.sendEmail(recipient, subject, template);
@@ -583,12 +589,12 @@ public class ScorecardController {
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            try {
-                mailservice.sendEmail(recipient2, subject2, template2);
-                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
-            }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
-            }
+//            try {
+//                mailservice.sendEmail(recipient2, subject2, template2);
+//                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+//            }catch (Exception e){
+//                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+//            }
 
             PortletUtils.addInfoMsg("Scorecard successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
 
@@ -621,7 +627,6 @@ public class ScorecardController {
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
         String recipient = scorecard.getOwner().getEmail();
-//        String recipient = "ziwewend@gmail.com";
         scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR);
 
         try {
@@ -636,11 +641,12 @@ public class ScorecardController {
             }catch (Exception e){
                 e.printStackTrace();
             }
-
+            URL currentURL = new URL(commonService.getCurrentUrl(request));
             String subject = "Scorecard Approval,";
             String template = "Good day "+ owner + ", \n\n"
                             + "Please note that "+ supervisor +" has approved your scorecard. "
-                            + "We are now waiting for HR to approve so that you can proceed with capturing scores. \n\n"
+                            + "We are now waiting for HR to approve so that you can proceed with capturing scores. \n"
+                            + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
@@ -650,20 +656,21 @@ public class ScorecardController {
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-
-            String recipient2 = "ziwewend@gmail.com";
-            String subject2 = "Scorecard Approval,";
-            String template2 = "Good day HR, \n\n"
-                            + "Please note that "+ supervisor +" has approved "+owner+"'s scorecard. "
-                            + "You are now eligible to review and approve so that they can proceed with capturing scores. \n\n"
-                            + "Best regards,\n"
-                            + "The ZimTrade Team";
-            try {
-                mailservice.sendEmail(recipient2, subject2, template2);
-                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
-            }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
-            }
+//
+//            String recipient2 = "ziwewend@gmail.com";
+//            String subject2 = "Scorecard Approval,";
+//            String template2 = "Good day HR, \n\n"
+//                            + "Please note that "+ supervisor +" has approved "+owner+"'s scorecard. "
+//                            + "You are now eligible to review and approve so that they can proceed with capturing scores. \n"
+//                            + "Link: "+ currentURL +"\n\n"
+//                            + "Best regards,\n"
+//                            + "The ZimTrade Team";
+//            try {
+//                mailservice.sendEmail(recipient2, subject2, template2);
+//                PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
+//            }catch (Exception e){
+//                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+//            }
 
 
             PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to HR for further approval and to "+ owner + " as feedback", request);
@@ -713,16 +720,17 @@ public class ScorecardController {
             }catch (Exception e){
                 e.printStackTrace();
             }
-
+            URL currentURL = new URL(commonService.getCurrentUrl(request));
             String subject = "Scorecard Approval,";
             String template = "Good day "+ owner + ", \n\n"
-                    + "Please note that "+ supervisor +" has rejected your scorecard with the following message \n\n. "
-                    +".........................................................................................\n"
-                    + message + "\n"
-                    +".........................................................................................\n\n"
-                    + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n\n"
-                    + "Best regards,\n"
-                    + "The ZimTrade Team";
+                            + "Please note that "+ supervisor +" has rejected your scorecard with the following message \n\n. "
+                            +".........................................................................................\n"
+                            + message + "\n"
+                            +".........................................................................................\n\n"
+                            + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n"
+                            + "Link: "+currentURL +"\n\n"
+                            + "Best regards,\n"
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
@@ -777,13 +785,14 @@ public class ScorecardController {
             }catch (Exception e){
                 e.printStackTrace();
             }
-
+            URL currentURL = new URL(commonService.getCurrentUrl(request));
             String subject = "Scorecard Approval,";
             String template = "Good day "+ supervisor + ", \n\n"
-                    + "Please note that "+ loggedUser.getFullName() +" has approved "+ owner +" scorecard. "
-                    + "The owner is now eligible for capturing scores. \n\n"
-                    + "Best regards,\n"
-                    + "The ZimTrade Team";
+                            + "Please note that "+ loggedUser.getFullName() +" has approved "+ owner +" scorecard. "
+                            + "The owner is now eligible for capturing scores. \n"
+                            + "Link: "+ currentURL +"\n\n"
+                            + "Best regards,\n"
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
@@ -797,7 +806,8 @@ public class ScorecardController {
             String subject2 = "Scorecard Approval,";
             String template2 = "Good day "+owner+", \n\n"
                     + "Please note that "+ loggedUser.getFullName() +" has your scorecard. "
-                    + "You are now eligible to capture scores. \n\n"
+                    + "You are now eligible to capture scores. \n"
+                    + "Link: "+ currentURL +"\n\n"
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
@@ -856,16 +866,17 @@ public class ScorecardController {
             }catch (Exception e){
               e.printStackTrace();
             }
-
+            URL currentURL = new URL(commonService.getCurrentUrl(request));
             String subject = "Scorecard Approval,";
             String template = "Good day "+ supervisor + ", \n\n"
-                    + "Please note that "+ loggedUser.getFullName() +" has rejected "+ owner+"'s scorecard with the following message \n\n. "
-                    +".........................................................................................\n"
-                    + message + "\n"
-                    +".........................................................................................\n\n"
-                    + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n\n"
-                    + "Best regards,\n"
-                    + "The ZimTrade Team";
+                            + "Please note that "+ loggedUser.getFullName() +" has rejected "+ owner+"'s scorecard with the following message \n\n. "
+                            +".........................................................................................\n"
+                            + message + "\n"
+                            +".........................................................................................\n\n"
+                            + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n"
+                            + "Link: "+ currentURL + "\n\n"
+                            + "Best regards,\n"
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);
@@ -949,7 +960,7 @@ public class ScorecardController {
         commentService.saveComment(comment);
         Long scorecardId = comment.getTarget().getGoal().getScorecardId();
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
-        String link = commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId);
+        URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
 
         String recipient = scorecard.getOwner().getEmail();
         String subject = "Scorecard Comment,";
@@ -979,7 +990,7 @@ public class ScorecardController {
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
         target.setFlag(updatedTarget.getFlag());
         targetService.saveTarget(target);
-        String link = commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId);
+        URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
         String fullName = commonService.getLoggedUser().getFullName();
 
         String recipient = scorecard.getOwner().getEmail();

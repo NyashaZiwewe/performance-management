@@ -5,6 +5,7 @@ import hr.performancemanagement.repository.PerformanceImprovementPlanRepository;
 import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
+import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -187,28 +188,15 @@ public class performanceImprovementPlanController {
     }
 
     @RequestMapping(value = "/save-task", method = RequestMethod.POST)
-    public void saveTask(HttpServletRequest request, HttpServletResponse response, long performanceImprovementPlanId, String task) {
+    public String saveTask(HttpServletRequest request, HttpServletResponse response, long performanceImprovementPlanId, String task) {
 
         PIPTask newTask = new PIPTask();
         newTask.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
         newTask.setName(task);
-        newTask.setStatus("OPEN");
+        newTask.setStatus(PMConstants.TASK_STATUS_OPEN);
         newTask = pipTaskService.savePIPTask(newTask);
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("status", newTask.getStatus());
-        jsonObject.put("taskName", newTask.getName());
-        jsonObject.put("id", newTask.getId());
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
-//        PortletUtils.addInfoMsg("Task successfully created.", request);
-//        return "redirect:/performance-improvement-plans";
+        PortletUtils.addInfoMsg("Task successfully created.", request);
+        return "redirect:/performance-improvement-plans";
     }
 
     @RequestMapping(value = "/save-issue", method = RequestMethod.POST)
@@ -217,7 +205,7 @@ public class performanceImprovementPlanController {
         PIPIssue newIssue = new PIPIssue();
         newIssue.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
         newIssue.setName(issue);
-        newIssue.setStatus("OPEN");
+        newIssue.setStatus(PMConstants.TASK_STATUS_OPEN);
         pipIssueService.savePIPIssue(newIssue);
         PortletUtils.addInfoMsg("Issue successfully created.", request);
         return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
@@ -229,7 +217,7 @@ public class performanceImprovementPlanController {
         PIPNote newNote = new PIPNote();
         newNote.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
         newNote.setComment(note);
-        newNote.setStatus("OPEN");
+        newNote.setStatus(PMConstants.TASK_STATUS_OPEN);
         pipNoteService.savePIPNote(newNote);
         PortletUtils.addInfoMsg("Comment successfully posted.", request);
         return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
@@ -266,10 +254,10 @@ public class performanceImprovementPlanController {
     public void updateTaskStatus(HttpServletResponse response, String taskId) {
 
         PIPTask task = pipTaskService.getPIPTaskById(Long.parseLong(taskId));
-        if("OPEN".equals(task.getStatus())){
-            task.setStatus("COMPLETED");
+        if(PMConstants.TASK_STATUS_OPEN.equals(task.getStatus())){
+            task.setStatus(PMConstants.TASK_STATUS_COMPLETED);
         }else {
-            task.setStatus("OPEN");
+            task.setStatus(PMConstants.TASK_STATUS_OPEN);
         }
         pipTaskService.savePIPTask(task);
         JSONObject jsonObject = new JSONObject();
@@ -308,10 +296,10 @@ public class performanceImprovementPlanController {
     public void updateIssueStatus(HttpServletResponse response, String issueId) {
 
         PIPIssue issue = pipIssueService.getPIPIssueById(Long.parseLong(issueId));
-        if("OPEN".equals(issue.getStatus())){
-            issue.setStatus("COMPLETED");
+        if(PMConstants.TASK_STATUS_OPEN.equals(issue.getStatus())){
+            issue.setStatus(PMConstants.TASK_STATUS_COMPLETED);
         }else {
-            issue.setStatus("OPEN");
+            issue.setStatus(PMConstants.TASK_STATUS_OPEN);
         }
         pipIssueService.savePIPIssue(issue);
         JSONObject jsonObject = new JSONObject();

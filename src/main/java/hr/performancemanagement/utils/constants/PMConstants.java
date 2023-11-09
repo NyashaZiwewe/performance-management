@@ -40,6 +40,9 @@ public class PMConstants {
     public static final String USER_TYPE_SUPERVISOR = "SUPERVISOR";
     public static final String USER_TYPE_MODERATOR = "MODERATOR";
 
+    public static final String TASK_STATUS_OPEN = "OPEN";
+    public static final String TASK_STATUS_COMPLETED = "COMPLETED";
+
 
 
 }

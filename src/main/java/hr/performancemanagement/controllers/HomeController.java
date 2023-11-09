@@ -16,6 +16,7 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.security.sasl.AuthenticationException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.net.URL;
 import java.text.DateFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -216,7 +217,7 @@ public class HomeController {
             if(account != null){
                 account.setResetPassword(reset);
                 accountService.saveAccount(account);
-                String resetLink = commonService.getCurrentUrl(request).concat("/change-password/"+ reset);
+                URL resetLink = new URL(commonService.getCurrentUrl(request).concat("/change-password/"+ reset));
 
 
                 String recipient = username;
@@ -224,7 +225,7 @@ public class HomeController {
                 String template = "Good day, \n\n"
                         + "Please note that we received a request to reset your account.  "
                         + "If you didn't initiate this, you can ignore this email, otherwise click the link below to set the new password\n\n"
-                        + "Link :" + resetLink + "\n\n"
+                        + "Link: " + resetLink + "\n\n"
                         + "Best regards,\n"
                         + "The ZimTrade Team";
                 try {
