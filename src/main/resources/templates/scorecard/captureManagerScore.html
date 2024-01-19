@@ -97,7 +97,6 @@
                                                 <th>KPI Weight</th>
                                                 <th>Employee Score</th>
                                                 <th>Manager Score</th>
-                                                <th>Weighted Score</th>
                                             </tr>
                                             </thead>
                                             <tbody>
@@ -114,7 +113,8 @@
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.unit}"></a>
                                                 </td>
                                                 <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.normalTarget}"></a>
+                                                    <a th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"></a>
+                                                    <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"></a>
                                                 </td>
                                                 <td>
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"  th:text="${target.allocatedWeight}"></a>
@@ -124,9 +124,6 @@
                                                 </td>
                                                 <td>
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.managerScore == null ? ' ' : target.managerScore}"></a>
-                                                </td>
-                                                <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.weightedScore == null ? ' ' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}" th:attr="class = ${target.weightedScore > 0 ? 'pass' : 'fail' }"></a>
                                                 </td>
 
                                                 <td>
@@ -148,7 +145,6 @@
                                                                             <th>Target</th>
                                                                             <th>Employee Score</th>
                                                                             <th>Manager Score</th>
-                                                                            <th>Weighted Score</th>
                                                                             <th>Link - Evidence</th>
                                                                             <th>Justification</th>
                                                                             <th></th>
@@ -157,10 +153,10 @@
                                                                         <tbody>
                                                                         <tr th:each="score : ${target.scores}">
                                                                             <td th:text="${score.reportingDate?.endDate}"></td>
-                                                                            <td th:text="${target.normalTarget}"></td>
+                                                                            <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>
+                                                                            <td th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></td>
                                                                             <td th:text="${target.employeeScore}"></td>
                                                                             <td th:text="${target.managerScore}"></td>
-                                                                            <td th:text="${score.weightedScore == null ? '' : #numbers.formatDecimal(score.weightedScore, 0, 2) + '%'}" th:attr="class = ${score.weightedScore > 0 ? 'pass' : 'fail' }"></td>
                                                                             <td>
                                                                                 <a th:href="${score.evidence}" target="_blank" th:text="${score.evidence}"></a>
                                                                             </td>
@@ -250,7 +246,8 @@
                                                     <td th:if="${newGoal}" th:text="${target.goal.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>
                                                     <td th:text="${target.measure}"></td>
                                                     <td th:text="${target.unit}"></td>
-                                                    <td th:text="${target.normalTarget}"></td>
+                                                    <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>
+                                                    <td th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></td>
                                                     <td th:text="${target.allocatedWeight}"></td>
                                                     <td th:text="${target.currentEmployeeScore}"></td>
                                                     <td>

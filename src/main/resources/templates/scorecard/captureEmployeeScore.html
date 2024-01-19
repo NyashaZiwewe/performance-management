@@ -31,7 +31,6 @@
         function saveScore(targetId){
 
             let employeeScore = document.getElementById("employeeScore"+targetId).value;
-            let evidence = document.getElementById("evidence"+targetId).value;
             let justification = document.getElementById("justification"+targetId).value;
 
             if((employeeScore !== "" && Number(employeeScore) !== 0.0)  && (Number(employeeScore) < 1 || Number(employeeScore) > 5)){
@@ -43,7 +42,7 @@
                 url : '/scorecards/save-value-based-employee-score',
                 method: "POST",
                 data: {
-                    targetId, employeeScore, evidence, justification
+                    targetId, employeeScore, justification
                 },
                 success: function (data) {
                     console.log("data" + data);
@@ -59,6 +58,7 @@
                 }
             });
         }
+
 
     </script>
 
@@ -85,8 +85,7 @@
                     <div class="tab-content">
                         <div role="tabpanel" id="tab-1" class="tab-pane">
                             <div class="panel-body">
-                                <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}">
-                                    <div class="row table-responsive">
+                                <div class="row table-responsive">
                                         <table class="table">
                                             <thead>
                                             <tr>
@@ -98,7 +97,6 @@
                                                 <th>Target</th>
                                                 <th>KPI Weight</th>
                                                 <th>Employee Score</th>
-                                                <th>Weighted Score</th>
                                             </tr>
                                             </thead>
                                             <tbody>
@@ -123,9 +121,6 @@
                                                 <td>
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.employeeScore == null ? ' ' : target.employeeScore}"></a>
                                                 </td>
-                                                <td>
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.weightedScore == null ? ' ' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}" th:attr="class = ${target.weightedScore > 0 ? 'pass' : 'fail' }"></a>
-                                                </td>
 
                                                 <td>
                                                     <div class="modal fade" th:id="'scoreModal'+ ${target.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -146,7 +141,8 @@
                                                                             <th>Target</th>
                                                                             <th>Employee Score</th>
                                                                             <th>Weighted Score</th>
-                                                                            <th>Link - Evidence</th>
+                                                                            <th>Link</th>
+                                                                            <th>Attachment</th>
                                                                             <th>Justification</th>
                                                                             <th></th>
                                                                         </tr>
@@ -154,11 +150,17 @@
                                                                         <tbody>
                                                                         <tr th:each="score : ${target.scores}">
                                                                             <td th:text="${score.reportingDate?.endDate}"></td>
-                                                                            <td th:text="${target.normalTarget}"></td>
+                                                                            <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>
+                                                                            <td th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></td>
                                                                             <td th:text="${target.employeeScore}"></td>
                                                                             <td th:text="${score.weightedScore == null ? '' : #numbers.formatDecimal(score.weightedScore, 0, 2) + '%'}" th:attr="class = ${score.weightedScore > 0 ? 'pass' : 'fail' }"></td>
                                                                             <td>
-                                                                                <a th:href="${score.evidence}" target="_blank" th:text="${score.evidence}"></a>
+                                                                                <a th:if="${score.evidence != null}" th:href="${score.evidence}" target="_blank" th:text="${score.evidence}"></a>
+                                                                            </td>
+                                                                            <td>
+                                                                                <a th:if="${score.attachment != null}" th:href="@{/scorecards/view-attachment/} + ${score.attachment}" target="_blank">
+                                                                                    <i class="fa fa-paperclip"></i>
+                                                                                </a>
                                                                             </td>
                                                                             <td th:text="${score.justification}"></td>
                                                                             <td></td>
@@ -197,6 +199,7 @@
                                         </table>
 
                                     </div>
+                                <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}">
                                     <div class="form-group row">
                                         <div class="col-lg-4">
                                             <input type="hidden" name="id" th:value="${id}">
@@ -212,7 +215,6 @@
                         </div>
                         <div role="tabpanel" id="tab-2" class="tab-pane active">
                             <div class="panel-body">
-                                <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}">
                                     <fieldset class="border p-2">
                                         <legend class="w-auto"><span th:text="${reportingPeriod.startDate +' - '+ reportingPeriod.endDate}"></span></legend>
                                         <div class="row table-responsive">
@@ -227,7 +229,8 @@
                                                     <th>Target</th>
                                                     <th>KPI Weight</th>
                                                     <th>Employee Score</th>
-                                                    <th>Evidence</th>
+                                                    <th>Link</th>
+                                                    <th>Attachment</th>
                                                     <th>Justification</th>
                                                     <th></th>
                                                 </tr>
@@ -241,24 +244,69 @@
                                                     <td th:if="${newGoal}" th:text="${target.goal.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>
                                                     <td th:text="${target.measure}"></td>
                                                     <td th:text="${target.unit}"></td>
-                                                    <td th:text="${target.normalTarget}"></td>
+                                                    <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>
+                                                    <td th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}">Rate</td>
                                                     <td th:text="${target.allocatedWeight}"></td>
                                                     <td>
                                                         <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" required>
                                                     </td>
                                                     <td>
-                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
+                                                        <input type="text" readonly data-toggle="modal" th:data-target="'#evidenceModal'+ ${target.id}" th:value="${target.currentEvidence}">
+                                                    </td>
+                                                    <td>
+                                                        <input th:if="${target.currentAttachmentName == null || target.currentAttachmentName == ''}" type="text" readonly data-toggle="modal" th:data-target="'#evidenceModal'+ ${target.id}">
+                                                        <a th:unless="${target.currentAttachmentName == null || target.currentAttachmentName == ''}" th:text="${target.currentAttachmentName}" th:href="@{/scorecards/view-evidence/} +${target.currentAttachmentName}" target="_blank"></a>
                                                     </td>
                                                     <td>
                                                         <input type="text" th:id="'justification' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">
                                                     </td>
+
+                                                    <div class="modal" tabindex="-1" role="dialog" th:id="'evidenceModal'+ ${target.id}">
+                                                        <div class="modal-dialog" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title">Capture Evidence</h5>
+                                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                        <span aria-hidden="true">&times;</span>
+                                                                    </button>
+                                                                </div>
+                                                                <form th:action="@{/scorecards/save-value-based-evidence}" enctype="multipart/form-data" method="post" th:object="${evidenceWrapper}">
+                                                                    <div class="modal-body">
+                                                                        <div class="col-sm-12">
+                                                                            <div class="form-group row">
+                                                                                <label class="col-form-label col-lg-3">Link</label>
+                                                                                <div class="col-lg-9">
+                                                                                        <input type="text" class="form-control" name="evidence" th:value="${target.currentEvidence}">
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-sm-12">
+                                                                            <div class="form-group row">
+                                                                                <label class="col-form-label col-lg-3">Attachment</label>
+                                                                                <div class="col-lg-9">
+                                                                                    <input type="file" class="form-control" name="attachment" accept=
+                                                                                            "application/msword, application/vnd.ms-excel, application/vnd.ms-powerpoint,text/plain, application/pdf, image/png, image/jpeg">
+                                                                                    <input type="hidden" class="form-control" name="targetId" th:value="${target.id}">
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="modal-footer">
+                                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                                        <button type="submit" class="btn btn-primary">Save Evidence</button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </tr>
                                                 </tbody>
 
                                             </table>
 
                                         </div>
-                                        <div class="form-group row">
+                                        <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}">
+                                          <div class="form-group row">
                                             <div class="col-lg-4">
                                                 <input type="hidden" name="id"  id="id" th:value="${id}">
                                             </div>
@@ -268,9 +316,10 @@
                                                 <button class="btn btn-success" type="submit">Validate & Submit</button>
                                             </div>
                                         </div>
+                                       </form>
                                     </fieldset>
 
-                                </form>
+
                             </div>
                         </div>
                     </div>

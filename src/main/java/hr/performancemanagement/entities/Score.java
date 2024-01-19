@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -32,6 +33,9 @@ public class Score implements Serializable {
     private double moderatedScore;
     private double weightedScore;
     private String evidence;
+    private String attachmentName;
+    @Transient
+    private MultipartFile attachment;
     private String justification;
     @CreationTimestamp
     private Date date;

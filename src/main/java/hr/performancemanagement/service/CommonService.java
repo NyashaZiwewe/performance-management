@@ -81,16 +81,14 @@ public class CommonService {
             }
 
         }
-
-        if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_TARGETS)){
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_TARGETS)){
             if(PMConstants.APPROVAL_STATUS_NEW.equalsIgnoreCase(approval_status) || PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(approval_status)){
                 if(isOwner(scorecard) || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())){
                     isUserAllowed = true;
                 }
             }
         }
-
-        if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES)){
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES)){
             if(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR.equalsIgnoreCase(approval_status)){
                 if(isOwner(scorecard) || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())){
                     isUserAllowed = true;
@@ -98,7 +96,7 @@ public class CommonService {
             }
         }
 
-        if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES)){
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES)){
             if(PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE.equalsIgnoreCase(approval_status)){
                 if(isSupervisor(owner)){
                     isUserAllowed = true;
@@ -106,7 +104,7 @@ public class CommonService {
             }
         }
 
-        if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES)){
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES)){
             if(PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR.equalsIgnoreCase(approval_status)){
                 if(isSupervisor(owner)){
                     isUserAllowed = true;
@@ -114,7 +112,7 @@ public class CommonService {
             }
         }
 
-        if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES)){
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES)){
             if(PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(approval_status)){
                 if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
                     isUserAllowed = true;
@@ -122,7 +120,7 @@ public class CommonService {
             }
         }
 
-        if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CLOSE_SCORECARD)){
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CLOSE_SCORECARD)){
             if(PMConstants.APPROVAL_STATUS_MODERATED_BY_HR.equalsIgnoreCase(approval_status)){
                 if(PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin())){
                     isUserAllowed = true;
@@ -134,7 +132,7 @@ public class CommonService {
     }
 
     public boolean isSupervisor(Account employee){
-        if(getLoggedUser().getId() == employee.getSupervisor().getClientId()){
+        if(getLoggedUser().getId() == employee.getSupervisor().getId()){
             return true;
         }else{
             return false;
@@ -185,6 +183,14 @@ public class CommonService {
         return host;
     }
 
+    public String getHREmail(){
+        return environment.getProperty("email.hr");
+    }
+
+    public String getAdminEmail(){
+        return environment.getProperty("email.admin");
+    }
+
     public String encryptPassword(String pass){
         MessageDigest md = null;
 
@@ -198,5 +204,20 @@ public class CommonService {
         byte[] digest = md.digest();
         String password = DatatypeConverter.printHexBinary(digest).toLowerCase();
         return password;
+    }
+
+
+    public String getFileExtention(String fileName) {
+        int index = fileName.lastIndexOf('.');
+        try {
+            if (index > 0) {
+                String extension = fileName.substring(index + 1);
+                return extension;
+            } else {
+                return null;
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

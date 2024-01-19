@@ -18,8 +18,7 @@ public class ValueBasedScoreService {
     ScoreRepository scoreRepository;
     @Autowired
     private TargetService targetService;
-    @Autowired
-    private ScorecardService scorecardService;
+
     @Autowired
     HttpSession session;
 
@@ -46,12 +45,13 @@ public class ValueBasedScoreService {
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
             existingScore.setEmployeeScore(score.getEmployeeScore());
-            existingScore.setEvidence(score.getEvidence());
+//            existingScore.setEvidence(score.getEvidence());
             existingScore.setJustification(score.getJustification());
             savedScore = scoreRepository.save(existingScore);
             Target target = existingScore.getTarget();
             target.setCurrentEmployeeScore(savedScore.getEmployeeScore());
-            target.setCurrentEvidence(savedScore.getEvidence());
+//            target.setCurrentEvidence(savedScore.getEvidence());
+//            target.setCurrentAttachmentName(savedScore.getAttachmentName());
             target.setCurrentJustification(savedScore.getJustification());
             updateTargetData(target);
 
@@ -59,6 +59,33 @@ public class ValueBasedScoreService {
             savedScore = scoreRepository.save(score);
             Target target = savedScore.getTarget();
             target.setCurrentEmployeeScore(score.getEmployeeScore());
+            updateTargetData(target);
+        }
+        return savedScore;
+    }
+
+    public Score saveEvidence(Score score) {
+
+        Score savedScore;
+        if(scoreExists(score)){
+            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            if(score.getEvidence().length() > 0){
+                existingScore.setEvidence(score.getEvidence());
+            }
+            if(score.getAttachmentName().length() > 0){
+                existingScore.setAttachmentName(score.getAttachmentName());
+            }
+            savedScore = scoreRepository.save(existingScore);
+            Target target = existingScore.getTarget();
+            target.setCurrentEvidence(savedScore.getEvidence());
+            target.setCurrentAttachmentName(savedScore.getAttachmentName());
+            updateTargetData(target);
+
+        }else{
+            savedScore = scoreRepository.save(score);
+            Target target = savedScore.getTarget();
+            target.setCurrentEvidence(score.getEvidence());
+            target.setCurrentAttachmentName(score.getAttachmentName());
             updateTargetData(target);
         }
         return savedScore;

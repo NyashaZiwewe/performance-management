@@ -49,6 +49,7 @@ public class Target {
     private Double currentModeratedScore;
     private Double currentWeightedScore;
     private String currentEvidence;
+    private String currentAttachmentName;
     private String currentJustification;
 
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
