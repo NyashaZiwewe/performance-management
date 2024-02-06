@@ -1,88 +1,47 @@
 package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Goal;
-import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.GoalRepository;
-import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class GoalService {
+
     @Autowired
     GoalRepository goalRepository;
-    @Autowired
-    private TargetRepository targetRepository;
 
     public Goal getGoalById(long id){
 
-        Goal goal = goalRepository.findGoalById(id);
-        return goal;
+        Goal Goal = goalRepository.findGoalById(id);
+        return Goal;
     }
-    public List<Goal> listAllGoals(long scorecardId){
-        List<Goal> goalList = new ArrayList<>();
-        goalRepository.findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(scorecardId).forEach(goal -> goalList.add(goal));
-        return goalList;
-    }
-
-
-    public Goal saveGoal(Goal goal) {
-
-       Goal savedGoal = goalRepository.save(goal);
-       return savedGoal;
+    public List<Goal> listAllGoals(long clientId)
+    {
+        List<Goal> GoalList = new ArrayList<>();
+        goalRepository.findGoalsByGear_ClientId(clientId).forEach(Goal -> GoalList.add(Goal));
+        return GoalList;
     }
 
-    public double getTotalAllocatedWeight(long scorecardId){
-        try {
-            double total = goalRepository.sumAllocatedWeight(scorecardId);
-            return total;
-        }catch (Exception e){
-            return 0.0;
+    public List<Goal> listGoalsByScorecard(long scorecardId)
+    {
+        List<Goal> GoalList = new ArrayList<>();
+        goalRepository.goalsByScorecard(scorecardId).forEach(Goal -> GoalList.add(Goal));
+        for(Goal objective : GoalList){
+            objective.setWeightedScore(goalRepository.weightedScoreByScorecardAndGoal(objective));
         }
+        return GoalList;
     }
 
-    public double getAverageManagerScore(long scorecardId){
-        try {
-            double total = goalRepository.averageManagerScore(scorecardId);
-            return total;
-        }catch (Exception e){
-            return 0.0;
-        }
+    public void addGoal(Goal Goal) {
+
+        goalRepository.save(Goal);
     }
 
-    public double getAverageEmployeeScore(long scorecardId){
-        try {
-            double total = goalRepository.averageEmployeeScore(scorecardId);
-            return total;
-        }catch (Exception e){
-            return 0.0;
-        }
+    public Goal saveGoal(Goal Goal){
+        Goal savedGoal = goalRepository.save(Goal);
+        return savedGoal;
     }
-
-    public double getAverageModeratorScore(long scorecardId){
-        try {
-            double total = goalRepository.averageModeratedScore(scorecardId);
-            return total;
-        }catch (Exception e){
-            return 0.0;
-        }
-    }
-
-    public double getAverageAgreedScore(long scorecardId){
-        try {
-            double total = goalRepository.averageModeratedScore(scorecardId);
-            return total;
-        }catch (Exception e){
-            return 0.0;
-        }
-    }
-
-    @Transactional
-    public void deleteGoal(Goal goal){
-        goalRepository.delete(goal);
-    }
-
 }

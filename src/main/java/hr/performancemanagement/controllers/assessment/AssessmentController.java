@@ -15,18 +15,14 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Controller
 @RequestMapping(value = "/performance-review")
@@ -42,9 +38,9 @@ public class AssessmentController {
     @Autowired
     private final TargetService targetService;
     @Autowired
-    private final StrategicObjectiveService strategicObjectiveService;
-    @Autowired
     private final GoalService goalService;
+    @Autowired
+    private final OutcomeService outcomeService;
     @Autowired
     private final AccountService accountService;
     private static final String PDF_RESOURCES = "";
@@ -53,12 +49,14 @@ public class AssessmentController {
     @Autowired
     CommonService commonService;
     @Autowired
+    OutputService outputService;
+    @Autowired
     CommonService cs;
 
-    public AssessmentController(TargetService targetService, StrategicObjectiveService strategicObjectiveService, GoalService goalService, AccountService accountService) {
+    public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
         this.targetService = targetService;
-        this.strategicObjectiveService = strategicObjectiveService;
         this.goalService = goalService;
+        this.outcomeService = outcomeService;
         this.accountService = accountService;
     }
 
@@ -216,7 +214,7 @@ public class AssessmentController {
         modelAndView.addObject("pageTitle", "View Performance Score");
 
         Scorecard scoreCard = scorecardService.getScorecardById(id);
-        List<Goal> GOALS_LIST = goalService.listAllGoals(id);
+        List<Output> outputs = outputService.listAllOutputs(scoreCard);
         ReportingPeriod reportingPeriod = scoreCard.getReportingPeriod();
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
@@ -227,7 +225,7 @@ public class AssessmentController {
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
-        double averageModeratedScore = goalService.getAverageModeratorScore(id);
+        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         double weightedScore;
         try {
             weightedScore = (averageModeratedScore / 5 ) * 100;
@@ -242,7 +240,7 @@ public class AssessmentController {
         modelAndView.addObject("startDate", startDate);
         modelAndView.addObject("endDate", endDate);
         modelAndView.addObject("scorecard", scoreCard);
-        modelAndView.addObject("goalsList", GOALS_LIST);
+        modelAndView.addObject("outputs", outputs);
         modelAndView.addObject("averageModeratedScore", averageModeratedScore);
         modelAndView.addObject("weightedScore", weightedScore);
         PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
@@ -265,7 +263,7 @@ public class AssessmentController {
         modelAndView.addObject("pageTitle", "View Performance Score");
 
         Scorecard scoreCard = scorecardService.getScorecardById(id);
-        List<Goal> GOALS_LIST = goalService.listAllGoals(id);
+        List<Output> outputs = outputService.listAllOutputs(scoreCard);
         ReportingPeriod reportingPeriod = scoreCard.getReportingPeriod();
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
@@ -276,8 +274,8 @@ public class AssessmentController {
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
-        double averageModeratedScore = goalService.getAverageModeratorScore(id);
-        List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard);
         double totalWeightedScore = 0.0;
         for(Target target: targetsList){
             totalWeightedScore += target.getWeightedScore();
@@ -324,7 +322,7 @@ public class AssessmentController {
         Context context = new Context();
         String username = PortletUtils.getUsername(request);
         Scorecard scoreCard = scorecardService.getScorecardById(id);
-        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listStrategicObjectivesByScorecard(id);
+        List<Goal> GoalsList = goalService.listGoalsByScorecard(id);
         ReportingPeriod reportingPeriod = scoreCard.getReportingPeriod();
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
@@ -335,8 +333,8 @@ public class AssessmentController {
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
-        double averageModeratedScore = goalService.getAverageModeratorScore(id);
-        List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard);
         double totalWeightedScore = 0.0;
         for(Target target: targetsList){
             totalWeightedScore += target.getWeightedScore();
@@ -349,7 +347,7 @@ public class AssessmentController {
         context.setVariable("startDate", startDate);
         context.setVariable("endDate", endDate);
         context.setVariable("scorecard", scoreCard);
-        context.setVariable("strategicObjectivesList", strategicObjectivesList);
+        context.setVariable("GoalsList", GoalsList);
         context.setVariable("averageModeratedScore", averageModeratedScore);
         context.setVariable("totalWeightedScore", totalWeightedScore);
         context.setVariable("username", username);

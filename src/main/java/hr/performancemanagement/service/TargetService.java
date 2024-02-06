@@ -1,7 +1,8 @@
 package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.GoalRepository;
+import hr.performancemanagement.repository.OutcomeRepository;
+import hr.performancemanagement.repository.OutputRepository;
 import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,29 +16,21 @@ public class TargetService {
     @Autowired
     TargetRepository targetRepository;
     @Autowired
-    GoalRepository goalRepository;
+    OutputRepository outputRepository;
     @Autowired
     ReportingDateService reportingDateService;
 
-    public List<Target> getAllTargetsByScorecard(long scorecardId){
+    public List<Target> getAllTargetsByScorecard(Scorecard scorecard){
         List<Target> targetList = new ArrayList<>();
 
-        List<Goal> goalList = goalRepository.findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(scorecardId);
-//        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        List<Output> outputs = outputRepository.findOutputsByScorecard(scorecard);
 
-        for(Goal goal: goalList){
-           List<Target> targets = targetRepository.findTargetsByGoalId(goal.getId());
-            for(Target target: targets){
-                target.setPerspective(goal.getPerspective());
-                target.setStrategicObjective(goal.getStrategicObjective());
-//                target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
-//                target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
-//                target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
-//                target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
-//                target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
-//                target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
-//                target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
-//                target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));
+        for(Output output: outputs){
+//           List<Target> targets = targetRepository.findTargetsByOutput(output);
+            for(Target target: output.getTargets()){
+                target.setOutcome(output.getOutcome());
+                target.setGoal(output.getOutcome().getGoal());
+                target.setGear(output.getOutcome().getGoal().getGear());
                 targetList.add(target);
             }
         }
@@ -45,8 +38,8 @@ public class TargetService {
         return targetList;
     }
 
-    public List<Target> getAllTargetsByGoal(Goal goal){
-        List<Target> targets = targetRepository.findTargetsByGoalId(goal.getId());
+    public List<Target> getAllTargetsByOutput(Output output){
+        List<Target> targets = targetRepository.findTargetsByOutput(output);
         return targets;
     }
     public Target getTargetById(long id){
@@ -54,8 +47,8 @@ public class TargetService {
         return target;
     }
 
-    public boolean checkIfGoalHasTargets(Goal goal){
-        int count = targetRepository.countTargetsByGoal(goal);
+    public boolean checkIfOutputHasTargets(Output output){
+        int count = targetRepository.countTargetsByOutput(output);
         if(count < 1){
             return false;
         }else {
@@ -119,6 +112,10 @@ public class TargetService {
 
     @Transactional
     public void deleteTarget(Target target){
-        targetRepository.delete(target);
+       try {
+           targetRepository.delete(target);
+       }catch (Exception e){
+           System.out.println(e.getMessage());
+       }
     }
 }

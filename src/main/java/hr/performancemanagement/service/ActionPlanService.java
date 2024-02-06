@@ -1,7 +1,6 @@
 package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ActionPlan;
-import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ActionPlanRepository;
 import org.springframework.beans.factory.annotation.Autowired;

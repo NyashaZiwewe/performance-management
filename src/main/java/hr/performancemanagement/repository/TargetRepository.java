@@ -1,6 +1,5 @@
 package hr.performancemanagement.repository;
-
-import hr.performancemanagement.entities.Goal;
+import hr.performancemanagement.entities.Output;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.Score;
 import hr.performancemanagement.entities.Target;
@@ -13,9 +12,9 @@ import java.util.List;
 
 @Repository
 public interface TargetRepository extends JpaRepository<Target, Long> {
-    List<Target> findTargetsByGoalId(long id);
+    List<Target> findTargetsByOutput(Output output);
     Target findTargetById(long id);
-    int countTargetsByGoal(Goal goal);
+    int countTargetsByOutput(Output output);
     @Query("SELECT coalesce(s.actual, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
     Double currentActual(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
     @Query("SELECT coalesce(s.employeeScore, 0) FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")

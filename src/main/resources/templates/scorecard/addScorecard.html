@@ -44,7 +44,7 @@
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Scorecard Owner</label>
+                                <label class="col-form-label col-lg-4 required">Contract Owner</label>
                                 <div class="col-lg-8">
                                     <select class=" select2_demo_1 form-control " required name="owner" th:field="*{owner}">
                                         <option selected value="">--Owner--</option>
@@ -71,7 +71,7 @@
                         </div>
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Scorecard Model</label>
+                                <label class="col-form-label col-lg-4 required"> Model</label>
                                 <div class="col-lg-8">
                                     <select class="select2_demo_1 form-control" name="scorecardModel" required>
                                         <option selected th:value="${scorecardModel.id}" th:text="${scorecardModel.name}"></option>

@@ -8,29 +8,26 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import java.io.Serializable;
-import java.sql.Date;
-import java.util.List;
-
+import java.util.*;
 
 @Entity
-@AllArgsConstructor
-@NoArgsConstructor
 @Getter
 @Setter
-public class Goal implements Serializable {
+@AllArgsConstructor
+@NoArgsConstructor
+public class Outcome implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     @ManyToOne
-    @JoinColumn(name = "gear_id")
-    private Gear gear;
+    @JoinColumn(name = "goal_id")
+    private Goal goal;
     private String name;
-    @OneToMany(mappedBy = "goal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<Outcome> outcomes;
-    @Transient
-    private Double weightedScore;
+    @OneToMany(mappedBy = "outcome", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Output> outputs;
     @CreationTimestamp
-    private Date dateAdded;
+    @Column(updatable = false)
+    private Date date;
 
 }

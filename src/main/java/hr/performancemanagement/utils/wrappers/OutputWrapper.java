@@ -1,6 +1,6 @@
 package hr.performancemanagement.utils.wrappers;
-import hr.performancemanagement.entities.Perspective;
-import hr.performancemanagement.entities.StrategicObjective;
+import hr.performancemanagement.entities.Gear;
+import hr.performancemanagement.entities.Goal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,14 +10,14 @@ import lombok.Setter;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class GoalWrapper {
+public class OutputWrapper {
 
-    private long goalId;
+    private long outcomeId;
     private long scorecardId;
-    private Perspective perspective;
-    private StrategicObjective strategicObjective;
-    private String goalName;
-
+    private long gearId;
+    private long goalId;
+    private String name;
+    private long outputId;
     private long targetId;
     private String measure;
     private String unit;

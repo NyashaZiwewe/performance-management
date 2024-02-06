@@ -46,12 +46,10 @@
                         <div class="ibox-title">
                             <h5>Search Results</h5>
                             <div class="ibox-tools">
-                                <a th:href="@{/scorecards/add-scorecard}"><button class="btn btn-success btn-sm">Add New Scorecard</button></a>
+                                <a th:href="@{/scorecards/add-scorecard}"><button class="btn btn-success btn-sm">Add New Contract</button></a>
                             </div>
                         </div>
                         <div class="ibox-content">
-                            <fieldset class="p2">
-                                <legend class="w-auto">Scorecards Information</legend>
                                 <div class="table-responsive" th:fragement="administration">
                                 <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap">
                                     <thead>
@@ -103,15 +101,15 @@
                                         <td th:text="${scorecard.date}"></td>
                                         <td>
                                             <span th:if="${scorecard.status == 'ACTIVE'}">
-                                                <a th:if="${loggedUserId == scorecard.owner.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                 <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
+<!--                                                <a th:if="${loggedUserId == scorecard.owner.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">-->
+<!--                                                   <button class="btn btn-success btn-sm">Capture Scores</button>-->
+<!--                                                </a>-->
+<!--                                                 <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">-->
+<!--                                                   <button class="btn btn-success btn-sm">Capture Scores</button>-->
+<!--                                                </a>-->
+<!--                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">-->
+<!--                                                   <button class="btn btn-success btn-sm">Capture Scores</button>-->
+<!--                                                </a>-->
                                                 <span th:if="${loggedUserId == scorecard.owner.id && scorecard.lockStatus == 'OPEN'}">
                                                     <a th:if="${scorecard.approvalStatus == 'NEW' || scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-targets/} + ${scorecard.id}">
                                                     <button class="btn btn-success btn-sm">Edit Targets</button>
@@ -119,19 +117,18 @@
                                                 </span>
                                             </span>
                                             <a th:href="@{/scorecards/clone-scorecard/} + ${scorecard.id}">
-                                                <button class="btn btn-success btn-sm" type="button">Clone Scorecard</button>
+                                                <button class="btn btn-success btn-sm" type="button">Clone Contract</button>
                                             </a>
                                             <a th:href="@{/scorecards/view-scorecard/} + ${scorecard.id}">
-                                                <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
+                                                <button class="btn btn-success btn-sm" type="button">View Conract</button>
                                             </a>
-                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${scorecard.id}" class="btn btn-success btn-sm" type="button">View Report</a>
+<!--                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${scorecard.id}" class="btn btn-success btn-sm" type="button">View Report</a>-->
                                         </td>
                                     </tr>
 
                                     </tbody>
                                 </table>
                             </div>
-                            </fieldset>
                         </div>
                     </div>
                 </div>

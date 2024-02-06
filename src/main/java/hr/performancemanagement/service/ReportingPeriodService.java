@@ -1,7 +1,6 @@
 package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Perspective;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
 import hr.performancemanagement.utils.constants.PMConstants;

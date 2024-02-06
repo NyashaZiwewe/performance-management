@@ -3,6 +3,7 @@ package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Comment;
 import hr.performancemanagement.entities.Note;
 import hr.performancemanagement.entities.SortByCommentId;
+import hr.performancemanagement.entities.Target;
 import hr.performancemanagement.repository.CommentRepository;
 import hr.performancemanagement.repository.NoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,15 +20,15 @@ public class CommentService {
     @Autowired
     CommentRepository commentRepository;
 
-    public List<Comment> getCommentsByGoalId(long goalId){
+    public List<Comment> getCommentsByTarget(Target target){
         List<Comment> commentList = new ArrayList<>();
-        commentRepository.findCommentsByGoal_Id(goalId).forEach(comment -> commentList.add(comment));
+        commentRepository.findCommentsByTarget(target).forEach(comment -> commentList.add(comment));
         return commentList;
     }
 
-    public int countCommentsByGoalId(long goalId){
+    public int countCommentsByTarget(Target target){
         try {
-            int count = commentRepository.countCommentsByGoal_Id(goalId);
+            int count = commentRepository.countCommentsByTarget(target);
             return count;
         }catch (Exception e){
             return 0;

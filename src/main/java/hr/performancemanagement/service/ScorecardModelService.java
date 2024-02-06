@@ -1,7 +1,6 @@
 package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.ScorecardModel;
 import hr.performancemanagement.repository.ScorecardModelRepository;
 import hr.performancemanagement.utils.constants.PMConstants;

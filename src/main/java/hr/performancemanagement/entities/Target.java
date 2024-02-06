@@ -20,16 +20,20 @@ public class Target {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     @ManyToOne
+    @JoinColumn(name = "output_id")
+    private Output output;
+    @Transient
+    @ManyToOne
+    @JoinColumn(name = "outcome_id")
+    private Outcome outcome;
+    @Transient
+    @ManyToOne
     @JoinColumn(name = "goal_id")
     private Goal goal;
     @Transient
     @ManyToOne
-    @JoinColumn(name = "perspective_id")
-    private Perspective perspective;
-    @Transient
-    @ManyToOne
-    @JoinColumn(name = "strategic_objective_id")
-    private StrategicObjective strategicObjective;
+    @JoinColumn(name = "gear_id")
+    private Gear gear;
     private String measure;
     private String unit;
     private Double allocatedWeight;

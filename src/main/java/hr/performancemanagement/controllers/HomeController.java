@@ -1,7 +1,7 @@
 package hr.performancemanagement.controllers;
 import hr.performancemanagement.entities.Account;
+import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.ReportingPeriod;
-import hr.performancemanagement.entities.StrategicObjective;
 import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.wrappers.ChangePasswordWrapper;
@@ -21,7 +21,6 @@ import java.text.DateFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.Period;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -38,7 +37,7 @@ public class HomeController {
     }
 
     @Autowired
-    StrategicObjectiveService strategicObjectiveService;
+    GoalService goalService;
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
     @Autowired
@@ -56,18 +55,31 @@ public class HomeController {
     }
 
     @RequestMapping
-    public ModelAndView goToHome(HttpServletRequest request ) throws ParseException {
+    public ModelAndView goToHome(HttpServletRequest request ){
+
+        ModelAndView modelAndView =  new ModelAndView("index");
+        modelAndView.addObject("pageDomain", "Home");
+        modelAndView.addObject("pageName", "Home");
+        modelAndView.addObject("pageTitle", "Home");
+
+        PortletUtils.addMessagesToPage(modelAndView, request);
+        return modelAndView;
+    }
+
+
+    @RequestMapping(value = "/dont-show-now")
+    public ModelAndView goToHomeXXX(HttpServletRequest request ) throws ParseException {
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
-        List<Double> averageWeightsList = scorecardService.findAverageAllocatedWeightPerStrategicObjective();
-        List<Double> averageScoresList = scorecardService.findAverageWeightedScorePerStrategicObjective();
+        List<Goal> GoalsList = goalService.listAllGoals(reportingPeriod.getId());
+        List<Double> averageWeightsList = scorecardService.findAverageAllocatedWeightPerGoal();
+        List<Double> averageScoresList = scorecardService.findAverageWeightedScorePerGoal();
         int pass = scorecardService.countPassedScorecardsByPeriodId(reportingPeriod);
         int fail = scorecardService.countFailedScorecardsByPeriodId(reportingPeriod);
 
 
-        List<String> strategicObjectives = new ArrayList<>();
-        for(StrategicObjective strategicObjective : strategicObjectivesList){
-            strategicObjectives.add(strategicObjective.getName());
+        List<String> Goals = new ArrayList<>();
+        for(Goal Goal : GoalsList){
+            Goals.add(Goal.getName());
         }
 
         List<Double> averageWeights = new ArrayList<>();
@@ -93,7 +105,7 @@ public class HomeController {
         modelAndView.addObject("pageDomain", "Home");
         modelAndView.addObject("pageName", "Home");
         modelAndView.addObject("pageTitle", "Home");
-        modelAndView.addObject("strategicObjectives", strategicObjectives);
+        modelAndView.addObject("Goals", Goals);
         modelAndView.addObject("weightList", averageWeights);
         modelAndView.addObject("scoresList", averageScores);
         modelAndView.addObject("pass", pass);

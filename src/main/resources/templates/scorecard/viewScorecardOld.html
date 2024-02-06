@@ -81,57 +81,52 @@
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom">
 
-                <div class="row table-responsive table-bordered" th:each="gear, gstat : ${selectedGears}">
+                <div class="row table-responsive" >
                     <table class="table">
                         <thead>
                         <tr>
-                            <td colspan="8" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
-                        </tr>
-                        <tr>
-                            <td colspan="8" style="font-weight: bold">GOAL : <span th:text="${gear.goals[0].name}"></span></td>
-                        </tr>
-                        <tr th:if="${gstat.index == 0}">
-                            <th>Outcome</th>
-                            <th>Output</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Represents evidence of success and failure">Performance Indicator</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Unit of measurement can be in currency, number or percentage">Unit</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Baseline target">Base Target</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Target"> Target</th>
-                            <th data-toggle="popover" data-placement="top" data-content="Allocated Goal Weight">Weight</th>
-                            <th></th>
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances">Actual</th>-->
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances">Employee Score</th>-->
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Manager Score">Manager Score</th>-->
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Agreed Score">Agreed Score</th>-->
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Moderated Score">Moderated Score</th>-->
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Weighted Score">Weighted Score (%)</th>-->
-<!--                            <th data-toggle="popover" data-placement="top" data-content="Conversational comments between supervisor and subordinate">Manager\'s Comment</th>-->
+                            <th>Key Focus Area</th>
+                            <th> Strategic Objective</th>
+                            <th>Goal</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Represents eveidence of success and failure">Performance Measure</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Unit of measurement can be in currency, number or percentage">Unit of Measure</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Target" th:if="${scorecardModel == 'VALUE_BASED'}">Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Baseline target" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Base Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Baseline target" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Stretch Target</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Allocated Goal Weight">KPI Weight</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances" th:if="${scorecardModel == 'STANDARD_SCORECARD'}">Actual</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Maximum level of performance possible under circumstances" th:if="${scorecardModel == 'VALUE_BASED'}">Employee Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Manager Score" th:if="${scorecardModel == 'VALUE_BASED'}">Manager Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Agreed Score" th:if="${scorecardModel == 'VALUE_BASED'}">Agreed Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Moderated Score" th:if="${scorecardModel == 'VALUE_BASED'}">Moderated Score</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Weighted Score">Weighted Score (%)</th>
+                            <th data-toggle="popover" data-placement="top" data-content="Conversational comments between supervisor and subordinate">Manager\'s Comment</th>
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="target, stat :  ${targetsList}" th:if="${target.gear == gear}" th:with="newGear=${(stat.index == 0) || (targetsList[stat.index - 1].gear.name != target.gear.name)},
-                                                                                     newGoal=${newGear || (stat.index == 0) || (targetsList[stat.index - 1].goal != target.goal)},
-                                                                                     newOutcome=${newGoal || (targetsList[stat.index - 1].outcome != target.outcome)},
-                                                                                     newOutput=${newOutcome || (targetsList[stat.index - 1].output != target.output)}">
-                            <td th:if="${newOutcome}" th:text="${target.outcome.name}" th:rowspan="${targetsList.?[outcome == #root.target.outcome].size()}"></td>
-                            <td th:if="${newOutput}" th:text="${target.output.name}" th:rowspan="${targetsList.?[output == #root.target.output].size()}"></td>
+                        <tr th:each="target, stat : ${targetsList}"  th:with="newPerspective=${(stat.index == 0) || (targetsList[stat.index - 1].perspective.name != target.perspective.name)},
+                                                                                     newStrategicObjective=${newPerspective || (stat.index == 0) || (targetsList[stat.index - 1].strategicObjective != target.strategicObjective)},
+                                                                                     newGoal=${newStrategicObjective || (targetsList[stat.index - 1].goal != target.goal)}">
+                            <td th:if="${newPerspective}" th:text="${target.perspective?.name}" th:rowspan="${targetsList.?[perspective.name == #root.target.perspective.name].size()}"></td>
+                            <td th:if="${newStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${targetsList.?[strategicObjective == #root.target.strategicObjective].size()}"></td>
+                            <td th:if="${newGoal}" th:text="${target.goal.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>
                             <td th:text="${target.measure}"></td>
                             <td th:text="${target.unit}"></td>
-                            <td>
-                                <a th:if="${#strings.contains(target.baseTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.baseTarget)}"></a>
-                                <a th:unless="${#strings.contains(target.baseTarget,'E')}" th:text="${target.baseTarget}"></a>
-                            </td>
-                            <td>
+                            <td th:if="${scorecardModel == 'VALUE_BASED'}">
                                 <a th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></a>
                                 <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></a>
                             </td>
+                            <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" th:text="${target.baseTarget}"></td>
+                            <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" th:text="${target.stretchTarget}"></td>
                             <td th:text="${target.allocatedWeight}"></td>
 
-<!--                            <td th:text="${target.employeeScore <= 0.0 || target.employeeScore == null ? '' : #numbers.formatDecimal(target.employeeScore, 0,  2)}" th:attr="class = ${target.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>-->
-<!--                            <td th:text="${target.managerScore <= 0.0 || target.managerScore == null ? '' : #numbers.formatDecimal(target.managerScore, 0, 2)}" th:attr="class = ${target.managerScore < 2.5 ? 'fail' : 'pass'}"></td>-->
-<!--                            <td th:text="${target.agreedScore <= 0.0 || target.agreedScore == null ? '' : #numbers.formatDecimal(target.agreedScore, 0, 2)}" th:attr="class = ${target.agreedScore < 2.5 ? 'fail' : 'pass'}"></td>-->
-<!--                            <td th:text="${target.moderatedScore <= 0.0 || target.moderatedScore == null ? '' : #numbers.formatDecimal(target.moderatedScore, 0, 2)}" th:attr="class = ${target.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>-->
-<!--                            <td th:text="${target.weightedScore <= 0.0 || target.weightedScore == null ? '' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}"></td>-->
+                            <td th:text="${target.employeeScore <= 0.0 || target.employeeScore == null ? '' : #numbers.formatDecimal(target.employeeScore, 0,  2)}" th:attr="class = ${target.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${target.managerScore <= 0.0 || target.managerScore == null ? '' : #numbers.formatDecimal(target.managerScore, 0, 2)}" th:attr="class = ${target.managerScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${target.agreedScore <= 0.0 || target.agreedScore == null ? '' : #numbers.formatDecimal(target.agreedScore, 0, 2)}" th:attr="class = ${target.agreedScore < 2.5 ? 'fail' : 'pass'}"></td>
+                            <td th:text="${target.moderatedScore <= 0.0 || target.moderatedScore == null ? '' : #numbers.formatDecimal(target.moderatedScore, 0, 2)}" th:attr="class = ${target.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
+                            <td th:text="${target.weightedScore <= 0.0 || target.weightedScore == null ? '' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}"></td>
+<!--                            <td th:text="${target.supportingDocument}"></td>-->
+<!--                            <td th:text="${target.justification}"></td>-->
                             <td>
                                     <a th:if="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
                                         <i  class="fa fa-lg fa-commenting" style="color: grey"></i>
@@ -208,7 +203,7 @@
                                                             <label class="col-form-label">Reason for Flagging</label>
                                                             <textarea name="flag" th:text="${target.flag}" class="form-control" rows="3"></textarea>
                                                             <input type="hidden" th:value="${target.id}" name="id">
-                                                            <input type="hidden" th:value="${target.output.scorecard.id}" name="scorecardId">
+                                                            <input type="hidden" th:value="${target.goal.scorecardId}" name="scorecardId">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -224,26 +219,28 @@
 
                         </tr>
                         <tr>
-                            <td colspan="6"></td>
+                            <td th:if="${scorecardModel == 'VALUE_BASED'}" colspan="6"></td>
+                            <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" colspan="7"></td>
                             <td>
                                 <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                 <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                             </td>
-<!--                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">-->
-<!--                                <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>-->
-<!--                            </td>-->
-<!--                            <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">-->
-<!--                                <h4 th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>-->
-<!--                            </td>-->
-<!--                            <td th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">-->
-<!--                                <h4 th:text="${averageAgreedScore <= 0.0 || averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>-->
-<!--                            </td>-->
-<!--                            <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">-->
-<!--                                <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>-->
-<!--                            </td>-->
-<!--                            <td th:attr="class = ${totalWeightedScore < 50 ? 'fail' : 'pass' }">-->
-<!--                                <h4 th:text="${totalWeightedScore <= 0.0 || totalWeightedScore == null ? '' : #numbers.formatDecimal(totalWeightedScore, 0, 2) + '%'}"></h4>-->
-<!--                            </td>-->
+                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageAgreedScore <= 0.0 || averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
+                                <h4 th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
+                            </td>
+                            <td th:attr="class = ${totalWeightedScore < 50 ? 'fail' : 'pass' }">
+                                <h4 th:text="${totalWeightedScore <= 0.0 || totalWeightedScore == null ? '' : #numbers.formatDecimal(totalWeightedScore, 0, 2) + '%'}"></h4>
+                            </td>
+                            <td></td>
                             <td></td>
                         </tr>
                         </tbody>
@@ -278,11 +275,11 @@
 
                     <div class="col-5">
                         <a th:if="${canCaptureTargets}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
-<!--                        <a th:if="${canCaptureEmployeeScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Employee Scores</a>-->
-<!--                        <a th:if="${canCaptureManagerScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Manager Scores</a>-->
-<!--                        <a th:if="${canCaptureAgreedScoreAgreedScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Agreed Scores</a>-->
-<!--                        <a th:if="${canModerate}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Moderate Scores</a>-->
-<!--                        <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success" type="button">View Report</a>-->
+                        <a th:if="${canCaptureEmployeeScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Employee Scores</a>
+                        <a th:if="${canCaptureManagerScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Manager Scores</a>
+                        <a th:if="${canCaptureAgreedScoreAgreedScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Agreed Scores</a>
+                        <a th:if="${canModerate}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Moderate Scores</a>
+                        <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success" type="button">View Report</a>
                     </div>
                  </div>
                 <div class="form-group row">

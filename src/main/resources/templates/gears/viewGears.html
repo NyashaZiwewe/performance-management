@@ -45,33 +45,36 @@
                     <div class="ibox ">
                         <div class="ibox-title">
                             <div class="ibox-tools">
-                                <a th:href="@{/perspectives/add-perspective}"><button class="btn btn-success btn-sm">Add New Perspective</button></a>
+                                <a th:href="@{/gears/add-gear}"><button class="btn btn-success btn-sm">Add New Gear</button></a>
                             </div>
                         </div>
                         <div class="ibox-content">
                             <fieldset class="p-2">
-                                <legend class="w-auto">Perspectives Information</legend>
+                                <legend class="w-auto">Gears Information</legend>
                                 <div class="table-responsive" th:fragement="administration">
                                 <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap">
                                     <thead>
                                     <tr>
-                                        <th>Perspective Name</th>
+                                        <th>Gear Name</th>
                                         <th>Description</th>
-                                        <th>Graph Color</th>
-                                        <th>Fill</th>
+<!--                                        <th>Graph Color</th>-->
+<!--                                        <th>Fill</th>-->
                                         <th></th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr th:each="perspective :${perspectives}">
-                                        <td th:text="${perspective.name}"></td>
-                                        <td th:text="${perspective.description}"></td>
-                                        <td th:text="${perspective.graphColor}"></td>
-                                        <td th:text="${perspective.fill}"></td>
+                                    <tr th:each="gear :${gears}">
+                                        <td th:text="${gear.name}"></td>
+                                        <td th:text="${gear.description}"></td>
+<!--                                        <td th:text="${perspective.graphColor}"></td>-->
+<!--                                        <td th:text="${perspective.fill}"></td>-->
                                         <td>
                                             <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                                            <a th:href="@{/perspectives/edit-perspective/} + ${perspective.id}">
+                                            <a th:href="@{/gears/edit-gear/} + ${gear.id}">
                                                <button class="btn btn-success btn-sm">Edit</button>
+                                            </a>
+                                            <a th:href="@{/gears/view-gear/} + ${gear.id}">
+                                                <button class="btn btn-success btn-sm">View</button>
                                             </a>
 
                                         </td>

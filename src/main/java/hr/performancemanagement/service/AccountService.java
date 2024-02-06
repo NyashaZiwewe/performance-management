@@ -1,13 +1,8 @@
 package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Department;
-import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.repository.AccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

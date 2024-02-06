@@ -2,7 +2,6 @@ package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreCardRepository;
-import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +23,7 @@ public class ScorecardService {
     HttpSession session;
 
     @Autowired
-    StrategicObjectiveService strategicObjectiveService;
+    GoalService goalService;
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
 
@@ -125,30 +124,30 @@ public class ScorecardService {
         return failedScorecards;
     }
 
-    public List<Double> findAverageAllocatedWeightPerStrategicObjective(){
+    public List<Double> findAverageAllocatedWeightPerGoal(){
 
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
+        List<Goal> GoalsList = goalService.listAllGoals(reportingPeriod.getId());
 
         List<Double> averageWeights = new ArrayList<>();
-        for(StrategicObjective strategicObjective : strategicObjectivesList){
+        for(Goal Goal : GoalsList){
 
-            averageWeights.add(scoreCardRepository.findAverageAllocatedWeightPerStrategicObjective(strategicObjective));
+            averageWeights.add(scoreCardRepository.findAverageAllocatedWeightPerGoal(Goal));
         }
 
         return averageWeights;
     }
 
-    public List<Double> findAverageWeightedScorePerStrategicObjective(){
+    public List<Double> findAverageWeightedScorePerGoal(){
 
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
+        List<Goal> GoalsList = goalService.listAllGoals(reportingPeriod.getId());
 
         List<Double> averageWeightedScores = new ArrayList<>();
-        for(StrategicObjective strategicObjective : strategicObjectivesList){
+        for(Goal Goal : GoalsList){
 
-            double averageScore = scoreCardRepository.findAverageWeightedScorePerStrategicObjective(strategicObjective);
-            double averageWeight = scoreCardRepository.findAverageAllocatedWeightPerStrategicObjective(strategicObjective);
+            double averageScore = scoreCardRepository.findAverageWeightedScorePerGoal(Goal);
+            double averageWeight = scoreCardRepository.findAverageAllocatedWeightPerGoal(Goal);
             double weightedScore = (averageScore / 5) * averageWeight;
             averageWeightedScores.add(weightedScore);
         }
