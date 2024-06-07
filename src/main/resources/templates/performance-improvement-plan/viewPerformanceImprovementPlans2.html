@@ -321,7 +321,7 @@
                                                                                     <div class="col-9">
                                                                                         <select class="select2_demo_1 form-control" required th:field="*{status}">
                                                                                             <option selected th:value="${plan.status}" th:text="${plan.status}"></option>
-                                                                                            <option th:each="status : ${T(hr.performancemanagement.utils.enums.ProjectStatus).values()}"
+                                                                                            <option th:each="status : ${T(hr.performancemanagement.utils.enums.TaskStatus).values()}"
                                                                                                     th:value="${status}" th:text="${status}"></option>
                                                                                         </select>
                                                                                     </div>

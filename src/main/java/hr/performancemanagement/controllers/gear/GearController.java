@@ -93,9 +93,13 @@ public class GearController {
 
     @RequestMapping(value = "/add-goal", method = RequestMethod.POST)
     public String addGoal(HttpServletRequest request, Goal newGoal) {
+        try {
+            Goal goal = goalService.addGoal(newGoal, request);
+            PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
+        }catch (Exception e){
 
-        goalService.addGoal(newGoal);
-        PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
+        }
+
         return "redirect:/gears/view-gear/" + newGoal.getGear().getId();
     }
 

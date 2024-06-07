@@ -66,7 +66,11 @@ public class ScorecardController {
     @Autowired
     OutputService outputService;
 
-    Environment environment;
+    private final Environment environment;
+
+    public ScorecardController(Environment environment) {
+        this.environment = environment;
+    }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request, HttpSession session) {
 
@@ -176,6 +180,25 @@ public class ScorecardController {
 
         if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS,scorecard)){
 
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
+           try {
+               for(Gear gear: selectedGears){
+                   for(Target target: targetsList){
+                       if(target.getGear() == gear){
+                           List<Target> targets = gear.getTargetsList();
+                           if(targets == null){
+                               targets = new ArrayList<>();
+                           }
+                           targets.add(target);
+                           gear.setTargetsList(targets);
+                       }
+                   }
+               }
+           }catch (Exception e){
+               System.out.println(e.getMessage());
+           }
+
+
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
             modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
@@ -184,8 +207,8 @@ public class ScorecardController {
             modelAndView.addObject("gears", gears);
             modelAndView.addObject("totalAllocatedWeight", outcomeService.getTotalAllocatedWeight(id));
             modelAndView.addObject("scorecardModel", scorecardModel);
-            List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
-            modelAndView.addObject("targetsList", targetsList);
+            modelAndView.addObject("unitsList", targetService.listAllUnits());
+
 
         } else {
 
@@ -218,36 +241,61 @@ public class ScorecardController {
         }catch (Exception e){
             weightedScore = 0;
         }
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
+        List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
+        double totalWeightedScore = 0.0;
+        for(Target target: targetsList){
+            if(target.getWeightedScore() !=null){
+                totalWeightedScore += target.getWeightedScore();
+            }
+        }
+
+        try {
+            for(Gear gear: selectedGears){
+                for(Target target: targetsList){
+                    if(target.getGear() == gear){
+                        List<Target> targets = gear.getTargetsList();
+                        if(targets == null){
+                            targets = new ArrayList<>();
+                        }
+                        targets.add(target);
+                        gear.setTargetsList(targets);
+                    }
+                }
+            }
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
 
         ModelAndView modelAndView;
 
-//            if(PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)){
-//                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
-//            }else if(PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)){
-//                if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)){
-//                    modelAndView = new ModelAndView(Pages.CAPTURE_EMPLOYEE_SCORE);
-//                    url = "submit-employee-scores";
-//                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)) {
-//                    modelAndView = new ModelAndView(Pages.CAPTURE_MANAGER_SCORE);
-//                    url = "submit-manager-scores";
-//                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)) {
-//                    modelAndView = new ModelAndView(Pages.CAPTURE_AGREED_SCORE);
-//                    url = "submit-agreed-scores";
-//                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
-//                    modelAndView = new ModelAndView(Pages.CAPTURE_MODERATED_SCORE);
-//                    url = "submit-moderated-scores";
-//                }else {
+            if(PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)){
+                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
+            }else if(PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)){
+                if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)){
+                    modelAndView = new ModelAndView(Pages.CAPTURE_EMPLOYEE_SCORE);
+                    url = "submit-employee-scores";
+                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)) {
+                    modelAndView = new ModelAndView(Pages.CAPTURE_MANAGER_SCORE);
+                    url = "submit-manager-scores";
+                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)) {
+                    modelAndView = new ModelAndView(Pages.CAPTURE_AGREED_SCORE);
+                    url = "submit-agreed-scores";
+                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
+                    modelAndView = new ModelAndView(Pages.CAPTURE_MODERATED_SCORE);
+                    url = "submit-moderated-scores";
+                }else {
                     modelAndView = new ModelAndView(Pages.BLANK_PAGE);
                     PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
-//                }
-//            }else{
-//                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-//                PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
-//            }
+                }
+            }else{
+                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+                PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
+            }
 
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
-            List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
+            modelAndView.addObject("selectedGears", selectedGears);
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
@@ -275,7 +323,7 @@ public class ScorecardController {
             output = outputService.getOutputById(wrapper.getOutputId());
             output.setName(wrapper.getName());
         }
-        else if(outputService.outputExists(wrapper.getName())){
+        else if(outputService.outputExistsOnScorecard(wrapper.getName(), scorecardService.getScorecardById(scorecardId))){
             output = outputService.getOutputByName(wrapper.getName());
         }else {
             output = new Output();
@@ -368,13 +416,13 @@ public class ScorecardController {
 
         Target target = targetService.getTargetById(targ.getId());
         Output output = outputService.getOutputById(target.getOutput().getId());
-        boolean hasTargets = targetService.checkIfOutputHasTargets(output);
+
         long scorecardId = output.getScorecard().getId();
 
         try {
             targetService.deleteTarget(target);
             PortletUtils.addInfoMsg("Target was successfully deleted", request);
-            if(!hasTargets){
+            if(!targetService.checkIfOutputHasTargets(output)){
                 outputService.deleteOutput(output);
                 PortletUtils.addInfoMsg("Output was successfully deleted", request);
               }
@@ -910,13 +958,29 @@ public class ScorecardController {
                 if(target.getWeightedScore() !=null){
                     totalWeightedScore += target.getWeightedScore();
                 }
+            }
 
+            try {
+                for(Gear gear: selectedGears){
+                    for(Target target: targetsList){
+                        if(target.getGear() == gear){
+                            List<Target> targets = gear.getTargetsList();
+                            if(targets == null){
+                                targets = new ArrayList<>();
+                            }
+                            targets.add(target);
+                            gear.setTargetsList(targets);
+                        }
+                    }
+                }
+            }catch (Exception e){
+                System.out.println(e.getMessage());
             }
 
             modelAndView.addObject("pageTitle", "View Contract {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
-            modelAndView.addObject("targetsList", targetsList);
+//            modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("selectedGears", selectedGears);
             modelAndView.addObject("comment", new Comment());
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
@@ -925,7 +989,7 @@ public class ScorecardController {
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
-            modelAndView.addObject("isSupervisor", commonService.isSupervisor(commonService.getLoggedUser()));
+            modelAndView.addObject("isSupervisor", commonService.isSupervisor(scorecard.getOwner()));
             modelAndView.addObject("canApprove", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard));
             modelAndView.addObject("canCaptureTargets", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard));
             modelAndView.addObject("canCaptureEmployeeScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard));

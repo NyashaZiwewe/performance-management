@@ -163,9 +163,20 @@ public class ActionPlanController {
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
     public String updatePlan(HttpServletRequest request, ActionPlan newPlan) {
+        try {
+            if(newPlan.getProgress() == 0){
+                newPlan.setStatus("todo");
+            } else if (newPlan.getProgress() == 100) {
+                newPlan.setStatus("completed");
+            }else {
+                newPlan.setStatus("inprogress");
+            }
+            actionPlanService.saveActionPlan(newPlan);
+            PortletUtils.addInfoMsg("Action Plan successfully updated.", request);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
-        actionPlanService.saveActionPlan(newPlan);
-        PortletUtils.addInfoMsg("Action Plan successfully updated.", request);
         return "redirect:/action-plans";
     }
 

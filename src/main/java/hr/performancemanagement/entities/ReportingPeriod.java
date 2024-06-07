@@ -31,5 +31,7 @@ public class ReportingPeriod {
     private Date date;
     @OneToMany(mappedBy = "reportingPeriod", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<ReportingDate> reportingDates;
+//    @OneToMany(mappedBy = "reportingPeriod", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+//    private List<Goal> goals;
 
 }

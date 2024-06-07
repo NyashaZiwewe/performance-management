@@ -34,8 +34,16 @@ public class OutputService {
         return outputRepository.existsByName(name);
     }
 
+    public boolean outputExistsOnScorecard(String name, Scorecard scorecard){
+        return outputRepository.existsByNameAndScorecard(name, scorecard);
+    }
+
     public List<Output> listAllOutputs(Scorecard scorecard){
         return outputRepository.findOutputsByScorecard(scorecard);
+    }
+
+    public List<Output> listAllOutputs(){
+        return outputRepository.findAll();
     }
 
     public void deleteOutput(Output output){

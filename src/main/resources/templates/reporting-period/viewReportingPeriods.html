@@ -59,9 +59,8 @@
                                         <th>End Date</th>
 <!--                                        <th>Assessment Status</th>-->
                                         <th>Status</th>
-                                        <th>Strategic Objectives</th>
+<!--                                        <th>Strategic Objectives</th>-->
                                         <th>Reporting Dates</th>
-                                        <th></th>
                                         <th></th>
                                     </tr>
                                     </thead>
@@ -84,9 +83,9 @@
                                                 <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
                                             </div>
                                         </td>
-                                        <td>
-                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">View</a>
-                                        </td>
+<!--                                        <td>-->
+<!--                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">View</a>-->
+<!--                                        </td>-->
                                         <td>
                                             <a th:href="@{/reporting-periods/reporting-dates/} + ${period.id}">View</a>
                                         </td>
@@ -94,8 +93,6 @@
                                             <a th:href="@{/reporting-periods/edit-reporting-period/} + ${period.id}">
                                                <button class="btn btn-danger btn-sm" type="button">Delete</button>
                                             </a>
-                                        </td>
-                                        <td>
                                             <a th:href="@{/reporting-periods/edit-reporting-period/} + ${period.id}">
                                                <button class="btn btn-success btn-sm">Edit</button>
                                             </a>

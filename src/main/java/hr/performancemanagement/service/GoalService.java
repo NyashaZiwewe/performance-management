@@ -1,9 +1,11 @@
 package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.repository.GoalRepository;
+import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +37,14 @@ public class GoalService {
         return GoalList;
     }
 
-    public void addGoal(Goal Goal) {
-
-        goalRepository.save(Goal);
+    public Goal addGoal(Goal Goal, HttpServletRequest request) {
+       try {
+           Goal goal = goalRepository.save(Goal);
+           return goal;
+       }catch (Exception e){
+           PortletUtils.addErrorMsg(e.getMessage(), request);
+       }
+       return null;
     }
 
     public Goal saveGoal(Goal Goal){

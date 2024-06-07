@@ -13,5 +13,6 @@ public interface OutputRepository extends JpaRepository<Output, Long> {
     Output findOutputById(long id);
     List<Output> findOutputsByScorecard(Scorecard scorecard);
     boolean existsByName(String name);
+    boolean existsByNameAndScorecard(String name, Scorecard scorecard);
     Output findOutputByName(String name);
 }

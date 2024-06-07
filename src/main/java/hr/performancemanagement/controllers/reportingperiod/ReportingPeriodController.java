@@ -8,6 +8,7 @@ import hr.performancemanagement.service.ReportingPeriodService;
 import hr.performancemanagement.service.GoalService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
+import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -96,9 +97,9 @@ public class ReportingPeriodController {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_STRATEGIC_OBJECTIVES);
         modelAndView.addObject("pageTitle", "View Strategic Objectives");
         List<Goal> GoalsList = goalService.listAllGoals(id);
-        modelAndView.addObject("GoalsList", GoalsList);
+        modelAndView.addObject("goalsList", GoalsList);
         modelAndView.addObject("reportingPeriod", reportingPeriodService.getReportingPeriodById(id));
-        modelAndView.addObject("Goal", goalService.getGoalById(id));
+        modelAndView.addObject("goal", goalService.getGoalById(id));
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -115,10 +116,32 @@ public class ReportingPeriodController {
         preparePage(modelAndView, request);
         return modelAndView;
     }
+//    @RequestMapping(value = "/add-strategic-objective", method = RequestMethod.POST)
+//    public String addStrategicObjective(HttpServletRequest request, Goal goal) {
+//       try{
+//          Goal goal1 = goalService.addGoal(goal, request);
+//           PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
+//       }catch (Exception e){
+//
+//       }
+//        return "redirect:/reporting-periods/strategic-goals/" + goal.getReportingPeriod().getId();
+//    }
+//
+//    @RequestMapping(value = "/save-strategic-objective", method = RequestMethod.POST)
+//    public String saveStrategicObjective( HttpServletRequest request, Goal goal) {
+//
+//        try{
+//            Goal goal1 = goalService.addGoal(goal, request);
+//            PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
+//        }catch (Exception e){
+//
+//        }
+//        return "redirect:/reporting-periods/strategic-goals/" + goal.getReportingPeriod().getId();
+//    }
 
     @RequestMapping(value = "/add-reporting-date", method = RequestMethod.POST)
     public String addReportingDate(HttpServletRequest request, ReportingDate newReportingDate) {
-
+        newReportingDate.setStatus(PMConstants.STATUS_IN_ACTIVE);
         reportingDateService.saveReportingDate(newReportingDate);
         PortletUtils.addInfoMsg("Reporting Date successfully added.", request);
         return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();

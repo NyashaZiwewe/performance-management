@@ -32,4 +32,7 @@ public interface TargetRepository extends JpaRepository<Target, Long> {
     @Query("SELECT s.justification FROM Score s WHERE s.target = :target AND s.reportingDate = :reportingDate")
     String currentJustification(@Param("target") Target target, @Param("reportingDate") ReportingDate reportingDate);
 
+    @Query("SELECT DISTINCT(t.unit) FROM Target t")
+    List<String> listAllUnits();
+
 }

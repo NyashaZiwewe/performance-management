@@ -32,6 +32,8 @@ public class Gear {
     private List<Goal> goals;
     @Transient
     private double totalAllocatedWeight;
+    @Transient
+    private List<Target> targetsList;
     @CreationTimestamp
     @Column(updatable = false)
     private Date date;

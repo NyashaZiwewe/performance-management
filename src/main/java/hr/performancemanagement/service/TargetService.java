@@ -56,6 +56,10 @@ public class TargetService {
         }
     }
 
+    public List<String> listAllUnits(){
+        return targetRepository.listAllUnits();
+    }
+
 //    public boolean  updateWeightedTargetScore(Target target){
 //
 //        double sumActual = targetRepository.totalWeightedScoreByTarget(target);
@@ -117,5 +121,14 @@ public class TargetService {
        }catch (Exception e){
            System.out.println(e.getMessage());
        }
+    }
+
+    @Transactional
+    public void deleteTargets(List<Target> targets){
+        try {
+            targetRepository.deleteAll(targets);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
     }
 }

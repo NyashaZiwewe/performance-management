@@ -91,16 +91,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr th:each="target, stat :  ${targetsList}" th:if="${target.gear == gear}" th:with="newGear=${(stat.index == 0) || (targetsList[stat.index - 1].gear.name != target.gear.name)},
-                                                                                     newGoal=${newGear || (stat.index == 0) || (targetsList[stat.index - 1].goal != target.goal)},
-                                                                                     newOutcome=${newGoal || (targetsList[stat.index - 1].outcome != target.outcome)},
-                                                                                     newOutput=${newOutcome || (targetsList[stat.index - 1].output != target.output)}">
+                                <tr th:unless="${#lists.isEmpty(gear.targetsList)}" th:each="target, stat :  ${gear.targetsList}"  th:with="newOutcome=${(stat.index == 0) || (gear.targetsList[stat.index - 1].outcome.id != target?.outcome.id)},
+                                                                                                                     newOutput=${newOutcome || (stat.index == 0) ||  (gear.targetsList[stat.index - 1].output != target?.output)}">
 
-<!--                                    <td th:if="${newGear}" th:text="${target.gear?.name}" th:rowspan="${targetsList.?[gear.name == #root.target.gear.name].size()}"></td>-->
-<!--                                    <td th:if="${newGoal}" th:text="${target.goal?.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>-->
-                                    <td th:if="${newOutcome}" th:text="${target.outcome.name}" th:rowspan="${targetsList.?[outcome == #root.target.outcome].size()}"></td>
-                                    <td th:if="${newOutput}" th:text="${target.output.name}" th:rowspan="${targetsList.?[output == #root.target.output].size()}"></td>
-                                    <td th:text="${target.measure}"></td>
+                                    <td th:if="${newOutcome}" th:text="${target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}" style="width: 15% !important;"></td>
+                                    <td th:if="${newOutput}" th:text="${target?.output?.name}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="width: 25% !important;"></td>
+                                    <td th:text="${target.measure}" style="width: 25% !important;"></td>
                                     <td th:text="${target.unit}"></td>
                                     <td>
                                         <a th:if="${#strings.contains(target.baseTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.baseTarget)}"></a>
@@ -111,12 +107,12 @@
                                         <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></a>
                                     </td>
                                     <td th:text="${target.allocatedWeight}"></td>
-                                    <td>
-                                        <a data-toggle="modal" th:data-target="'#addModal'+ ${stat.index}"><i class="fa fa-lg fa-plus" style="color: #175ea8"></i></a>
-                                        <a data-toggle="modal" th:data-target="'#editModal'+ ${stat.index}"><i class="fa fa-lg fa-pencil-square" style="color: rebeccapurple"></i></a>
-                                        <a data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}"><i class="fa fa-lg fa-trash" style="color: red"></i></a>
+                                    <td style="width: 70px !important;">
+                                        <a data-toggle="modal" th:data-target="'#addModal'+ ${target.id}"><i class="fa fa-lg fa-plus" style="color: #175ea8"></i></a>
+                                        <a data-toggle="modal" th:data-target="'#editModal'+ ${target.id}"><i class="fa fa-lg fa-pencil-square" style="color: rebeccapurple"></i></a>
+                                        <a data-toggle="modal" th:data-target="'#deleteModal'+ ${target.id}"><i class="fa fa-lg fa-trash" style="color: red"></i></a>
                                     </td>
-                                    <div class="modal fade" th:id="'editModal'+ ${stat.index}" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade" th:id="'editModal'+ ${target.id}" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-lg" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -202,10 +198,11 @@
                                                                         <div class="input-group m-b">
                                                                             <select name="unit" class="form-control myselect">
                                                                                 <option th:value="${target.unit}" th:text="${target.unit}" selected></option>
-                                                                                <option>#</option>
-                                                                                <option>$</option>
-                                                                                <option>%</option>
-                                                                                <option>L</option>
+                                                                                <option th:each="unit :${unitsList}" th:text="${unit}" th:value="${unit}">#</option>
+<!--                                                                                <option>#</option>-->
+<!--                                                                                <option>$</option>-->
+<!--                                                                                <option>%</option>-->
+<!--                                                                                <option>L</option>-->
                                                                             </select>
                                                                         </div>
                                                                     </div>
@@ -254,7 +251,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="modal fade" th:id="'addModal'+ ${stat.index}" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade" th:id="'addModal'+ ${target.id}" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-lg" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -295,10 +292,11 @@
                                                                         <div class="input-group m-b">
                                                                             <select name="unit" class="form-control myselect">
                                                                                 <option th:value="${target.unit}" th:text="${target.unit}" selected></option>
-                                                                                <option>#</option>
-                                                                                <option>$</option>
-                                                                                <option>%</option>
-                                                                                <option>L</option>
+                                                                                <option th:each="unit :${unitsList}" th:text="${unit}" th:value="${unit}">#</option>
+<!--                                                                                <option>#</option>-->
+<!--                                                                                <option>$</option>-->
+<!--                                                                                <option>%</option>-->
+<!--                                                                                <option>L</option>-->
                                                                             </select>
                                                                         </div>
                                                                     </div>
@@ -347,7 +345,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade" th:id="'deleteModal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade" th:id="'deleteModal'+ ${target.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -392,10 +390,10 @@
                                         </td>
                                         <td>
                                             <select class="form-control myselect" name="unit">
-                                                <option>#</option>
-                                                <option>$</option>
-                                                <option>%</option>
-                                                <option>L</option>
+                                                <option th:each="unit :${unitsList}" th:text="${unit}" th:value="${unit}">#</option>
+<!--                                                <option>$</option>-->
+<!--                                                <option>%</option>-->
+<!--                                                <option>L</option>-->
                                             </select>
                                         </td>
                                         <td>
