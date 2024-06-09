@@ -296,6 +296,7 @@ public class ScorecardController {
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("selectedGears", selectedGears);
+            modelAndView.addObject("url", url);
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
@@ -467,6 +468,8 @@ public class ScorecardController {
     public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+//        boolean missing = targetService.checkIfOutputHasTargets()
 
         scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE);
         scorecardService.saveScorecard(scorecard);

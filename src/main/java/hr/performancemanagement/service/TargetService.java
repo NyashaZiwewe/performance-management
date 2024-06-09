@@ -3,6 +3,7 @@ package hr.performancemanagement.service;
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.OutcomeRepository;
 import hr.performancemanagement.repository.OutputRepository;
+import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,8 @@ public class TargetService {
     OutputRepository outputRepository;
     @Autowired
     ReportingDateService reportingDateService;
+    @Autowired
+    ScoreRepository scoreRepository;
 
     public List<Target> getAllTargetsByScorecard(Scorecard scorecard){
         List<Target> targetList = new ArrayList<>();
@@ -38,6 +41,18 @@ public class TargetService {
         return targetList;
     }
 
+    public int countTargetsByScorecard(Scorecard scorecard){
+        List<Target> targetList = new ArrayList<>();
+        List<Output> outputs = outputRepository.findOutputsByScorecard(scorecard);
+
+        for(Output output: outputs){
+            for(Target target: output.getTargets()){
+                targetList.add(target);
+            }
+        }
+        return targetList.size();
+    }
+
     public List<Target> getAllTargetsByOutput(Output output){
         List<Target> targets = targetRepository.findTargetsByOutput(output);
         return targets;
@@ -55,6 +70,12 @@ public class TargetService {
             return true;
         }
     }
+
+//    public boolean checkIfScoresAreMissing(Scorecard scorecard, ReportingDate reportingDate){
+//       int targets = countTargetsByScorecard(scorecard);
+//       int scores = scoreRepository.countScoresByScorecardAndReportingDate(scorecard, reportingDate);
+//
+//    }
 
     public List<String> listAllUnits(){
         return targetRepository.listAllUnits();
