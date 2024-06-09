@@ -28,6 +28,8 @@ public class Comment implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "sender_id")
     private Account sender;
+    @Transient
+    private String link;
     @CreationTimestamp
     private Date date;
 

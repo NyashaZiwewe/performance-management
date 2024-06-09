@@ -41,6 +41,15 @@
         table.table thead .sorted.sorted-asc:after{
             content: "\f15d";
         }
+        .fail{
+            color: red;
+        }
+        .fair{
+            color: orange;
+        }
+        .pass{
+            color: green;
+        }
     </style>
     <script type="text/javascript">
         function saveScore(targetId){
@@ -48,7 +57,7 @@
             let employeeScore = document.getElementById("employeeScore"+targetId).value;
             let justification = document.getElementById("justification"+targetId).value;
 
-            if((employeeScore !== "" && Number(employeeScore) !== 0.0)  && (Number(employeeScore) < 1 || Number(employeeScore) > 5)){
+            if(Number(employeeScore) < 1 || Number(employeeScore) > 5){
                 alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
                 const fieldElement = document.getElementById("employeeScore"+targetId);
                 fieldElement.value = '';
@@ -405,18 +414,20 @@
 
                                                 </tr>
                                                 <tr th:if="${gstat.last}">
-                                                    <td colspan="8"></td>
+                                                    <td colspan="11"></td>
                                                 </tr>
                                                 <tr  th:if="${gstat.last}">
-                                                    <td colspan="4"></td>
-                                                    <td colspan="2" style="text-align: right"><b>Total Allocated Weight:</b></td>
+                                                    <td colspan="6"></td>
                                                     <td>
                                                         <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                         <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                     </td>
-                                                    <td></td>
+                                                    <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
+                                                        <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                                                    </td>
+                                                    <td colspan="3"></td>
                                                 </tr>
-                                                <!--                        <tr>-->
+                                                        <!--                        <tr>-->
                                                 <!--                            <td colspan="6"></td>-->
                                                 <!--                            <td>-->
                                                 <!--                                <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>-->

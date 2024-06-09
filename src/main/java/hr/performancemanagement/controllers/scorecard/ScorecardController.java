@@ -1030,12 +1030,12 @@ public class ScorecardController {
                 + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
-            PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
+//            PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
-        PortletUtils.addInfoMsg("Comment successfully saved", request);
-        return "redirect:/scorecards/view-scorecard/"+ scorecardId;
+//        PortletUtils.addInfoMsg("Comment successfully saved", request);
+        return "redirect:/scorecards/"+ comment.getLink().concat(String.valueOf(scorecardId));
     }
 
     @RequestMapping(value = "/save-flag", method = RequestMethod.POST)
