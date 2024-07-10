@@ -72,7 +72,7 @@ public class OutcomeService {
 
     public double getAverageAgreedScore(long scorecardId){
         try {
-            double total = outcomeRepository.averageModeratedScore(scorecardId);
+            double total = outcomeRepository.averageAgreedScore(scorecardId);
             return total;
         }catch (Exception e){
             return 0.0;

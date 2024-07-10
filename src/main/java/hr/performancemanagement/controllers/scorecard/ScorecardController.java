@@ -28,6 +28,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Controller
 @RequestMapping(value="/scorecards")
@@ -980,6 +981,7 @@ public class ScorecardController {
                 System.out.println(e.getMessage());
             }
 
+            int scoreColumns = getScoreColumns(id);
             modelAndView.addObject("pageTitle", "View Contract {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
@@ -990,6 +992,7 @@ public class ScorecardController {
             modelAndView.addObject("averageManagerScore", averageManagerScore);
             modelAndView.addObject("averageAgreedScore", averageAgreedScore);
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
+            modelAndView.addObject("scoreColumns", scoreColumns);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
             modelAndView.addObject("isSupervisor", commonService.isSupervisor(scorecard.getOwner()));
@@ -1034,8 +1037,12 @@ public class ScorecardController {
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
-//        PortletUtils.addInfoMsg("Comment successfully saved", request);
-        return "redirect:/scorecards/"+ comment.getLink().concat(String.valueOf(scorecardId));
+        String referer = request.getHeader("Referer");
+        if (referer != null) {
+            return "redirect:" + referer;
+        }
+
+        return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }
 
     @RequestMapping(value = "/save-flag", method = RequestMethod.POST)
@@ -1107,14 +1114,14 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
 
-            if(commonService.isOwner(scorecard)){
+//            if(commonService.isOwner(scorecard)){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setEmployeeScore(employeeScore);
                 score.setJustification(justification);
                 valueBasedScoreService.saveEmployeeScore(score);
-            }
+//            }
         }catch (Exception ignored){
 
         }
@@ -1141,7 +1148,7 @@ public class ScorecardController {
         MultipartFile file = wrapper.getAttachment();
         String fileName = file.getOriginalFilename();
         try {
-            if(fileName != ""){
+            if(!Objects.equals(fileName, "")){
                 file.transferTo( new File(fileName));
             }
 
@@ -1149,14 +1156,14 @@ public class ScorecardController {
 
         }
         try {
-            if(commonService.isOwner(scorecard)){
+//            if(commonService.isOwner(scorecard)){
                 Score score = new Score();
                 score.setTarget(target);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setEvidence(wrapper.getEvidence());
                 score.setAttachmentName(fileName);
                 valueBasedScoreService.saveEvidence(score);
-            }
+//            }
         }catch (Exception ignored){
 
         }
@@ -1463,6 +1470,20 @@ public class ScorecardController {
               target = targetService.saveTarget(target);
 
         return "redirect:/scorecards/capture-targets/"+ wrapper.getScorecardId();
+    }
+
+    private int getScoreColumns(long id){
+        int columns = 0;
+        if(outcomeService.getAverageModeratorScore(id) > 0){
+            columns = 4;
+        } else if (outcomeService.getAverageAgreedScore(id) > 0) {
+            columns = 3;
+        } else if (outcomeService.getAverageManagerScore(id) > 0) {
+            columns = 2;
+        } else if (outcomeService.getAverageEmployeeScore(id) > 0) {
+            columns = 1;
+        }
+       return columns;
     }
 
 }
