@@ -1,9 +1,7 @@
 package hr.performancemanagement.service.ScoreService;
-import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Score;
-import hr.performancemanagement.entities.Scorecard;
-import hr.performancemanagement.entities.Target;
+import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreRepository;
+import hr.performancemanagement.service.OutputService;
 import hr.performancemanagement.service.ScorecardService;
 import hr.performancemanagement.service.TargetService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,16 +15,17 @@ public class ValueBasedScoreService {
     @Autowired
     ScoreRepository scoreRepository;
     @Autowired
+    private OutputService outputService;
+    @Autowired
     private TargetService targetService;
-
     @Autowired
     HttpSession session;
 
     public double calculateWeightedScore(Score score){
 
-        Target target = score.getTarget();
+        Output output = score.getOutput();
         double moderatedScore = score.getModeratedScore();
-        double allocatedWeight = target.getAllocatedWeight();
+        double allocatedWeight = output.getAllocatedWeight();
         double weightedRating = 0;
 
         try {
@@ -39,36 +38,36 @@ public class ValueBasedScoreService {
     }
 
 
-    public Score saveEmployeeScore(Score score) {
+    public Score saveEmployeeScore(Score score, Target target) {
 
         Score savedScore;
         if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setEmployeeScore(score.getEmployeeScore());
 //            existingScore.setEvidence(score.getEvidence());
             existingScore.setJustification(score.getJustification());
             savedScore = scoreRepository.save(existingScore);
-            Target target = existingScore.getTarget();
-            target.setCurrentEmployeeScore(savedScore.getEmployeeScore());
+            Output output = existingScore.getOutput();
+            output.setCurrentEmployeeScore(savedScore.getEmployeeScore());
 //            target.setCurrentEvidence(savedScore.getEvidence());
 //            target.setCurrentAttachmentName(savedScore.getAttachmentName());
             target.setCurrentJustification(savedScore.getJustification());
-            updateTargetData(target);
-
+            targetService.saveTarget(target);
+            updateOutputData(output);
         }else{
             savedScore = scoreRepository.save(score);
-            Target target = savedScore.getTarget();
-            target.setCurrentEmployeeScore(score.getEmployeeScore());
-            updateTargetData(target);
+            Output output = savedScore.getOutput();
+            output.setCurrentEmployeeScore(score.getEmployeeScore());
+            updateOutputData(output);
         }
         return savedScore;
     }
 
-    public Score saveEvidence(Score score) {
+    public Score saveEvidence(Score score, Target target) {
 
         Score savedScore;
         if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             if(score.getEvidence().length() > 0){
                 existingScore.setEvidence(score.getEvidence());
             }
@@ -76,17 +75,15 @@ public class ValueBasedScoreService {
                 existingScore.setAttachmentName(score.getAttachmentName());
             }
             savedScore = scoreRepository.save(existingScore);
-            Target target = existingScore.getTarget();
             target.setCurrentEvidence(savedScore.getEvidence());
             target.setCurrentAttachmentName(savedScore.getAttachmentName());
-            updateTargetData(target);
+            targetService.saveTarget(target);
 
         }else{
             savedScore = scoreRepository.save(score);
-            Target target = savedScore.getTarget();
             target.setCurrentEvidence(score.getEvidence());
             target.setCurrentAttachmentName(score.getAttachmentName());
-            updateTargetData(target);
+            targetService.saveTarget(target);
         }
         return savedScore;
     }
@@ -94,12 +91,12 @@ public class ValueBasedScoreService {
     public Score saveManagerScore(Score score) {
 
         if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setManagerScore(score.getManagerScore());
             score = scoreRepository.save(existingScore);
-            Target target = score.getTarget();
-            target.setCurrentManagerScore(score.getManagerScore());
-            updateTargetData(target);
+            Output output = score.getOutput();
+            output.setCurrentManagerScore(score.getManagerScore());
+            updateOutputData(output);
         }
         return score;
     }
@@ -107,12 +104,12 @@ public class ValueBasedScoreService {
     public Score saveAgreedScore(Score score) {
 
         if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setAgreedScore(score.getAgreedScore());
             score = scoreRepository.save(existingScore);
-            Target target = score.getTarget();
-            target.setCurrentAgreedScore(score.getAgreedScore());
-            updateTargetData(target);
+            Output output = score.getOutput();
+            output.setCurrentAgreedScore(score.getAgreedScore());
+            updateOutputData(output);
         }
         return score;
     }
@@ -121,37 +118,37 @@ public class ValueBasedScoreService {
 
 
         if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setModeratedScore(score.getModeratedScore());
             existingScore.setWeightedScore(calculateWeightedScore(existingScore));
             score = scoreRepository.save(existingScore);
-            Target target = score.getTarget();
-            target.setCurrentModeratedScore(score.getModeratedScore());
-            target.setCurrentWeightedScore(score.getWeightedScore());
-            updateTargetData(target);
+            Output output = score.getOutput();
+            output.setCurrentModeratedScore(score.getModeratedScore());
+            output.setCurrentWeightedScore(score.getWeightedScore());
+            updateOutputData(output);
         }
         return score;
     }
 
     public boolean scoreExists(Score score){
-        return scoreRepository.existsScoresByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        return scoreRepository.existsScoresByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
     }
 
-    public boolean  updateTargetData(Target target){
+    public boolean  updateOutputData(Output output){
 
-        Double weightedRating = scoreRepository.totalWeightedScoreByTarget(target);
-        Double employeeScore = scoreRepository.averageEmployeeScoreByTarget(target);
-        Double managerScore = scoreRepository.averageManagerScoreByTarget(target);
-        Double agreedScore = scoreRepository.averageAgreedScoreByTarget(target);
-        Double moderatedScore = scoreRepository.averageModeratedScoreByTarget(target);
+        Double weightedRating = scoreRepository.totalWeightedScoreByOutput(output);
+        Double employeeScore = scoreRepository.averageEmployeeScoreByOutput(output);
+        Double managerScore = scoreRepository.averageManagerScoreByOutput(output);
+        Double agreedScore = scoreRepository.averageAgreedScoreByOutput(output);
+        Double moderatedScore = scoreRepository.averageModeratedScoreByOutput(output);
 
-        target.setEmployeeScore(employeeScore);
-        target.setManagerScore(managerScore);
-        target.setAgreedScore(agreedScore);
-        target.setModeratedScore(moderatedScore);
-        target.setWeightedScore(weightedRating);
+        output.setEmployeeScore(employeeScore);
+        output.setManagerScore(managerScore);
+        output.setAgreedScore(agreedScore);
+        output.setModeratedScore(moderatedScore);
+        output.setWeightedScore(weightedRating);
         try {
-            targetService.saveTarget(target);
+            outputService.saveOutput(output);
             return true;
         }catch (Exception e){
             return false;

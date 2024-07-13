@@ -277,9 +277,9 @@ public class AssessmentController {
         double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard);
         double totalWeightedScore = 0.0;
-        for(Target target: targetsList){
-            totalWeightedScore += target.getWeightedScore();
-        }
+//        for(Target target: targetsList){
+//            totalWeightedScore += target.getWeightedScore();
+//        }
 
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("pips", pips);
@@ -336,9 +336,9 @@ public class AssessmentController {
         double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard);
         double totalWeightedScore = 0.0;
-        for(Target target: targetsList){
-            totalWeightedScore += target.getWeightedScore();
-        }
+//        for(Target target: targetsList){
+//            totalWeightedScore += target.getWeightedScore();
+//        }
 
         context.setVariable("loggedUserId", loggedUserId);
         context.setVariable("pips", pips);

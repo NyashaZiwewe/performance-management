@@ -18,7 +18,7 @@ public interface GearRepository extends JpaRepository<Gear, Long> {
     @Query(value = "SELECT DISTINCT(g) FROM Gear g LEFT JOIN Goal gl ON gl.gear = g LEFT JOIN Outcome oc ON oc.goal = gl LEFT JOIN Output op ON op.outcome = oc WHERE op.scorecard = :scorecard")
     List<Gear> selectedGearsByScorecard(@Param("scorecard") Scorecard scorecard);
 
-    @Query("SELECT SUM(t.allocatedWeight) FROM Target t LEFT JOIN Output o ON t.output = o WHERE o.scorecard.id = :scorecardId AND o.outcome.goal.gear = :gear")
+    @Query("SELECT SUM(o.allocatedWeight) FROM Output o WHERE o.scorecard.id = :scorecardId AND o.outcome.goal.gear = :gear")
     double sumGearAllocatedWeight(@Param("scorecardId") long scorecardId, @Param("gear") Gear gear);
 
     Gear findGearById(long id);

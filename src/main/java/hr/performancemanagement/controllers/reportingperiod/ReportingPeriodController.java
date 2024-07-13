@@ -92,6 +92,17 @@ public class ReportingPeriodController {
         return "redirect:/reporting-periods";
     }
 
+    @RequestMapping(value = "/delete-reporting-period", method = RequestMethod.POST)
+    public String deleteReportingPeriod(HttpServletRequest request, long id) {
+        try {
+            reportingPeriodService.deleteReportingPeriod(id);
+            PortletUtils.addInfoMsg("Reporting period successfully deleted.", request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Failed because "+ e.getMessage(), request);
+        }
+        return "redirect:/reporting-periods";
+    }
+
     @RequestMapping("/strategic-goals/{id}")
     public ModelAndView viewGoals(@PathVariable("id") long id, HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_STRATEGIC_OBJECTIVES);
@@ -153,6 +164,17 @@ public class ReportingPeriodController {
         reportingDateService.saveReportingDate(newReportingDate);
         PortletUtils.addInfoMsg("Reporting Date successfully updated.", request);
         return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
+    }
+
+    @RequestMapping(value = "/delete-reporting-date", method = RequestMethod.POST)
+    public String deleteReportingDate( HttpServletRequest request, long id) {
+        try {
+            reportingDateService.deleteReportingDate(id);
+            PortletUtils.addInfoMsg("Reporting Date successfully deleted.", request);
+        }catch (Exception e){
+            PortletUtils.addErrorMsg("Failed because "+ e.getMessage(), request);
+        }
+        return "redirect:/reporting-periods";
     }
 
 }

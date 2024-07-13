@@ -16,6 +16,6 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
 
     @Query(value = "SELECT DISTINCT(oc.goal) FROM Output o LEFT JOIN Outcome oc ON o.outcome = oc WHERE o.scorecard.id = :scorecardId")
     List<Goal> goalsByScorecard(@Param("scorecardId") long scorecardId);
-    @Query(value = "SELECT coalesce(AVG(t.weightedScore), 0) FROM Target t LEFT JOIN Output o ON t.output = o WHERE o.outcome.goal = :goal")
+    @Query(value = "SELECT coalesce(AVG(o.weightedScore), 0) FROM Output o WHERE o.outcome.goal = :goal")
     Double weightedScoreByScorecardAndGoal(@Param("goal") Goal goal);
 }

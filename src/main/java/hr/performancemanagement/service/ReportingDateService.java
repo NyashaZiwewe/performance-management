@@ -56,7 +56,8 @@ public class ReportingDateService {
     }
 
     @Transactional
-    public void deleteReportingDate(ReportingDate reportingDate){
+    public void deleteReportingDate(long id){
+        ReportingDate reportingDate = reportingDateRepository.findReportingDateById(id);
         reportingDateRepository.delete(reportingDate);
     }
 }

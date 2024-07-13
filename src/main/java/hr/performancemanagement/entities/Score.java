@@ -21,8 +21,8 @@ public class Score implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "target_id")
-    private Target target;
+    @JoinColumn(name = "output_id")
+    private Output output;
     @ManyToOne
     @JoinColumn(name = "reporting_date_id")
     private ReportingDate reportingDate;

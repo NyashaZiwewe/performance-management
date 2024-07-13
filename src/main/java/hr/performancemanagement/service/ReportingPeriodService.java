@@ -6,6 +6,7 @@ import hr.performancemanagement.repository.ReportingPeriodRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
@@ -42,5 +43,11 @@ public class ReportingPeriodService {
     public void saveReportingPeriod(ReportingPeriod reportingPeriod) {
 
         reportingPeriodRepository.save(reportingPeriod);
+    }
+
+    @Transactional
+    public void deleteReportingPeriod(long id){
+        ReportingPeriod reportingPeriod = reportingPeriodRepository.findReportingPeriodById(id);
+        reportingPeriodRepository.delete(reportingPeriod);
     }
 }

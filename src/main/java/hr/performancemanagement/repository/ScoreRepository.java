@@ -12,10 +12,10 @@ import java.util.List;
 @Repository
 public interface ScoreRepository extends JpaRepository<Score, Long> {
 
-    List<Score> findScoresByTarget(Target target);
+    List<Score> findScoresByOutput(Target target);
     Score findScoreById(long id);
-    boolean existsScoresByTargetAndReportingDate(Target target, ReportingDate reportingDate);
-    Score findScoreByTargetAndReportingDate(Target target, ReportingDate reportingDate);
+    boolean existsScoresByOutputAndReportingDate(Output output, ReportingDate reportingDate);
+    Score findScoreByOutputAndReportingDate(Output output, ReportingDate reportingDate);
 
 //    @Query("SELECT coalesce(AVG(employeeScore), 0) FROM Score WHERE target = :target")
 //    double averageEmployeeScore(@Param("target") long target);
@@ -36,22 +36,22 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
 //    double averageActualScoreForTarget(@Param("target") Target target);
 
 
-    @Query(value = "SELECT coalesce(SUM(s.weightedScore), 0) FROM Score s WHERE s.target = :target")
-    double totalWeightedScoreByTarget(@Param("target") Target target);
+    @Query(value = "SELECT coalesce(SUM(s.weightedScore), 0) FROM Score s WHERE s.output = :output")
+    double totalWeightedScoreByOutput(@Param("output") Output output);
 
-    @Query(value = "SELECT coalesce(AVG(s.actual), 0) FROM Score s WHERE s.target = :target")
-    double averageActualByTarget(@Param("target") Target target);
+    @Query(value = "SELECT coalesce(AVG(s.actual), 0) FROM Score s WHERE s.output = :output")
+    double averageActualByOutput(@Param("output") Output output);
 
-    @Query(value = "SELECT coalesce(SUM(s.actual), 0) FROM Score s WHERE s.target = :target")
-    double sumActualByTarget(@Param("target") Target target);
+    @Query(value = "SELECT coalesce(SUM(s.actual), 0) FROM Score s WHERE s.output = :output")
+    double sumActualByOutput(@Param("output") Output output);
 
-    @Query(value = "SELECT coalesce(SUM(s.agreedScore), 0) FROM Score s WHERE s.target = :target")
-    double averageAgreedScoreByTarget(@Param("target") Target target);
-    @Query(value = "SELECT coalesce(SUM(s.moderatedScore), 0) FROM Score s WHERE s.target = :target")
-    double averageModeratedScoreByTarget(@Param("target") Target target);
-    @Query(value = "SELECT coalesce(SUM(s.managerScore), 0) FROM Score s WHERE s.target = :target")
-    double averageManagerScoreByTarget(@Param("target") Target target);
-    @Query(value = "SELECT coalesce(SUM(s.employeeScore), 0) FROM Score s WHERE s.target = :target")
-    double averageEmployeeScoreByTarget(@Param("target") Target target);
+    @Query(value = "SELECT coalesce(SUM(s.agreedScore), 0) FROM Score s WHERE s.output = :output")
+    double averageAgreedScoreByOutput(@Param("output") Output output);
+    @Query(value = "SELECT coalesce(SUM(s.moderatedScore), 0) FROM Score s WHERE s.output = :output")
+    double averageModeratedScoreByOutput(@Param("output") Output output);
+    @Query(value = "SELECT coalesce(SUM(s.managerScore), 0) FROM Score s WHERE s.output = :output")
+    double averageManagerScoreByOutput(@Param("output") Output output);
+    @Query(value = "SELECT coalesce(SUM(s.employeeScore), 0) FROM Score s WHERE s.output = :output")
+    double averageEmployeeScoreByOutput(@Param("output") Output output);
 
 }

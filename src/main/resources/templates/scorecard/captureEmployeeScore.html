@@ -53,14 +53,14 @@
         }
     </style>
     <script type="text/javascript">
-        function saveScore(targetId){
+        function saveScore(targetId, outputId){
 
-            let employeeScore = document.getElementById("employeeScore"+targetId).value;
+            let employeeScore = document.getElementById("employeeScore"+outputId).value;
             let justification = document.getElementById("justification"+targetId).value;
 
             if(Number(employeeScore) < 1 || Number(employeeScore) > 5){
                 alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
-                const fieldElement = document.getElementById("employeeScore"+targetId);
+                const fieldElement = document.getElementById("employeeScore"+outputId);
                 fieldElement.value = '';
                 fieldElement.classList.add('error');
                 return false;
@@ -162,10 +162,10 @@
                                                 <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"></a>
                                             </td>
                                             <td>
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.allocatedWeight}"></a>
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.allocatedWeight}"></a>
                                             </td>
                                             <td>
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.employeeScore <= 0.0 || target.employeeScore == null ? '' : #numbers.formatDecimal(target.employeeScore, 0,  2)}" th:attr="class = ${target.employeeScore < 2.5 ? 'fail' : 'pass'}"></a>
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.employeeScore <= 0.0 || target.output.employeeScore == null ? '' : #numbers.formatDecimal(target.output.employeeScore, 0,  2)}" th:attr="class = ${target.output.employeeScore < 2.5 ? 'fail' : 'pass'}"></a>
                                             </td>
                                             <td>
                                                 <a th:if="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
@@ -203,7 +203,7 @@
                                                                     </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                    <tr th:each="score : ${target.scores}">
+                                                                    <tr th:each="score : ${target.output.scores}">
                                                                         <td th:text="${score.reportingDate?.endDate}"></td>
                                                                         <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>
                                                                         <td th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></td>
@@ -330,14 +330,14 @@
                             <div class="panel-body">
                                     <fieldset class="border p-2">
                                         <legend class="w-auto"><span th:text="${reportingPeriod.startDate +' - '+ reportingPeriod.endDate}"></span></legend>
-                                        <div class="row table-responsive" th:each="gear, gstat : ${selectedGears}">
-                                            <table class="table">
+                                        <table class="table table-bordered">
+                                         <div class="row table-responsive" th:each="gear, gstat : ${selectedGears}">
                                                 <thead>
                                                 <tr>
-                                                    <td colspan="8" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
-                                                    <td>Total Gear Weight: </td>
+                                                    <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
+                                                    <td colspan="3">Total Gear Weight: </td>
                                                     <td> <h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
-                                                    <td></td>
+                                                    <td colspan="4"></td>
                                                 </tr>
                                                 <tr>
                                                     <td colspan="11" style="font-weight: bold">GOAL : <span th:text="${gear.goals[0].name}"></span></td>
@@ -350,7 +350,7 @@
                                                     <th>Base Target</th>
                                                     <th>Target</th>
                                                     <th>Weight</th>
-                                                    <th>Employee Score</th>
+                                                    <th>Owner</th>
                                                     <th>Justification</th>
                                                     <th>Evidence</th>
                                                     <th></th>
@@ -360,34 +360,36 @@
                                                 <tr th:unless="${#lists.isEmpty(gear.targetsList)}" th:each="target, stat :  ${gear.targetsList}"  th:with="newOutcome=${(stat.index == 0) || (gear.targetsList[stat.index - 1].outcome.id != target?.outcome.id)},
                                                                                                                      newOutput=${newOutcome || (stat.index == 0) ||  (gear.targetsList[stat.index - 1].output != target?.output)}">
 
-                                                    <td th:if="${newOutcome}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}" style="width: 5%">
+                                                    <td th:if="${newOutcome}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}">
                                                         <div class="rotate-270" th:text="${target?.outcome?.name}"></div>
                                                     </td>
-                                                    <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="width: 5%">
+                                                    <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}">
                                                         <div class="rotate-270" th:text="${target?.output?.name}"></div>
                                                     </td>
                                                     <td th:text="${target.measure}" style="width: 25% !important;"></td>
-                                                    <td th:text="${target.unit}"></td>
-                                                    <td>
+                                                    <td th:text="${target.unit}" style="vertical-align: middle; text-align: center;"></td>
+                                                    <td style="vertical-align: middle; text-align: center;">
                                                         <a th:if="${#strings.contains(target.baseTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.baseTarget)}"></a>
                                                         <a th:unless="${#strings.contains(target.baseTarget,'E')}" th:text="${target.baseTarget}"></a>
                                                     </td>
-                                                    <td>
+                                                    <td style="vertical-align: middle; text-align: center;">
                                                         <a th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></a>
                                                         <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></a>
                                                     </td>
-                                                    <td th:text="${target.allocatedWeight}"></td>
-                                                    <td>
-                                                        <input type="number" class="validate" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:value="${target.currentEmployeeScore}" style="width: 5em">
+                                                    <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                                        <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.allocatedWeight}"></a>
                                                     </td>
-                                                    <td>
-                                                        <textarea rows="1" class="form-control" th:id="'justification' + ${target.id}" th:onChange="saveScore([[${target.id}]])" th:text="${target.currentJustification}" style="width: 20em"></textarea>
+                                                    <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                                        <input type="number" class="validate" step="any" min="1" max="5" th:id="'employeeScore' + ${target.output.id}" th:onChange="saveScore([[${target.id}]],[[${target.output.id}]])" th:value="${target.output.currentEmployeeScore}" style="width: 5em">
                                                     </td>
-                                                    <td>
+                                                    <td style="vertical-align: middle; text-align: center;">
+                                                        <textarea rows="1" class="form-control" th:id="'justification' + ${target.id}" th:onChange="saveScore([[${target.id}]],[[${target.output.id}]])" th:text="${target.currentJustification}" style="width: 20em"></textarea>
+                                                    </td>
+                                                    <td style="vertical-align: middle; text-align: center;">
                                                         <input type="text" readonly data-toggle="modal" th:data-target="'#evidenceModal'+ ${target.id}" th:value="${target.currentEvidence}">
                                                     </td>
 
-                                                    <td>
+                                                    <td style="vertical-align: middle; text-align: center;">
                                                         <input th:if="${target.currentAttachmentName == null || target.currentAttachmentName == ''}" type="text" readonly data-toggle="modal" th:data-target="'#evidenceModal'+ ${target.id}">
                                                         <a th:unless="${target.currentAttachmentName == null || target.currentAttachmentName == ''}" th:text="${target.currentAttachmentName}" th:href="@{/scorecards/view-evidence/} +${target.currentAttachmentName}" target="_blank"></a>
                                                     </td>
@@ -430,8 +432,6 @@
                                                             </div>
                                                         </div>
                                                     </div>
-
-
                                                 </tr>
                                                 <tr th:if="${gstat.last}">
                                                     <td colspan="11"></td>
@@ -447,11 +447,12 @@
                                                     </td>
                                                     <td colspan="3"></td>
                                                 </tr>
+                                                <tr>
+
+                                                </tr>
                                                 </tbody>
-                                            </table>
-
-
-                                        </div>
+                                            </div>
+                                        </table>
                                         <form th:action="@{/scorecards/} + ${url}" method="post" id="scoresForm" th:object="${scorecard}">
                                           <div class="form-group row">
                                             <div class="col-lg-4">

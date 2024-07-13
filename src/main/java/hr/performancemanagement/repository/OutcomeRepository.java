@@ -17,18 +17,18 @@ public interface OutcomeRepository extends JpaRepository<Outcome, Long> {
     List<Outcome> findOutcomesByGoal(Goal goal);
     List<Outcome> findOutcomesByGoal(long scorecardId);
 
-    @Query("SELECT SUM(t.allocatedWeight) FROM Target t LEFT JOIN Output o ON t.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT SUM(o.allocatedWeight) FROM Output o WHERE o.scorecard.id = :scorecardId")
     double sumAllocatedWeight(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.employeeScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Output o ON t.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.employeeScore) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
     double averageEmployeeScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.managerScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Output o ON t.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.managerScore) FROM Score s LEFT JOIN Output o WHERE o.scorecard.id = :scorecardId")
     double averageManagerScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.agreedScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Output o ON t.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.agreedScore) FROM Score s LEFT JOIN Output o WHERE o.scorecard.id = :scorecardId")
     double averageAgreedScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.moderatedScore) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Output o ON t.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.moderatedScore) FROM Score s LEFT JOIN Output o WHERE o.scorecard.id = :scorecardId")
     double averageModeratedScore(@Param("scorecardId") long scorecardId);
 }

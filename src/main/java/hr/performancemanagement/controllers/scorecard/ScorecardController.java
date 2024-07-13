@@ -245,11 +245,11 @@ public class ScorecardController {
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
         List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
         double totalWeightedScore = 0.0;
-        for(Target target: targetsList){
-            if(target.getWeightedScore() !=null){
-                totalWeightedScore += target.getWeightedScore();
-            }
-        }
+//        for(Target target: targetsList){
+//            if(target.getWeightedScore() !=null){
+//                totalWeightedScore += target.getWeightedScore();
+//            }
+//        }
 
         try {
             for(Gear gear: selectedGears){
@@ -334,7 +334,7 @@ public class ScorecardController {
         }
 
         output.setOutcome(outcomeService.getOutcomeById(wrapper.getOutcomeId()));
-        output.setWeight(wrapper.getAllocatedWeight());
+        output.setAllocatedWeight(wrapper.getAllocatedWeight());
 
         Output savedOutput = outputService.saveOutput(output);
 
@@ -347,7 +347,6 @@ public class ScorecardController {
         target.setOutput(savedOutput);
         target.setMeasure(wrapper.getMeasure());
         target.setUnit(wrapper.getUnit());
-        target.setAllocatedWeight(wrapper.getAllocatedWeight());
         target.setNormalTarget(wrapper.getNormalTarget());
         target.setBaseTarget(wrapper.getBaseTarget());
         target.setStretchTarget(wrapper.getStretchTarget());
@@ -958,11 +957,11 @@ public class ScorecardController {
             List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
             List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
             double totalWeightedScore = 0.0;
-            for(Target target: targetsList){
-                if(target.getWeightedScore() !=null){
-                    totalWeightedScore += target.getWeightedScore();
-                }
-            }
+//            for(Target target: targetsList){
+//                if(target.getWeightedScore() !=null){
+//                    totalWeightedScore += target.getWeightedScore();
+//                }
+//            }
 
             try {
                 for(Gear gear: selectedGears){
@@ -1077,13 +1076,13 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-standard-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveStandardScore( HttpServletResponse response, Long targetId, Double actual, String evidence, String justification) {
+    public void saveStandardScore( HttpServletResponse response, Long outputId, Double actual, String evidence, String justification) {
 
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-        Target target = targetService.getTargetById(targetId);
+        Output output = outputService.getOutputById(outputId);
 
         Score score = new Score();
-        score.setTarget(target);
+        score.setOutput(output);
         score.setReportingDate(reportingDate);
         score.setEvidence(evidence);
         score.setJustification(justification);
@@ -1110,17 +1109,17 @@ public class ScorecardController {
     public void saveEmployeeScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double employeeScore, String justification) {
 
         try {
-
             Target target = targetService.getTargetById(targetId);
-            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+            Output output = target.getOutput();
+            Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
 
 //            if(commonService.isOwner(scorecard)){
                 Score score = new Score();
-                score.setTarget(target);
+                score.setOutput(output);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setEmployeeScore(employeeScore);
                 score.setJustification(justification);
-                valueBasedScoreService.saveEmployeeScore(score);
+                valueBasedScoreService.saveEmployeeScore(score, target);
 //            }
         }catch (Exception ignored){
 
@@ -1143,7 +1142,8 @@ public class ScorecardController {
     public String saveValueBasedEvidence(EvidenceWrapper wrapper, HttpServletRequest request){
 
         Target target = targetService.getTargetById(wrapper.getTargetId());
-        Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+        Output output = target.getOutput();
+        Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
 
         MultipartFile file = wrapper.getAttachment();
         String fileName = file.getOriginalFilename();
@@ -1158,11 +1158,11 @@ public class ScorecardController {
         try {
 //            if(commonService.isOwner(scorecard)){
                 Score score = new Score();
-                score.setTarget(target);
+                score.setOutput(output);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setEvidence(wrapper.getEvidence());
                 score.setAttachmentName(fileName);
-                valueBasedScoreService.saveEvidence(score);
+                valueBasedScoreService.saveEvidence(score, target);
 //            }
         }catch (Exception ignored){
 
@@ -1175,11 +1175,12 @@ public class ScorecardController {
 
         try {
             Target target = targetService.getTargetById(targetId);
+            Output output = target.getOutput();
             Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
 
             if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
-                score.setTarget(target);
+                score.setOutput(output);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setManagerScore(managerScore);
                 valueBasedScoreService.saveManagerScore(score);
@@ -1205,11 +1206,12 @@ public class ScorecardController {
 
         try {
             Target target = targetService.getTargetById(targetId);
+            Output output = target.getOutput();
             Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
 
             if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
-                score.setTarget(target);
+                score.setOutput(output);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setAgreedScore(agreedScore);
                 valueBasedScoreService.saveAgreedScore(score);
@@ -1236,11 +1238,12 @@ public class ScorecardController {
 
         try {
             Target target = targetService.getTargetById(targetId);
+            Output output = target.getOutput();
             Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
 
             if(commonService.isModerator() && PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(scorecard.getApprovalStatus())){
                 Score score = new Score();
-                score.setTarget(target);
+                score.setOutput(output);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setModeratedScore(moderatedScore);
                 valueBasedScoreService.saveModeratedScore(score);
@@ -1330,7 +1333,7 @@ public class ScorecardController {
 
                 newOutput.setScorecard(newScorecard);
                 newOutput.setOutcome(output.getOutcome());
-                newOutput.setWeight(output.getWeight());
+                newOutput.setAllocatedWeight(output.getAllocatedWeight());
                 newOutput.setName(output.getName());
 
                 Output savedOut = outputService.saveOutput(newOutput);
@@ -1341,7 +1344,6 @@ public class ScorecardController {
                     newTarget.setOutput(savedOut);
                     newTarget.setMeasure(target.getMeasure());
                     newTarget.setUnit(target.getUnit());
-                    newTarget.setAllocatedWeight(target.getAllocatedWeight());
                     newTarget.setNormalTarget(target.getNormalTarget());
                     newTarget.setBaseTarget(target.getBaseTarget());
                     newTarget.setStretchTarget(target.getStretchTarget());
@@ -1457,7 +1459,7 @@ public class ScorecardController {
               output.setScorecard(scorecardService.getScorecardById(wrapper.getScorecardId()));
               output.setName(wrapper.getName());
               output.setOutcome(outcomeService.getOutcomeById(wrapper.getOutcomeId()));
-              output.setWeight(wrapper.getAllocatedWeight());
+              output.setAllocatedWeight(wrapper.getAllocatedWeight());
               output = outputService.saveOutput(output);
 
               Target target = new Target();
@@ -1465,7 +1467,6 @@ public class ScorecardController {
               target.setNormalTarget(wrapper.getNormalTarget());
               target.setBaseTarget(wrapper.getBaseTarget());
               target.setOutput(output);
-              target.setAllocatedWeight(wrapper.getAllocatedWeight());
               target.setUnit(wrapper.getUnit());
               target = targetService.saveTarget(target);
 
