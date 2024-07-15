@@ -23,12 +23,12 @@ public interface OutcomeRepository extends JpaRepository<Outcome, Long> {
     @Query("SELECT AVG(s.employeeScore) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
     double averageEmployeeScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.managerScore) FROM Score s LEFT JOIN Output o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.managerScore) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
     double averageManagerScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.agreedScore) FROM Score s LEFT JOIN Output o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.agreedScore) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
     double averageAgreedScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT AVG(s.moderatedScore) FROM Score s LEFT JOIN Output o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT AVG(s.moderatedScore) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
     double averageModeratedScore(@Param("scorecardId") long scorecardId);
 }

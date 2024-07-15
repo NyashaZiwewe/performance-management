@@ -66,6 +66,8 @@ public class ScorecardController {
     CommonService commonService;
     @Autowired
     OutputService outputService;
+    @Autowired
+    OverallScoreService overallScoreService;
 
     private final Environment environment;
 
@@ -230,18 +232,12 @@ public class ScorecardController {
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
         String url = "";
 
-        double averageEmployeeScore = outcomeService.getAverageEmployeeScore(id);
-        double averageManagerScore = outcomeService.getAverageManagerScore(id);
-        double averageAgreedScore = outcomeService.getAverageAgreedScore(id);
-        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
+//        double averageEmployeeScore = outcomeService.getAverageEmployeeScore(id);
+//        double averageManagerScore = outcomeService.getAverageManagerScore(id);
+//        double averageAgreedScore = outcomeService.getAverageAgreedScore(id);
+//        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         double totalAllocatedWeight = outcomeService.getTotalAllocatedWeight(id);
 
-        double weightedScore;
-        try {
-            weightedScore = (averageModeratedScore / 5 ) * 100;
-        }catch (Exception e){
-            weightedScore = 0;
-        }
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
         List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
         double totalWeightedScore = 0.0;
@@ -293,17 +289,15 @@ public class ScorecardController {
                 modelAndView = new ModelAndView(Pages.BLANK_PAGE);
                 PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
             }
-
+            int scoreColumns = getScoreColumns(scorecard, true);
+            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("selectedGears", selectedGears);
+            modelAndView.addObject("scoreColumns", scoreColumns);
             modelAndView.addObject("url", url);
             modelAndView.addObject("targetsList", targetsList);
-            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
-            modelAndView.addObject("averageManagerScore", averageManagerScore);
-            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
-            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
-            modelAndView.addObject("weightedScore", weightedScore);
+            modelAndView.addObject("overallScore", overallScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("reportingDate", reportingDate);
@@ -949,10 +943,11 @@ public class ScorecardController {
         try {
             Scorecard scorecard = scorecardService.getScorecardById(id);
             String scorecardModel = scorecard.getScorecardModel().getName();
-            double averageEmployeeScore = outcomeService.getAverageEmployeeScore(id);
-            double averageManagerScore = outcomeService.getAverageManagerScore(id);
-            double averageAgreedScore = outcomeService.getAverageAgreedScore(id);
-            double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
+            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+//            double averageEmployeeScore = outcomeService.getAverageEmployeeScore(id);
+//            double averageManagerScore = outcomeService.getAverageManagerScore(id);
+//            double averageAgreedScore = outcomeService.getAverageAgreedScore(id);
+//            double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
             double totalAllocatedWeight = outcomeService.getTotalAllocatedWeight(id);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
             List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
@@ -980,17 +975,19 @@ public class ScorecardController {
                 System.out.println(e.getMessage());
             }
 
-            int scoreColumns = getScoreColumns(id);
+            int scoreColumns = getScoreColumns(scorecard, false);
+            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
             modelAndView.addObject("pageTitle", "View Contract {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
 //            modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("selectedGears", selectedGears);
+            modelAndView.addObject("overallScore", overallScore);
             modelAndView.addObject("comment", new Comment());
-            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
-            modelAndView.addObject("averageManagerScore", averageManagerScore);
-            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
-            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
+//            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
+//            modelAndView.addObject("averageManagerScore", averageManagerScore);
+//            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
+//            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("scoreColumns", scoreColumns);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
@@ -1003,7 +1000,7 @@ public class ScorecardController {
             modelAndView.addObject("canModerate", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard));
 
         }catch (Exception e){
-            PortletUtils.addErrorMsg("That scorecard cannot be found", request);
+            PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
         }
 
@@ -1473,18 +1470,71 @@ public class ScorecardController {
         return "redirect:/scorecards/capture-targets/"+ wrapper.getScorecardId();
     }
 
-    private int getScoreColumns(long id){
+    private int getScoreColumns(Scorecard scorecard, boolean isCapturing){
+
         int columns = 0;
-        if(outcomeService.getAverageModeratorScore(id) > 0){
-            columns = 4;
-        } else if (outcomeService.getAverageAgreedScore(id) > 0) {
-            columns = 3;
-        } else if (outcomeService.getAverageManagerScore(id) > 0) {
-            columns = 2;
-        } else if (outcomeService.getAverageEmployeeScore(id) > 0) {
-            columns = 1;
+        String status = scorecard.getApprovalStatus();
+        switch (status){
+            case "SCORED_BY_EMPLOYEE":
+                columns = 1;
+                break;
+            case "SCORED_BY_SUPERVISOR":
+                columns = 2;
+                break;
+            case "AGREED_BY_TWO":
+                columns = 3;
+                break;
+            case "MODERATED_BY_HR":
+            case "CLOSED":
+                columns = 4;
+                break;
+            default:
+                break;
+        }
+        if(isCapturing){
+            columns += 1;
         }
        return columns;
+    }
+
+    @RequestMapping(value = "/save-overall-score", method = RequestMethod.POST)
+    public void saveOverallScore(HttpServletRequest request, HttpServletResponse response, Long scorecardId, String userType, Double score) throws MalformedURLException {
+
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+
+        OverallScore overallScore =  overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+        if(overallScore == null){
+            overallScore = new OverallScore();
+            overallScore.setReportingDate(reportingDate);
+            overallScore.setScorecard(scorecard);
+        }
+        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
+            overallScore.setEmployeeOverall(score);
+        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
+            if("SCORED_BY_SUPERVISOR".equalsIgnoreCase(scorecard.getApprovalStatus())){
+                overallScore.setAgreedOverall(score);
+            }else{
+                overallScore.setManagerOverall(score);
+            }
+        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
+            overallScore.setModeratedOverall(score);
+        }
+
+        overallScore = overallScoreService.saveOverallScore(overallScore);
+
+        JSONObject jsonObject = new JSONObject();
+
+        jsonObject.put("alreadyExists", false);
+
+        String jsonString = jsonObject.toString();
+
+        try(OutputStream outputStream = response.getOutputStream()){
+            outputStream.write(jsonString.getBytes());
+
+        }catch (IOException e){
+            throw  new RuntimeException();
+        }
     }
 
 }

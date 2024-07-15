@@ -90,7 +90,7 @@
                         <tr>
                             <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
                             <td colspan="3">Total Gear Weight: </td>
-                            <td> <h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
+                            <td> <h4 th:text="${gear.totalAllocatedWeight == null ? '' : #numbers.formatDecimal(gear.totalAllocatedWeight, 0,  2)} + '%'"></h4> </td>
                             <td th:if="${scoreColumns > 0 }" th:colspan="${scoreColumns}"></td>
                             <th></th>
                         </tr>
@@ -136,7 +136,7 @@
                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></a>
                             </td>
                             <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
-                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:text="${target.output.allocatedWeight}"></a>
+                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:text="${target.output.allocatedWeight == null ? '' : #numbers.formatDecimal(target.output.allocatedWeight, 0,  2)}"></a>
                             </td>
                             <td th:if="${newOutput && scoreColumns > 0 }" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;" th:attr="class = ${target.output.employeeScore < 2.5 ? 'fail' : 'pass'}">
                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}"  th:text="${target.output.employeeScore <= 0.0 || target.output.employeeScore == null ? '' : #numbers.formatDecimal(target.output.employeeScore, 0,  2)}"></a>
@@ -320,22 +320,22 @@
                                 <a th:if="${canModerate}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Moderate Scores</a>
                                 <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success btn-sm float-right" type="button" target="_blank">View Report</a>
                             </th>
-                            <td colspan="2" style="text-align: right"><b>Total Allocated Weight:</b></td>
-                            <th>
-                                <span th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></span>
-                                <span th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></span>
+                            <td colspan="2" style="text-align: right"><b>Overall:</b></td>
+                            <th style="vertical-align: middle; text-align: center;">
+                                <span th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
+                                <span th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
                             </th>
-                            <th th:if="${scoreColumns > 0 }" th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
-                                <span th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></span>
+                            <th th:if="${scoreColumns > 0 }" th:attr="class = ${overallScore?.employeeOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                <span th:text="${overallScore?.employeeOverall == null ? '' : #numbers.formatDecimal(overallScore?.employeeOverall, 0, 2)}"></span>
                             </th>
-                            <th th:if="${scoreColumns > 1 }" th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
-                                <span th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></span>
+                            <th th:if="${scoreColumns > 1 }" th:attr="class = ${overallScore?.managerOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                <span th:text="${overallScore?.managerOverall == null ? '' : #numbers.formatDecimal(overallScore?.managerOverall, 0, 2)}"></span>
                             </th>
-                            <th th:if="${scoreColumns > 2 }" th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
-                                <span th:text="${averageAgreedScore <= 0.0 || averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></span>
+                            <th th:if="${scoreColumns > 2 }" th:attr="class = ${overallScore?.agreedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                <span th:text="${overallScore?.agreedOverall == null ? '' : #numbers.formatDecimal(overallScore?.agreedOverall, 0, 2)}"></span>
                             </th>
-                            <th th:if="${scoreColumns > 3 }" th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
-                                <span th:text="${averageModeratedScore <= 0.0 || averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></span>
+                            <th th:if="${scoreColumns > 3 }" th:attr="class = ${overallScore?.moderatedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                <span th:text="${overallScore?.moderatedOverall == null ? '' : #numbers.formatDecimal(overallScore?.moderatedOverall, 0, 2)}"></span>
 <!--                                <span th:text="${'('+ #numbers.formatDecimal(totalWeightedScore, 0, 2) + '%)'}"></span>-->
                             </th>
 <!--                            <td th:attr="class = ${totalWeightedScore < 50 ? 'fail' : 'pass' }">-->
