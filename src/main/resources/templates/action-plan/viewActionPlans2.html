@@ -133,7 +133,8 @@
                                                                 </li>
 
                                                             </ul>
-                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">
+                                                            <ul class="todo-list m-t">
+<!--                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">-->
                                                                 <li> <input th:id="'newTask' + ${plan.id}" class="form-control"  th:onchange="saveTask([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -150,7 +151,8 @@
                                                                     <small th:id="'issueLabel' + ${task.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">
+                                                            <ul class="todo-list m-t">
+<!--                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">-->
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -399,7 +401,8 @@
                                                                     <small th:id="'taskLabel' + ${task.id}" class="label label-warning" th:unless="${task.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">
+                                                            <ul class="todo-list m-t">
+<!--                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">-->
                                                                 <li> <input th:id="'newTask' + ${plan.id}" class="form-control"  th:onchange="saveTask([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -416,7 +419,8 @@
                                                                     <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">
+                                                            <ul class="todo-list m-t">
+<!--                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">-->
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -666,7 +670,8 @@
                                                                     <small th:id="'taskLabel' + ${task.id}" class="label label-warning" th:unless="${task.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">
+                                                            <ul class="todo-list m-t">
+<!--                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">-->
                                                                 <li> <input th:id="'newTask' + ${plan.id}" class="form-control"  th:onchange="saveTask([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -683,7 +688,8 @@
                                                                     <small th:id="'issueLabel' + ${task.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">
+                                                            <ul class="todo-list m-t">
+<!--                                                            <ul class="todo-list m-t" th:if="${loggedUser.id == plan.manager?.id}">-->
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>

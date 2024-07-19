@@ -47,6 +47,8 @@ public class Scorecard {
     @CreationTimestamp
     private Date date;
     private String lockStatus;
+    @Transient
+    private OverallScore overallScore;
 
 
 }

@@ -278,6 +278,9 @@ public class performanceImprovementPlanController {
 
         PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(id);
         plan.setStatus(status);
+        if(PMConstants.TASK_STATUS_COMPLETED.equalsIgnoreCase(status)){
+            plan.setProgress(100);
+        }
         performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("alreadyExists", false);

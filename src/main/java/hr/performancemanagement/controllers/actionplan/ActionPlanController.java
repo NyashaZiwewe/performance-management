@@ -252,6 +252,9 @@ public class ActionPlanController {
 
         ActionPlan plan = actionPlanService.getActionPlanById(id);
         plan.setStatus(status);
+        if(PMConstants.TASK_STATUS_COMPLETED.equalsIgnoreCase(status)){
+            plan.setProgress(100);
+        }
         actionPlanService.saveActionPlan(plan);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("alreadyExists", false);

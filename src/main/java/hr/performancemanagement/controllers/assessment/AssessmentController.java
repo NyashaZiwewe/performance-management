@@ -51,6 +51,10 @@ public class AssessmentController {
     @Autowired
     OutputService outputService;
     @Autowired
+    OverallScoreService overallScoreService;
+    @Autowired
+    ReportingDateService reportingDateService;
+    @Autowired
     CommonService cs;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
@@ -132,6 +136,12 @@ public class AssessmentController {
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
         List<Scorecard> scoresList = scorecardService.getScoresByPeriodId(reportingPeriod);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+
+        for(Scorecard scorecard: scoresList){
+            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            scorecard.setOverallScore(overallScore);
+        }
 
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
@@ -142,7 +152,7 @@ public class AssessmentController {
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);
         modelAndView.addObject("endDate", endDate);
-        PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
+//        PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -305,7 +315,7 @@ public class AssessmentController {
 
 
     private File renderPdf(String html) throws Exception {
-        File file = File.createTempFile("stock-sales-report", ".pdf");
+        File file = File.createTempFile("performance-report", ".pdf");
         OutputStream outputStream = new FileOutputStream(file);
 //        ITextRenderer renderer = new ITextRenderer(20f * 4f / 3f, 20);
         ITextRenderer renderer = new ITextRenderer();
@@ -321,35 +331,29 @@ public class AssessmentController {
     private Context getContext(Long id, HttpServletRequest request) {
         Context context = new Context();
         String username = PortletUtils.getUsername(request);
-        Scorecard scoreCard = scorecardService.getScorecardById(id);
+        Scorecard scorecard = scorecardService.getScorecardById(id);
         List<Goal> GoalsList = goalService.listGoalsByScorecard(id);
-        ReportingPeriod reportingPeriod = scoreCard.getReportingPeriod();
-        String startDate = reportingPeriod.getStartDate();
-        String endDate = reportingPeriod.getEndDate();
+        ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+//        String startDate = reportingPeriod.getStartDate();
+//        String endDate = reportingPeriod.getEndDate();
 
         Account loggedUser = cs.getLoggedUser();
-        Account owner = scoreCard.getOwner();
+        Account owner = scorecard.getOwner();
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
-        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
-        List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard);
-        double totalWeightedScore = 0.0;
-//        for(Target target: targetsList){
-//            totalWeightedScore += target.getWeightedScore();
-//        }
+        for(ReportingDate reportingDate: reportingPeriod.getReportingDates()){
+            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            reportingDate.setOverallScore(overallScore);
+        }
 
         context.setVariable("loggedUserId", loggedUserId);
         context.setVariable("pips", pips);
         context.setVariable("owner", owner);
         context.setVariable("role", role);
-        context.setVariable("startDate", startDate);
-        context.setVariable("endDate", endDate);
-        context.setVariable("scorecard", scoreCard);
-        context.setVariable("GoalsList", GoalsList);
-        context.setVariable("averageModeratedScore", averageModeratedScore);
-        context.setVariable("totalWeightedScore", totalWeightedScore);
+        context.setVariable("reportingPeriod", reportingPeriod);
+        context.setVariable("scorecard", scorecard);
         context.setVariable("username", username);
         return context;
     }

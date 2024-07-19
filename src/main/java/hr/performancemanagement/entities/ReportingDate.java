@@ -25,6 +25,8 @@ public class ReportingDate {
     private ReportingPeriod reportingPeriod;
     private String assessmentStatus;
     private String status;
+    @Transient
+    private OverallScore overallScore;
     @CreationTimestamp
     private Date date;
 

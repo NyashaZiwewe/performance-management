@@ -81,18 +81,18 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade modal-fullscreen" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                        <div class=" modal-fullscreen" role="document">
+                                    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-xl" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
                                                     <h3 class="modal-title">Performance Improvement Plan : [<span th:text="${plan.agreedAction}"></span>]</h3>
-                                                    <a data-toggle="modal" th:data-target="'#editModal'+ ${plan.id}" class="float-right">
-                                                        <button class="btn btn-success btn-sm">Edit</button>
-                                                    </a>
-                                                    <a data-toggle="modal" th:data-target="'#deleteModal'+ ${plan.id}" class="float-right">
-                                                        <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                                                    </a>
-                                                    <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">Close</button>
+<!--                                                    <a data-toggle="modal" th:data-target="'#editModal'+ ${plan.id}" class="float-right">-->
+<!--                                                        <button class="btn btn-success btn-sm">Edit</button>-->
+<!--                                                    </a>-->
+<!--                                                    <a data-toggle="modal" th:data-target="'#deleteModal'+ ${plan.id}" class="float-right">-->
+<!--                                                        <button class="btn btn-danger btn-sm" type="button">Delete</button>-->
+<!--                                                    </a>-->
+<!--                                                    <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">Close</button>-->
                                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
@@ -148,7 +148,8 @@
                                                                 </li>
 
                                                             </ul>
-                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
+<!--                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">-->
+                                                            <ul class="todo-list small-list m-t">
                                                                 <li> <input th:id="'newTask' + ${plan.id}" class="form-control"  th:onchange="saveTask([[${plan.id}]])"></li>
                                                             </ul>
 
@@ -163,7 +164,8 @@
                                                                     <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
+                                                            <ul class="todo-list small-list m-t">
+<!--                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">-->
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -175,8 +177,9 @@
                                                             <br>
                                                             <br>
                                                             <label> Give a Detailed Feedback</label>
-                                                            <textarea rows="6" name="comment" th:id="'comment'+ ${plan.id}"  class="form-control" placeholder="Feed Back"></textarea>
-                                                            <button type="button" th:onclick="saveNote([[${plan.id}]])" class="btn btn-sm btn-success">Save</button>
+                                                            <textarea rows="4" name="comment" th:id="'comment'+ ${plan.id}"  class="form-control" placeholder="Feed Back"></textarea>
+                                                            <br>
+                                                            <button type="button" th:onclick="saveNote([[${plan.id}]])" class="btn btn-sm btn-success float-right">Save</button>
                                                         </div>
 
                                                     </div>
@@ -392,18 +395,18 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade modal-fullscreen" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                        <div class=" modal-fullscreen" role="document">
+                                    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-xl" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
                                                     <h3 class="modal-title">Performance Improvement Plan : [<span th:text="${plan.agreedAction}"></span>]</h3>
-                                                    <a data-toggle="modal" th:data-target="'#editModal'+ ${plan.id}" class="float-right">
-                                                        <button class="btn btn-success btn-sm">Edit</button>
-                                                    </a>
-                                                    <a data-toggle="modal" th:data-target="'#deleteModal'+ ${plan.id}" class="float-right">
-                                                        <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                                                    </a>
-                                                    <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">Close</button>
+<!--                                                    <a data-toggle="modal" th:data-target="'#editModal'+ ${plan.id}" class="float-right">-->
+<!--                                                        <button class="btn btn-success btn-sm">Edit</button>-->
+<!--                                                    </a>-->
+<!--                                                    <a data-toggle="modal" th:data-target="'#deleteModal'+ ${plan.id}" class="float-right">-->
+<!--                                                        <button class="btn btn-danger btn-sm" type="button">Delete</button>-->
+<!--                                                    </a>-->
+<!--                                                    <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">Close</button>-->
                                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
@@ -459,7 +462,8 @@
                                                                 </li>
 
                                                             </ul>
-                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
+                                                            <ul class="todo-list small-list m-t">
+<!--                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">-->
                                                                 <li> <input th:id="'newTask' + ${plan.id}" class="form-control"  th:onchange="saveTask([[${plan.id}]])"></li>
                                                             </ul>
 
@@ -474,7 +478,8 @@
                                                                     <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
+                                                            <ul class="todo-list small-list m-t">
+<!--                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">-->
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -486,8 +491,9 @@
                                                             <br>
                                                             <br>
                                                             <label> Give a Detailed Feedback</label>
-                                                            <textarea rows="6" name="comment" th:id="'comment'+ ${plan.id}"  class="form-control" placeholder="Feed Back"></textarea>
-                                                            <button type="button" th:onclick="saveNote([[${plan.id}]])" class="btn btn-sm btn-success">Save</button>
+                                                            <textarea rows="4" name="comment" th:id="'comment'+ ${plan.id}"  class="form-control" placeholder="Feed Back"></textarea>
+                                                            <br>
+                                                            <button type="button" th:onclick="saveNote([[${plan.id}]])" class="btn btn-sm btn-success float-right">Save</button>
                                                         </div>
 
                                                     </div>
@@ -703,18 +709,18 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade modal-fullscreen" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                        <div class=" modal-fullscreen" role="document">
+                                    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-xl" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
                                                     <h3 class="modal-title">Performance Improvement Plan : [<span th:text="${plan.agreedAction}"></span>]</h3>
-                                                    <a data-toggle="modal" th:data-target="'#editModal'+ ${plan.id}" class="float-right">
-                                                        <button class="btn btn-success btn-sm">Edit</button>
-                                                    </a>
-                                                    <a data-toggle="modal" th:data-target="'#deleteModal'+ ${plan.id}" class="float-right">
-                                                        <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                                                    </a>
-                                                    <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">Close</button>
+<!--                                                    <a data-toggle="modal" th:data-target="'#editModal'+ ${plan.id}" class="float-right">-->
+<!--                                                        <button class="btn btn-success btn-sm">Edit</button>-->
+<!--                                                    </a>-->
+<!--                                                    <a data-toggle="modal" th:data-target="'#deleteModal'+ ${plan.id}" class="float-right">-->
+<!--                                                        <button class="btn btn-danger btn-sm" type="button">Delete</button>-->
+<!--                                                    </a>-->
+<!--                                                    <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">Close</button>-->
                                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
@@ -770,7 +776,8 @@
                                                                 </li>
 
                                                             </ul>
-                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
+                                                            <ul class="todo-list small-list m-t">
+<!--                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">-->
                                                                 <li> <input th:id="'newTask' + ${plan.id}" class="form-control"  th:onchange="saveTask([[${plan.id}]])"></li>
                                                             </ul>
 
@@ -785,7 +792,8 @@
                                                                     <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
-                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">
+                                                            <ul class="todo-list small-list m-t">
+<!--                                                            <ul class="todo-list small-list m-t" th:if="${loggedUser.id == plan.employee?.id}">-->
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
@@ -797,8 +805,9 @@
                                                             <br>
                                                             <br>
                                                             <label> Give a Detailed Feedback</label>
-                                                            <textarea rows="6" name="comment" th:id="'comment'+ ${plan.id}"  class="form-control" placeholder="Feed Back"></textarea>
-                                                            <button type="button" th:onclick="saveNote([[${plan.id}]])" class="btn btn-sm btn-success">Save</button>
+                                                            <textarea rows="4" name="comment" th:id="'comment'+ ${plan.id}"  class="form-control" placeholder="Feed Back"></textarea>
+                                                            <br>
+                                                            <button type="button" th:onclick="saveNote([[${plan.id}]])" class="btn btn-sm btn-success float-right">Save</button>
                                                         </div>
 
                                                     </div>
