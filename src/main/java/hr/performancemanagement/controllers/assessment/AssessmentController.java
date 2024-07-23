@@ -5,7 +5,10 @@ import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
@@ -56,6 +59,8 @@ public class AssessmentController {
     ReportingDateService reportingDateService;
     @Autowired
     CommonService cs;
+    @Autowired
+    private PdfGeneratorService pdfGeneratorService;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
         this.targetService = targetService;
@@ -307,11 +312,11 @@ public class AssessmentController {
     }
 
 
-    public File generatePdf(Long id, HttpServletRequest request) throws Exception{
-        Context context = getContext(id, request);
-        String html = loadAndFillTemplate(context, request);
-        return renderPdf(html);
-    }
+//    public File generatePdf(Long id, HttpServletRequest request) throws Exception{
+//        Context context = getContext(id, request);
+//        String html = loadAndFillTemplate(context, request);
+//        return renderPdf(html);
+//    }
 
 
     private File renderPdf(String html) throws Exception {
@@ -328,35 +333,31 @@ public class AssessmentController {
     }
 
 
-    private Context getContext(Long id, HttpServletRequest request) {
-        Context context = new Context();
-        String username = PortletUtils.getUsername(request);
-        Scorecard scorecard = scorecardService.getScorecardById(id);
-        List<Goal> GoalsList = goalService.listGoalsByScorecard(id);
-        ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
-//        String startDate = reportingPeriod.getStartDate();
-//        String endDate = reportingPeriod.getEndDate();
-
-        Account loggedUser = cs.getLoggedUser();
-        Account owner = scorecard.getOwner();
-        List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
-        long loggedUserId = loggedUser.getId();
-        String role = loggedUser.getRole();
-
-        for(ReportingDate reportingDate: reportingPeriod.getReportingDates()){
-            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-            reportingDate.setOverallScore(overallScore);
-        }
-
-        context.setVariable("loggedUserId", loggedUserId);
-        context.setVariable("pips", pips);
-        context.setVariable("owner", owner);
-        context.setVariable("role", role);
-        context.setVariable("reportingPeriod", reportingPeriod);
-        context.setVariable("scorecard", scorecard);
-        context.setVariable("username", username);
-        return context;
-    }
+//    private Context getContext(Long id, HttpServletRequest request) {
+//        Context context = new Context();
+//        String username = PortletUtils.getUsername(request);
+//        Scorecard scorecard = scorecardService.getScorecardById(id);
+//        ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+//        Account loggedUser = cs.getLoggedUser();
+//        Account owner = scorecard.getOwner();
+//        List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+//        long loggedUserId = loggedUser.getId();
+//        String role = loggedUser.getRole();
+//
+//        for(ReportingDate reportingDate: reportingPeriod.getReportingDates()){
+//            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+//            reportingDate.setOverallScore(overallScore);
+//        }
+//
+//        context.setVariable("loggedUserId", loggedUserId);
+//        context.setVariable("pips", pips);
+//        context.setVariable("owner", owner);
+//        context.setVariable("role", role);
+//        context.setVariable("reportingPeriod", reportingPeriod);
+//        context.setVariable("scorecard", scorecard);
+//        context.setVariable("username", username);
+//        return context;
+//    }
 
 
     private String loadAndFillTemplate(Context context, HttpServletRequest request) {
@@ -364,20 +365,57 @@ public class AssessmentController {
     }
 
     @GetMapping("/download-pdf/{id}")
-    public void downloadPdf(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response){
+    public ResponseEntity<Resource> downloadPdf(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response) {
         try {
-            Path file = Paths.get(generatePdf(id, request).getAbsolutePath());
-            if(Files.exists(file)){
-                response.setContentType("application/pdf");
-//                response.addHeader("Content-Disposition", "attachment; filename"+ file.getFileName());
-                response.addHeader("Content-Disposition", "inline; filename"+ file.getFileName());
-                Files.copy(file, response.getOutputStream());
-                response.getOutputStream().flush();
+            Context context = new Context();
+            String username = PortletUtils.getUsername(request);
+            Scorecard scorecard = scorecardService.getScorecardById(id);
+            ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+            Account loggedUser = cs.getLoggedUser();
+            Account owner = scorecard.getOwner();
+            List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+            long loggedUserId = loggedUser.getId();
+            String role = loggedUser.getRole();
+
+            for (ReportingDate reportingDate : reportingPeriod.getReportingDates()) {
+                OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+                reportingDate.setOverallScore(overallScore);
             }
-        } catch (Exception e) {
+
+            context.setVariable("loggedUserId", loggedUserId);
+            context.setVariable("pips", pips);
+            context.setVariable("owner", owner);
+            context.setVariable("role", role);
+            context.setVariable("reportingPeriod", reportingPeriod);
+            context.setVariable("scorecard", scorecard);
+            context.setVariable("username", username);
+
+            String fileName = owner.getFullName().toUpperCase();
+            String page = Pages.DOWNLOADABLE_REPORT;
+            try {
+                byte[] pdfBytes = pdfGeneratorService.generatePdfFromTemplate(page, context, false);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_PDF);
+                headers.setContentDisposition(ContentDisposition.builder("inline")
+                        .filename(fileName.concat(fileName + "Report.pdf"))
+                        .build());
+                headers.setContentLength(pdfBytes.length);
+
+                ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .contentLength(pdfBytes.length)
+                        .body(resource);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+        }catch (Exception e){
             e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
 
 }
