@@ -447,7 +447,7 @@
                                                         <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                     </td>
                                                     <td style="vertical-align: middle; text-align: center;">
-                                                        <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore?.employeeOverall}" style="width: 5em">
+                                                        <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" readonly th:value="${overallScore?.employeeOverall}" style="width: 5em">
                                                     </td>
                                                     <td colspan="3"></td>
                                                 </tr>

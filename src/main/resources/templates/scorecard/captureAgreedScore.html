@@ -524,7 +524,7 @@
                                                     <h4 th:text="${overallScore.managerOverall == null ? '' : #numbers.formatDecimal(overallScore.managerOverall, 0, 2)}"></h4>
                                                 </td>
                                                 <td style="vertical-align: middle; text-align: center;">
-                                                    <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore?.agreedOverall}" style="width: 5em">
+                                                    <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" readonly th:value="${overallScore?.agreedOverall}" style="width: 5em">
                                                 </td>
                                                 <td colspan="3"></td>
                                             </tr>

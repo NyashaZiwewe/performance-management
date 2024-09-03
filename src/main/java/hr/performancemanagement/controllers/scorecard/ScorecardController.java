@@ -1109,11 +1109,12 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
             Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
+            ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
 //            if(commonService.isOwner(scorecard)){
                 Score score = new Score();
                 score.setOutput(output);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setReportingDate(reportingDate);
                 score.setEmployeeScore(employeeScore);
                 score.setJustification(justification);
                 valueBasedScoreService.saveEmployeeScore(score, target);
@@ -1174,11 +1175,12 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
             Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+            ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
             if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setOutput(output);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setReportingDate(reportingDate);
                 score.setManagerScore(managerScore);
                 valueBasedScoreService.saveManagerScore(score);
             }
@@ -1205,11 +1207,12 @@ public class ScorecardController {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
             Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+            ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
             if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setOutput(output);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setReportingDate(reportingDate);
                 score.setAgreedScore(agreedScore);
                 valueBasedScoreService.saveAgreedScore(score);
             }
@@ -1509,15 +1512,8 @@ public class ScorecardController {
             overallScore.setReportingDate(reportingDate);
             overallScore.setScorecard(scorecard);
         }
-        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
-            overallScore.setEmployeeOverall(score);
-        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
-            if("SCORED_BY_SUPERVISOR".equalsIgnoreCase(scorecard.getApprovalStatus())){
-                overallScore.setAgreedOverall(score);
-            }else{
-                overallScore.setManagerOverall(score);
-            }
-        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
+
+        if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
             overallScore.setModeratedOverall(score);
         }
 

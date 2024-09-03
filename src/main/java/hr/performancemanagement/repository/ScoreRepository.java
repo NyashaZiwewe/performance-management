@@ -54,4 +54,14 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
     @Query(value = "SELECT coalesce(SUM(s.employeeScore), 0) FROM Score s WHERE s.output = :output")
     double averageEmployeeScoreByOutput(@Param("output") Output output);
 
+    @Query(value = "SELECT coalesce(SUM(s.employeeScore * s.output.allocatedWeight) * 0.01, 0) FROM Score s WHERE s.output.scorecard = :scorecard AND s.reportingDate = :reportingDate")
+    double weightedEmployeeScore(@Param("scorecard") Scorecard scorecard, @Param("reportingDate") ReportingDate reportingDate);
+
+    @Query(value = "SELECT coalesce(SUM(s.managerScore * s.output.allocatedWeight) * 0.01, 0) FROM Score s WHERE s.output.scorecard = :scorecard AND s.reportingDate = :reportingDate")
+    double weightedManagerScore(@Param("scorecard") Scorecard scorecard, @Param("reportingDate") ReportingDate reportingDate);
+
+    @Query(value = "SELECT coalesce(SUM(s.agreedScore * s.output.allocatedWeight) * 0.01, 0) FROM Score s WHERE s.output.scorecard = :scorecard AND s.reportingDate = :reportingDate")
+    double weightedAgreedScore(@Param("scorecard") Scorecard scorecard, @Param("reportingDate") ReportingDate reportingDate);
+
+
 }

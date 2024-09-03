@@ -2,6 +2,7 @@ package hr.performancemanagement.service.ScoreService;
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.service.OutputService;
+import hr.performancemanagement.service.OverallScoreService;
 import hr.performancemanagement.service.ScorecardService;
 import hr.performancemanagement.service.TargetService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,8 @@ public class ValueBasedScoreService {
     private OutputService outputService;
     @Autowired
     private TargetService targetService;
+    @Autowired
+    private OverallScoreService overallScoreService;
     @Autowired
     HttpSession session;
 
@@ -44,13 +47,10 @@ public class ValueBasedScoreService {
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setEmployeeScore(score.getEmployeeScore());
-//            existingScore.setEvidence(score.getEvidence());
             existingScore.setJustification(score.getJustification());
             savedScore = scoreRepository.save(existingScore);
             Output output = existingScore.getOutput();
             output.setCurrentEmployeeScore(savedScore.getEmployeeScore());
-//            target.setCurrentEvidence(savedScore.getEvidence());
-//            target.setCurrentAttachmentName(savedScore.getAttachmentName());
             target.setCurrentJustification(savedScore.getJustification());
             targetService.saveTarget(target);
             updateOutputData(output);
@@ -60,6 +60,7 @@ public class ValueBasedScoreService {
             output.setCurrentEmployeeScore(score.getEmployeeScore());
             updateOutputData(output);
         }
+        calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "EMPLOYEE_SCORE");
         return savedScore;
     }
 
@@ -98,6 +99,7 @@ public class ValueBasedScoreService {
             output.setCurrentManagerScore(score.getManagerScore());
             updateOutputData(output);
         }
+        calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "MANAGER_SCORE");
         return score;
     }
 
@@ -111,6 +113,7 @@ public class ValueBasedScoreService {
             output.setCurrentAgreedScore(score.getAgreedScore());
             updateOutputData(output);
         }
+        calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "AGREED_SCORE");
         return score;
     }
 
@@ -153,6 +156,30 @@ public class ValueBasedScoreService {
         }catch (Exception e){
             return false;
         }
+    }
+
+    public void calculateOverallScore(Scorecard scorecard, ReportingDate reportingDate, String scoreType){
+        try {
+            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            if (overallScore == null) {
+                overallScore = new OverallScore();
+                overallScore.setScorecard(scorecard);
+                overallScore.setReportingDate(reportingDate);
+            }
+            if ("EMPLOYEE_SCORE".equalsIgnoreCase(scoreType)) {
+                overallScore.setEmployeeOverall(scoreRepository.weightedEmployeeScore(scorecard, reportingDate));
+            } else if ("MANAGER_SCORE".equalsIgnoreCase(scoreType)) {
+                overallScore.setEmployeeOverall(scoreRepository.weightedManagerScore(scorecard, reportingDate));
+            }
+            if ("AGREED_SCORE".equalsIgnoreCase(scoreType)) {
+                overallScore.setEmployeeOverall(scoreRepository.weightedAgreedScore(scorecard, reportingDate));
+            }
+
+            overallScoreService.saveOverallScore(overallScore);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
     }
 
 
