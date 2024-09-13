@@ -117,7 +117,7 @@
                                         <tr>
                                             <td colspan="6" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
                                             <td>Total Gear Weight: </td>
-                                            <td><h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
+                                            <td><h4 th:text="${#numbers.formatDecimal(gear.totalAllocatedWeight,0,2)} + '%'"></h4> </td>
                                             <td colspan="3"></td>
                                         </tr>
                                         <tr>
@@ -321,17 +321,26 @@
                                         <tr  th:if="${gstat.last}">
                                             <td colspan="6"></td>
                                             <td>
-                                                <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
-                                                <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
+                                                <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${#numbers.formatDecimal(totalAllocatedWeight,0,2)} + '%'"></h4>
+                                                <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${#numbers.formatDecimal(totalAllocatedWeight,0,2)} + '%'"></h4>
                                             </td>
-                                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore?.employeeOverall < 2.5 ? 'fail' : 'pass' }">
+                                                 <span th:if="${overallScore?.employeeOverall != null}"
+                                                       th:text="${#numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}">
+                                                          </span>
+                                                <span th:unless="${overallScore?.employeeOverall != null}">N/A</span>
                                             </td>
-                                            <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore?.managerOverall < 2.5 ? 'fail' : 'pass' }">
+                                                 <span th:if="${overallScore?.managerOverall != null}"
+                                                       th:text="${#numbers.formatDecimal(overallScore.managerOverall, 0, 2)}">
+                                                          </span>
+                                                <span th:unless="${overallScore?.managerOverall != null}">N/A</span>
                                             </td>
-                                            <td th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageAgreedScore <= 0.0 || averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore?.agreedOverall < 2.5 ? 'fail' : 'pass' }">
+                                                 <span th:if="${overallScore?.agreedOverall != null}"
+                                                       th:text="${#numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}">
+                                                          </span>
+                                                <span th:unless="${overallScore?.agreedOverall != null}">N/A</span>
                                             </td>
                                             <td></td>
                                         </tr>
@@ -524,7 +533,10 @@
                                                     <h4 th:text="${overallScore.managerOverall == null ? '' : #numbers.formatDecimal(overallScore.managerOverall, 0, 2)}"></h4>
                                                 </td>
                                                 <td style="vertical-align: middle; text-align: center;">
-                                                    <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" readonly th:value="${overallScore?.agreedOverall}" style="width: 5em">
+                                                      <span th:if="${overallScore?.agreedOverall != null}"
+                                                            th:text="${#numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}">
+                                                          </span>
+                                                    <span th:unless="${overallScore?.agreedOverall != null}">N/A</span>
                                                 </td>
                                                 <td colspan="3"></td>
                                             </tr>
@@ -632,32 +644,32 @@
         });
     }
 
-    function saveOverallScore(score){
-
-        let scorecardId = document.getElementById("id").value;
-        let userType = "supervisor";
-        if(Number(score) < 1 || Number(score) > 5){
-            alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
-            const fieldElement = document.getElementById("overallScore");
-            fieldElement.value = '';
-            fieldElement.classList.add('error');
-            return false;
-        }
-
-        $.ajax({
-            url : '/scorecards/save-overall-score',
-            method: "POST",
-            data: {
-                scorecardId, userType, score
-            },
-            success: function (data) {
-                console.log(data);
-            },
-            error : function(data) {
-
-            }
-        });
-    }
+    // function saveOverallScore(score){
+    //
+    //     let scorecardId = document.getElementById("id").value;
+    //     let userType = "supervisor";
+    //     if(Number(score) < 1 || Number(score) > 5){
+    //         alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
+    //         const fieldElement = document.getElementById("overallScore");
+    //         fieldElement.value = '';
+    //         fieldElement.classList.add('error');
+    //         return false;
+    //     }
+    //
+    //     $.ajax({
+    //         url : '/scorecards/save-overall-score',
+    //         method: "POST",
+    //         data: {
+    //             scorecardId, userType, score
+    //         },
+    //         success: function (data) {
+    //             console.log(data);
+    //         },
+    //         error : function(data) {
+    //
+    //         }
+    //     });
+    // }
 
 
     function validateFields(){

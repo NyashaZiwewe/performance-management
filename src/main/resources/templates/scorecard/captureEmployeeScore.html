@@ -119,7 +119,7 @@
                                         <tr>
                                             <td colspan="6" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
                                             <td>Total Gear Weight: </td>
-                                            <td><h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
+                                            <td><h4 th:text="${#numbers.formatDecimal(gear.totalAllocatedWeight,0,2)} + '%'"></h4> </td>
                                             <td></td>
                                         </tr>
                                         <tr>
@@ -162,7 +162,7 @@
                                                 <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"></a>
                                             </td>
                                             <td>
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.allocatedWeight}"></a>
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${#numbers.formatDecimal(target.output.allocatedWeight, 0,2)}"></a>
                                             </td>
                                             <td>
                                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.employeeScore <= 0.0 || target.output.employeeScore == null ? '' : #numbers.formatDecimal(target.output.employeeScore, 0,  2)}" th:attr="class = ${target.output.employeeScore < 2.5 ? 'fail' : 'pass'}"></a>
@@ -312,11 +312,11 @@
                                             <td colspan="4"></td>
                                             <td colspan="2" style="text-align: right"><b>Total Allocated Weight:</b></td>
                                             <td>
-                                                <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
-                                                <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
+                                                <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${#numbers.formatDecimal(totalAllocatedWeight,0,2)} + '%'"></h4>
+                                                <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${#numbers.formatDecimal(totalAllocatedWeight,0,2)} + '%'"></h4>
                                             </td>
-                                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore.employeeOverall < 2.5 ? 'fail' : 'pass' }">
+                                                <h4 th:text="${overallScore.employeeOverall <= 0.0 || overallScore.employeeOverall == null ? '' : #numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}"></h4>
                                             </td>
                                             <td></td>
                                         </tr>
@@ -443,11 +443,14 @@
                                                 <tr  th:if="${gstat.last}">
                                                     <td colspan="6"></td>
                                                     <td style="vertical-align: middle; text-align: center;">
-                                                        <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
-                                                        <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
+                                                        <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${#numbers.formatDecimal(totalAllocatedWeight, 0,2)} + '%'"></h4>
+                                                        <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${#numbers.formatDecimal(totalAllocatedWeight,0,2)} + '%'"></h4>
                                                     </td>
                                                     <td style="vertical-align: middle; text-align: center;">
-                                                        <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" readonly th:value="${overallScore?.employeeOverall}" style="width: 5em">
+                                                          <span th:if="${overallScore?.employeeOverall != null}"
+                                                                th:text="${#numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}">
+                                                          </span>
+                                                        <span th:unless="${overallScore?.employeeOverall != null}">N/A</span>
                                                     </td>
                                                     <td colspan="3"></td>
                                                 </tr>
@@ -464,7 +467,7 @@
                                             </div>
                                             <div class="col-lg-8">
                                                 <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
-                                                <button onclick="location.reload()" class="btn btn-success" type="button">Refresh</button>
+                                                <button onclick="location.reload()" class="btn btn-success" type="button">Calculate Totals</button>
                                                 <button class="btn btn-success" type="button" onclick="validateFields()">Validate & Submit</button>
                                             </div>
                                         </div>

@@ -326,7 +326,7 @@
                                 <span th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
                             </th>
                             <th th:if="${scoreColumns > 0 }" th:attr="class = ${overallScore?.employeeOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
-                                <span th:text="${overallScore?.employeeOverall == null ? '' : #numbers.formatDecimal(overallScore?.employeeOverall, 0, 2)}"></span>
+                                <span th:text="${overallScore?.employeeOverall == null ? '' : #numbers.formatDecimal(fScore?.employeeOverall, 0, 2)}"></span>
                             </th>
                             <th th:if="${scoreColumns > 1 }" th:attr="class = ${overallScore?.managerOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
                                 <span th:text="${overallScore?.managerOverall == null ? '' : #numbers.formatDecimal(overallScore?.managerOverall, 0, 2)}"></span>
