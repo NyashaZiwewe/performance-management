@@ -21,6 +21,16 @@ public class OverallScoreService {
             reportingDate = dateRepository.findLastReportingDateByScorecard(scorecard.getReportingPeriod());
         }
         overallScore = repository.findOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+        if(overallScore == null){
+            overallScore = new OverallScore();
+            overallScore.setScorecard(scorecard);
+            overallScore.setReportingDate(reportingDate);
+            overallScore.setEmployeeOverall(0.0);
+            overallScore.setManagerOverall(0.0);
+            overallScore.setAgreedOverall(0.0);
+            overallScore.setModeratedOverall(0.0);
+            overallScore = repository.save(overallScore);
+        }
         return overallScore;
     }
 

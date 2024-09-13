@@ -3,7 +3,6 @@ import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.service.OutputService;
 import hr.performancemanagement.service.OverallScoreService;
-import hr.performancemanagement.service.ScorecardService;
 import hr.performancemanagement.service.TargetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,7 +40,7 @@ public class ValueBasedScoreService {
     }
 
 
-    public Score saveEmployeeScore(Score score, Target target) {
+    public OverallScore saveEmployeeScore(Score score, Target target) {
 
         Score savedScore;
         if(scoreExists(score)){
@@ -60,19 +59,18 @@ public class ValueBasedScoreService {
             output.setCurrentEmployeeScore(score.getEmployeeScore());
             updateOutputData(output);
         }
-        calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "EMPLOYEE_SCORE");
-        return savedScore;
+        return calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "EMPLOYEE_SCORE");
     }
 
-    public Score saveEvidence(Score score, Target target) {
+    public void saveEvidence(Score score, Target target) {
 
         Score savedScore;
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
-            if(score.getEvidence().length() > 0){
+            if(!score.getEvidence().isEmpty()){
                 existingScore.setEvidence(score.getEvidence());
             }
-            if(score.getAttachmentName().length() > 0){
+            if(!score.getAttachmentName().isEmpty()){
                 existingScore.setAttachmentName(score.getAttachmentName());
             }
             savedScore = scoreRepository.save(existingScore);
@@ -86,10 +84,9 @@ public class ValueBasedScoreService {
             target.setCurrentAttachmentName(score.getAttachmentName());
             targetService.saveTarget(target);
         }
-        return savedScore;
     }
 
-    public Score saveManagerScore(Score score) {
+    public OverallScore saveManagerScore(Score score) {
 
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
@@ -99,11 +96,11 @@ public class ValueBasedScoreService {
             output.setCurrentManagerScore(score.getManagerScore());
             updateOutputData(output);
         }
-        calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "MANAGER_SCORE");
-        return score;
+        return calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "MANAGER_SCORE");
+
     }
 
-    public Score saveAgreedScore(Score score) {
+    public OverallScore saveAgreedScore(Score score) {
 
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
@@ -113,8 +110,7 @@ public class ValueBasedScoreService {
             output.setCurrentAgreedScore(score.getAgreedScore());
             updateOutputData(output);
         }
-        calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "AGREED_SCORE");
-        return score;
+        return calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "AGREED_SCORE");
     }
 
     public Score saveModeratedScore(Score score) {
@@ -137,7 +133,7 @@ public class ValueBasedScoreService {
         return scoreRepository.existsScoresByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
     }
 
-    public boolean  updateOutputData(Output output){
+    public void updateOutputData(Output output){
 
         Double weightedRating = scoreRepository.totalWeightedScoreByOutput(output);
         Double employeeScore = scoreRepository.averageEmployeeScoreByOutput(output);
@@ -152,15 +148,14 @@ public class ValueBasedScoreService {
         output.setWeightedScore(weightedRating);
         try {
             outputService.saveOutput(output);
-            return true;
         }catch (Exception e){
-            return false;
         }
     }
 
-    public void calculateOverallScore(Scorecard scorecard, ReportingDate reportingDate, String scoreType){
+    public OverallScore calculateOverallScore(Scorecard scorecard, ReportingDate reportingDate, String scoreType){
+        OverallScore overallScore =  new OverallScore();
         try {
-            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
             if (overallScore == null) {
                 overallScore = new OverallScore();
                 overallScore.setScorecard(scorecard);
@@ -169,17 +164,17 @@ public class ValueBasedScoreService {
             if ("EMPLOYEE_SCORE".equalsIgnoreCase(scoreType)) {
                 overallScore.setEmployeeOverall(scoreRepository.weightedEmployeeScore(scorecard, reportingDate));
             } else if ("MANAGER_SCORE".equalsIgnoreCase(scoreType)) {
-                overallScore.setEmployeeOverall(scoreRepository.weightedManagerScore(scorecard, reportingDate));
+                overallScore.setManagerOverall(scoreRepository.weightedManagerScore(scorecard, reportingDate));
             }
             if ("AGREED_SCORE".equalsIgnoreCase(scoreType)) {
-                overallScore.setEmployeeOverall(scoreRepository.weightedAgreedScore(scorecard, reportingDate));
+                overallScore.setAgreedOverall(scoreRepository.weightedAgreedScore(scorecard, reportingDate));
             }
 
-            overallScoreService.saveOverallScore(overallScore);
+           overallScore = overallScoreService.saveOverallScore(overallScore);
         }catch (Exception e){
             e.printStackTrace();
         }
-
+      return overallScore;
     }
 
 

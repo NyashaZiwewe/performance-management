@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Objects;
 
 @Component
 public class StartupCheck {
@@ -18,9 +19,12 @@ public class StartupCheck {
         try {
             InetAddress localAddress = InetAddress.getLocalHost();
             String actualAddress = localAddress.getHostAddress();
+            if(Objects.equals(expectedAddress, "")){
+                expectedAddress  = actualAddress;
+            }
 
             if (!actualAddress.equals(expectedAddress)) {
-                System.err.println("ERROR: Application is running on unexpected address but got: " + actualAddress);
+                System.err.println("ERROR: Application is running on unexpected address but got: ");
                 System.exit(1); // Exit with error code
             }
         } catch (UnknownHostException e) {
