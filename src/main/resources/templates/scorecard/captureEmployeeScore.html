@@ -75,6 +75,7 @@
                 success: function (data) {
                     console.log("data" + data);
                     let response = JSON.parse(data);
+                    document.getElementById("employeeOverall").innerText = response.employeeOverall;
                     if(response.alreadyExists === true){
                         alert("Score already exists for that target/ measure and reporting date");
                     }else{
@@ -447,10 +448,8 @@
                                                         <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${#numbers.formatDecimal(totalAllocatedWeight,0,2)} + '%'"></h4>
                                                     </td>
                                                     <td style="vertical-align: middle; text-align: center;">
-                                                          <span th:if="${overallScore?.employeeOverall != null}"
-                                                                th:text="${#numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}">
+                                                          <span id="employeeOverall" th:text="${overallScore?.employeeOverall == null ? '': #numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}">
                                                           </span>
-                                                        <span th:unless="${overallScore?.employeeOverall != null}">N/A</span>
                                                     </td>
                                                     <td colspan="3"></td>
                                                 </tr>
@@ -467,7 +466,7 @@
                                             </div>
                                             <div class="col-lg-8">
                                                 <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
-                                                <button onclick="location.reload()" class="btn btn-success" type="button">Calculate Totals</button>
+                                                <button onclick="location.reload()" class="btn btn-success" type="button">Refresh</button>
                                                 <button class="btn btn-success" type="button" onclick="validateFields()">Validate & Submit</button>
                                             </div>
                                         </div>

@@ -232,20 +232,10 @@ public class ScorecardController {
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
         String url = "";
 
-//        double averageEmployeeScore = outcomeService.getAverageEmployeeScore(id);
-//        double averageManagerScore = outcomeService.getAverageManagerScore(id);
-//        double averageAgreedScore = outcomeService.getAverageAgreedScore(id);
-//        double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         double totalAllocatedWeight = outcomeService.getTotalAllocatedWeight(id);
 
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
         List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
-        double totalWeightedScore = 0.0;
-//        for(Target target: targetsList){
-//            if(target.getWeightedScore() !=null){
-//                totalWeightedScore += target.getWeightedScore();
-//            }
-//        }
 
         try {
             for(Gear gear: selectedGears){
@@ -1104,7 +1094,7 @@ public class ScorecardController {
 
     @RequestMapping(value = "/save-value-based-employee-score", method = RequestMethod.POST)
     public void saveEmployeeScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double employeeScore, String justification) {
-
+        OverallScore overallScore = new OverallScore();
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
@@ -1117,7 +1107,7 @@ public class ScorecardController {
                 score.setReportingDate(reportingDate);
                 score.setEmployeeScore(employeeScore);
                 score.setJustification(justification);
-                valueBasedScoreService.saveEmployeeScore(score, target);
+               overallScore = valueBasedScoreService.saveEmployeeScore(score, target);
 //            }
         }catch (Exception ignored){
 
@@ -1126,6 +1116,8 @@ public class ScorecardController {
         JSONObject jsonObject = new JSONObject();
 
         jsonObject.put("alreadyExists", false);
+        String formattedValue = String.format("%.2f", overallScore.getEmployeeOverall());
+        jsonObject.put("employeeOverall", formattedValue);
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
@@ -1170,7 +1162,7 @@ public class ScorecardController {
 
     @RequestMapping(value = "/save-value-based-manager-score", method = RequestMethod.POST, consumes = {"*/*"})
     public void saveManagerScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double managerScore) {
-
+         OverallScore overallScore = new OverallScore();
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
@@ -1182,15 +1174,16 @@ public class ScorecardController {
                 score.setOutput(output);
                 score.setReportingDate(reportingDate);
                 score.setManagerScore(managerScore);
-                valueBasedScoreService.saveManagerScore(score);
+                overallScore = valueBasedScoreService.saveManagerScore(score);
             }
         }catch (Exception ignored){
 
         }
 
         JSONObject jsonObject = new JSONObject();
-
         jsonObject.put("alreadyExists", false);
+        String formattedValue = String.format("%.2f", overallScore.getManagerOverall());
+        jsonObject.put("managerOverall", formattedValue);
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
@@ -1203,6 +1196,7 @@ public class ScorecardController {
     @RequestMapping(value = "/save-value-based-agreed-score", method = RequestMethod.POST, consumes = {"*/*"})
     public void saveAgreedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double agreedScore) {
 
+        OverallScore overallScore = new OverallScore();
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
@@ -1214,7 +1208,7 @@ public class ScorecardController {
                 score.setOutput(output);
                 score.setReportingDate(reportingDate);
                 score.setAgreedScore(agreedScore);
-                valueBasedScoreService.saveAgreedScore(score);
+                overallScore = valueBasedScoreService.saveAgreedScore(score);
             }
         }catch (Exception ignored){
 
@@ -1223,6 +1217,8 @@ public class ScorecardController {
         JSONObject jsonObject = new JSONObject();
 
         jsonObject.put("alreadyExists", false);
+        String formattedValue = String.format("%.2f", overallScore.getAgreedOverall());
+        jsonObject.put("agreedOverall", formattedValue);
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
@@ -1246,7 +1242,7 @@ public class ScorecardController {
                 score.setOutput(output);
                 score.setReportingDate(commonService.getActiveReportingDate(request));
                 score.setModeratedScore(moderatedScore);
-                valueBasedScoreService.saveModeratedScore(score);
+                score = valueBasedScoreService.saveModeratedScore(score);
             }
         }catch (Exception ignored){
 

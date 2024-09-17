@@ -74,6 +74,7 @@
                 success: function (data) {
                     console.log("data" + data);
                     let response = JSON.parse(data);
+                    document.getElementById("agreedOverall").innerText = response.agreedOverall;
                     if(response.alreadyExists === true){
                         alert("Score already exists for that target/ measure and reporting date");
                     }else{
@@ -533,10 +534,8 @@
                                                     <h4 th:text="${overallScore.managerOverall == null ? '' : #numbers.formatDecimal(overallScore.managerOverall, 0, 2)}"></h4>
                                                 </td>
                                                 <td style="vertical-align: middle; text-align: center;">
-                                                      <span th:if="${overallScore?.agreedOverall != null}"
-                                                            th:text="${#numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}">
+                                                      <span id="agreedOverall" th:text="${overallScore?.agreedOverall == null ? '': #numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}">
                                                           </span>
-                                                    <span th:unless="${overallScore?.agreedOverall != null}">N/A</span>
                                                 </td>
                                                 <td colspan="3"></td>
                                             </tr>
