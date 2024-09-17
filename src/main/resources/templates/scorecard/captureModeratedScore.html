@@ -118,10 +118,10 @@
                                             <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
                                             <td>Total Gear Weight: </td>
                                             <td><h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
-                                            <td colspan="4"></td>
+                                            <td colspan="3"></td>
                                         </tr>
                                         <tr>
-                                            <td colspan="12" style="font-weight: bold">GOAL : <span th:text="${gear.goals[0].name}"></span></td>
+                                            <td colspan="11" style="font-weight: bold">GOAL : <span th:text="${gear.goals[0].name}"></span></td>
                                         </tr>
                                         <tr th:if="${gstat.index == 0}">
                                             <th>Outcome</th>
@@ -133,7 +133,7 @@
                                             <th>Weight</th>
                                             <th>Owner</th>
                                             <th>Supervisor</th>
-                                            <th>Moderator</th>
+<!--                                            <th>Moderator</th>-->
                                             <th>Agreed</th>
                                             <th></th>
                                         </tr>
@@ -174,9 +174,9 @@
                                             <td>
                                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.agreedScore <= 0.0 || target.output.agreedScore == null ? '' : #numbers.formatDecimal(target.output.agreedScore, 0,  2)}" th:attr="class = ${target.output.agreedScore < 2.5 ? 'fail' : 'pass'}"></a>
                                             </td>
-                                            <td>
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.moderatedScore <= 0.0 || target.output.moderatedScore == null ? '' : #numbers.formatDecimal(target.output.moderatedScore, 0,  2)}" th:attr="class = ${target.output.moderatedScore < 2.5 ? 'fail' : 'pass'}"></a>
-                                            </td>
+<!--                                            <td>-->
+<!--                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.moderatedScore <= 0.0 || target.output.moderatedScore == null ? '' : #numbers.formatDecimal(target.output.moderatedScore, 0,  2)}" th:attr="class = ${target.output.moderatedScore < 2.5 ? 'fail' : 'pass'}"></a>-->
+<!--                                            </td>-->
                                             <td>
                                                 <a th:if="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="'#commentModal'+ ${stat.index}">
                                                     <i  class="fa fa-lg fa-commenting" style="color: grey"></i>
@@ -208,7 +208,7 @@
                                                                         <th>Owner</th>
                                                                         <th>Supervisor</th>
                                                                         <th>Agreed</th>
-                                                                        <th>Moderator</th>
+<!--                                                                        <th>Moderator</th>-->
                                                                         <th>Link</th>
                                                                         <th>Attachment</th>
                                                                         <th>Justification</th>
@@ -223,7 +223,7 @@
                                                                         <td th:text="${score.employeeScore}" th:attr="class = ${score.employeeScore < 2.5 ? 'fail' : 'pass'}"></td>
                                                                         <td th:text="${score.managerScore}" th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass'}"></td>
                                                                         <td th:text="${score.agreedScore}" th:attr="class = ${score.agreedScore < 2.5 ? 'fail' : 'pass'}"></td>
-                                                                        <td th:text="${score.moderatedScore}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass'}"></td>
+<!--                                                                        <td th:text="${score.moderatedScore}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass'}"></td>-->
                                                                         <td>
                                                                             <a th:if="${score.evidence != null}" th:href="${score.evidence}" target="_blank">
                                                                                 <i class="fa fa-link" aria-hidden="true"></i>
@@ -343,7 +343,7 @@
                                             <td th:attr="class = ${moderatedScore < 2.5 ? 'fail' : 'pass' }">
                                                 <h4 th:text="${moderatedScore <= 0.0 || moderatedScore == null ? '' : #numbers.formatDecimal(moderatedScore, 0, 2)}"></h4>
                                             </td>
-                                            <td></td>
+<!--                                            <td></td>-->
                                         </tr>
                                         </tbody>
                                     </div>
@@ -377,7 +377,7 @@
                                                 <th>Owner</th>
                                                 <th>Supervisor</th>
                                                 <th>Agreed</th>
-                                                <th>Moderator</th>
+<!--                                                <th>Moderator</th>-->
                                                 <th>Justification</th>
                                                 <th>Evidence</th>
                                                 <th></th>
@@ -416,9 +416,9 @@
                                                 <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.currentAgreedScore}"></a>
                                                 </td>
-                                                <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
-                                                    <input type="number" class="validate" step="any" min="1" max="5" th:id="'moderatedScore' + ${target.output.id}" th:onChange="saveScore([[${target.id}]],[[${target.output.id}]])" th:value="${target.output.currentModeratedScore}" style="width: 5em">
-                                                </td>
+<!--                                                <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">-->
+<!--                                                    <input type="number" class="validate" step="any" min="1" max="5" th:id="'moderatedScore' + ${target.output.id}" th:onChange="saveScore([[${target.id}]],[[${target.output.id}]])" th:value="${target.output.currentModeratedScore}" style="width: 5em">-->
+<!--                                                </td>-->
                                                 <td style="vertical-align: middle; text-align: center;">
                                                     <span th:text="${target.currentJustification}"></span>
                                                 </td>
@@ -541,7 +541,7 @@
                                                 <td style="vertical-align: middle; text-align: center;">
                                                     <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore?.moderatedOverall}" style="width: 5em">
                                                 </td>
-                                                <td colspan="3"></td>
+                                                <td colspan="2"></td>
                                             </tr>
                                             </tbody>
                                          </div>
