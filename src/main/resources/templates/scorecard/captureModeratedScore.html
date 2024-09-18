@@ -115,10 +115,10 @@
                                     <div class="row table-responsive" th:each="gear, gstat : ${selectedGears}">
                                         <thead>
                                         <tr>
-                                            <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
+                                            <td colspan="5" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
                                             <td>Total Gear Weight: </td>
                                             <td><h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
-                                            <td colspan="3"></td>
+                                            <th colspan="4"></th>
                                         </tr>
                                         <tr>
                                             <td colspan="11" style="font-weight: bold">GOAL : <span th:text="${gear.goals[0].name}"></span></td>
@@ -327,23 +327,23 @@
                                         <tr  th:if="${gstat.last}">
                                             <td colspan="4"></td>
                                             <td colspan="2" style="text-align: right"><b>Overall:</b></td>
-                                            <td>
+                                            <td style="vertical-align: middle; text-align: center;">
                                                 <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                 <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                                             </td>
-                                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageEmployeeScore <= 0.0 || averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore.employeeOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                                <h4 th:text="${overallScore.employeeOverall == null ? '' : #numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageManagerScore <= 0.0 || averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore.managerOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                                <h4 th:text="${overallScore.managerOverall == null ? '' : #numbers.formatDecimal(overallScore.managerOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageAgreedScore <= 0.0 || averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore.agreedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                                <h4 th:text="${overallScore.agreedOverall == null ? '' : #numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:attr="class = ${moderatedScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${moderatedScore <= 0.0 || moderatedScore == null ? '' : #numbers.formatDecimal(moderatedScore, 0, 2)}"></h4>
+<!--                                            <td colspan="1">Moderator's Score</td>-->
+                                            <td th:attr="class = ${overallScore.moderatedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
+                                                <h4 th:text="${overallScore.moderatedOverall == null ? '' : #numbers.formatDecimal(overallScore.moderatedOverall, 0, 2)}"></h4>
                                             </td>
-<!--                                            <td></td>-->
                                         </tr>
                                         </tbody>
                                     </div>
@@ -538,10 +538,10 @@
                                                 <td th:attr="class = ${overallScore.agreedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
                                                     <h4 th:text="${overallScore.agreedOverall == null ? '' : #numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}"></h4>
                                                 </td>
+                                                <td colspan="2">Moderator's Score</td>
                                                 <td style="vertical-align: middle; text-align: center;">
                                                     <input type="number" class="validate" step="any" min="1" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore?.moderatedOverall}" style="width: 5em">
                                                 </td>
-                                                <td colspan="2"></td>
                                             </tr>
                                             </tbody>
                                          </div>

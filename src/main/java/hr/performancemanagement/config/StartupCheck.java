@@ -24,7 +24,7 @@ public class StartupCheck {
             }
 
             if (!actualAddress.equals(expectedAddress)) {
-                System.err.println("ERROR: Application is running on unexpected address but got: ");
+                System.err.println("ERROR: Application failed StartUp Checks. Not compatible with this platform");
                 System.exit(1); // Exit with error code
             }
         } catch (UnknownHostException e) {
