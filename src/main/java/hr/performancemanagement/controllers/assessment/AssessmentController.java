@@ -61,6 +61,7 @@ public class AssessmentController {
     CommonService cs;
     @Autowired
     private PdfGeneratorService pdfGeneratorService;
+    private List<Double> scores;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
         this.targetService = targetService;

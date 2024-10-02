@@ -94,9 +94,9 @@
                                 <tr th:unless="${#lists.isEmpty(gear.targetsList)}" th:each="target, stat :  ${gear.targetsList}"  th:with="newOutcome=${(stat.index == 0) || (gear.targetsList[stat.index - 1].outcome.id != target?.outcome.id)},
                                                                                                                      newOutput=${newOutcome || (stat.index == 0) ||  (gear.targetsList[stat.index - 1].output != target?.output)}">
 
-                                    <td th:if="${newOutcome}" th:text="${target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}" style="width: 15% !important;"></td>
-                                    <td th:if="${newOutput}" th:text="${target?.output?.name}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="width: 25% !important;"></td>
-                                    <td th:text="${target.measure}" style="width: 25% !important;"></td>
+                                    <td th:if="${newOutcome}" th:text="${target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                                    <td th:if="${newOutput}" th:text="${target?.output?.name}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}"></td>
+                                    <td th:text="${target.measure}"></td>
                                     <td th:text="${target.unit}"></td>
                                     <td>
                                         <a th:if="${#strings.contains(target.baseTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.baseTarget)}"></a>
@@ -106,7 +106,9 @@
                                         <a th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></a>
                                         <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></a>
                                     </td>
-                                    <td th:text="${target.allocatedWeight}"></td>
+                                    <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                        <a th:text="${target.output.allocatedWeight == null ? '' : #numbers.formatDecimal(target.output.allocatedWeight, 0,  2)}"></a>
+                                    </td>
                                     <td style="width: 70px !important;">
                                         <a data-toggle="modal" th:data-target="'#addModal'+ ${target.id}"><i class="fa fa-lg fa-plus" style="color: #175ea8"></i></a>
                                         <a data-toggle="modal" th:data-target="'#editModal'+ ${target.id}"><i class="fa fa-lg fa-pencil-square" style="color: rebeccapurple"></i></a>
@@ -233,7 +235,7 @@
                                                                     <label class="col-form-label col-lg-4">Allocated Weight</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" class="form-control" th:value="${target.allocatedWeight}">
+                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" class="form-control" th:value="${target.output.allocatedWeight}">
                                                                             <input type="hidden" th:value="${target.id}" name="targetId">
                                                                             <input type="hidden" th:value="${target.output.id}" name="outputId">
                                                                             <input type="hidden" th:value="${scorecard.id}" name="scorecardId">
@@ -328,7 +330,7 @@
                                                                     <label class="col-form-label col-lg-4">Allocated Weight</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" class="form-control">
+                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" th:value="${target.output.allocatedWeight}" class="form-control">
                                                                             <input type="hidden" th:value="${scorecard.id}" name="scorecardId">
                                                                         </div>
                                                                     </div>

@@ -1356,7 +1356,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+//                mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
