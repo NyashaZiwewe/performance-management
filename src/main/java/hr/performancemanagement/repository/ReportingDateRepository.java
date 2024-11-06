@@ -19,6 +19,7 @@ public interface ReportingDateRepository extends JpaRepository<ReportingDate, Lo
     ReportingDate findReportingDateByStatusAndAndReportingPeriod_ClientId(String status, long clientId);
     @Query(value = "SELECT rd FROM ReportingDate rd WHERE rd.reportingPeriod = :reportingPeriod AND rd.id = (SELECT MAX(rd2.id) FROM ReportingDate rd2 WHERE rd2.reportingPeriod = :reportingPeriod)")
     ReportingDate findLastReportingDateByScorecard(@Param("reportingPeriod") ReportingPeriod reportingPeriod);
-
+    @Query(value = "SELECT s FROM Scorecard s WHERE s.reportingPeriod = :reportingPeriod")
+    List<Scorecard> findScorecardsByReportingPeriod(@Param("reportingPeriod") ReportingPeriod reportingPeriod);
 
 }

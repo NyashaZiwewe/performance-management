@@ -54,4 +54,9 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     @Query("SELECT id FROM Scorecard WHERE owner = :owner AND status = 'ACTIVE'")
     Long findEmployeeActiveScorecardId(@Param("owner") Account owner);
 
+    @Nullable
+    @Query("SELECT o FROM Output o WHERE o.scorecard = :scorecard")
+    List<Output> findOutputsFromScorecard(@Param("scorecard") Scorecard scorecard);
+
+
 }

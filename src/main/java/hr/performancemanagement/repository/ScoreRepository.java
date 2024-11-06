@@ -63,5 +63,6 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
     @Query(value = "SELECT coalesce(SUM(s.agreedScore * s.output.allocatedWeight) * 0.01, 0) FROM Score s WHERE s.output.scorecard = :scorecard AND s.reportingDate = :reportingDate")
     double weightedAgreedScore(@Param("scorecard") Scorecard scorecard, @Param("reportingDate") ReportingDate reportingDate);
 
-
+    @Query(value = "SELECT s FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
+    Score getOutputScoreByReportingDate(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
 }
