@@ -281,6 +281,7 @@ public class ScorecardController {
             }
             int scoreColumns = getScoreColumns(scorecard, true);
             OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            List<OverallScore> overallScores = overallScoreService.getOverallScoreByScorecard(scorecard);
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("selectedGears", selectedGears);
@@ -288,6 +289,7 @@ public class ScorecardController {
             modelAndView.addObject("url", url);
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("overallScore", overallScore);
+            modelAndView.addObject("overallScores", overallScores);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("reportingDate", reportingDate);
@@ -934,20 +936,11 @@ public class ScorecardController {
             Scorecard scorecard = scorecardService.getScorecardById(id);
             String scorecardModel = scorecard.getScorecardModel().getName();
             ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-//            double averageEmployeeScore = outcomeService.getAverageEmployeeScore(id);
-//            double averageManagerScore = outcomeService.getAverageManagerScore(id);
-//            double averageAgreedScore = outcomeService.getAverageAgreedScore(id);
-//            double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
             double totalAllocatedWeight = outcomeService.getTotalAllocatedWeight(id);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
             List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
+            List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(scorecard.getReportingPeriod());
             double totalWeightedScore = 0.0;
-//            for(Target target: targetsList){
-//                if(target.getWeightedScore() !=null){
-//                    totalWeightedScore += target.getWeightedScore();
-//                }
-//            }
-
             try {
                 for(Gear gear: selectedGears){
                     for(Target target: targetsList){
@@ -970,14 +963,10 @@ public class ScorecardController {
             modelAndView.addObject("pageTitle", "View Contract {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
-//            modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("selectedGears", selectedGears);
             modelAndView.addObject("overallScore", overallScore);
             modelAndView.addObject("comment", new Comment());
-//            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
-//            modelAndView.addObject("averageManagerScore", averageManagerScore);
-//            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
-//            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
+            modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("scoreColumns", scoreColumns);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);

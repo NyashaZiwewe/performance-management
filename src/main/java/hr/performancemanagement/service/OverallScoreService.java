@@ -8,6 +8,9 @@ import hr.performancemanagement.repository.ReportingDateRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 public class OverallScoreService {
     @Autowired
@@ -32,6 +35,14 @@ public class OverallScoreService {
             overallScore = repository.save(overallScore);
         }
         return overallScore;
+    }
+
+    public List<OverallScore> getOverallScoreByScorecard(Scorecard scorecard){
+        List<OverallScore> overallScores = new ArrayList<>();
+        if(scorecard != null){
+            overallScores = repository.getOverallScoresByScorecard(scorecard);
+        }
+        return overallScores;
     }
 
     public OverallScore saveOverallScore(OverallScore score){

@@ -69,10 +69,10 @@
                                 </tr>
                                 <tr th:each="date : ${reportingPeriod.reportingDates}">
                                     <th th:text="${date.endDate}"></th>
-                                    <td th:text="${date.overallScore?.employeeOverall}" th:attr="style = ${date.overallScore?.employeeOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
-                                    <td th:text="${date.overallScore?.managerOverall}" th:attr="style = ${date.overallScore?.managerOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
-                                    <td th:text="${date.overallScore?.agreedOverall}" th:attr="style = ${date.overallScore?.agreedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
-                                    <td th:text="${date.overallScore?.moderatedOverall}" th:attr="style = ${date.overallScore?.moderatedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${date.overallScore?.employeeOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.employeeOverall, 0, 2)}" th:attr="style = ${date.overallScore?.employeeOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${date.overallScore?.managerOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.managerOverall, 0, 2)}" th:attr="style = ${date.overallScore?.managerOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${date.overallScore?.agreedOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.agreedOverall, 0, 2)}" th:attr="style = ${date.overallScore?.agreedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${date.overallScore?.moderatedOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.moderatedOverall, 0, 2)}" th:attr="style = ${date.overallScore?.moderatedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
                                 </tr>
                             </table>
                         </div>
