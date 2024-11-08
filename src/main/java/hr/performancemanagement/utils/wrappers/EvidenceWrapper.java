@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class EvidenceWrapper {
 
     private Long targetId;
+    private Long reportingDateId;
     private String evidence;
     private MultipartFile attachment;
 

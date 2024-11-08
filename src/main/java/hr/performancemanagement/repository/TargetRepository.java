@@ -27,10 +27,10 @@ public interface TargetRepository extends JpaRepository<Target, Long> {
     Double currentModeratedScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
     @Query("SELECT coalesce(s.weightedScore, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
     Double currentWeightedScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT s.evidence FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    String currentEvidence(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT s.justification FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    String currentJustification(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
+//    @Query("SELECT s.evidence FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
+//    String currentEvidence(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
+//    @Query("SELECT s.justification FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
+//    String currentJustification(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
 
     @Query("SELECT DISTINCT(t.unit) FROM Target t")
     List<String> listAllUnits();

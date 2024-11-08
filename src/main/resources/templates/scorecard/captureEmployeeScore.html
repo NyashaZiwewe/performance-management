@@ -184,17 +184,17 @@
                                                 <a th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}"  th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.agreedScore <= 0.0 || score.agreedScore == null ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}"></a>
                                             </td>
                                             <td th:if="${scoreColumns > 0 }">
-                                                <span th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}">
-                                                   <a th:if="${score.evidence != null}" th:href="${score.evidence}" target="_blank">
+                                                <span th:each="evidence : ${target.evidence}" th:if="${evidence?.reportingDate?.id == date.id}">
+                                                   <a th:if="${evidence.evidence != null}" th:href="${evidence.evidence}" target="_blank">
                                                       <i class="fa fa-link"></i>
                                                    </a>
-                                                    <a th:if="${score.attachmentName != null}" th:href="@{/scorecards/view-evidence/} + ${score.attachmentName}" target="_blank">
+                                                    <a th:if="${evidence.attachmentName != null}" th:href="@{/scorecards/view-evidence/} + ${evidence.attachmentName}" target="_blank">
                                                     <i class="fa fa-paperclip"></i>
                                                 </a>
                                                 </span>
                                             </td>
                                             <td th:if="${scoreColumns > 0 }">
-                                                <a th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}" th:text="${score.justification}"></a>
+                                                <a th:each="evidence : ${target.evidence}" th:if="${evidence.reportingDate.id == date.id}" th:text="${evidence.justification}"></a>
                                             </td>
 
                                             <td>

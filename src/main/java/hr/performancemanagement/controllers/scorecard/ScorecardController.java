@@ -70,6 +70,8 @@ public class ScorecardController {
     OverallScoreService overallScoreService;
 
     private final Environment environment;
+    @Autowired
+    private EvidenceService evidenceService;
 
     public ScorecardController(Environment environment) {
         this.environment = environment;
@@ -1136,12 +1138,12 @@ public class ScorecardController {
         }
         try {
 //            if(commonService.isOwner(scorecard)){
-                Score score = new Score();
-                score.setOutput(output);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
-                score.setEvidence(wrapper.getEvidence());
-                score.setAttachmentName(fileName);
-                valueBasedScoreService.saveEvidence(score, target);
+                Evidence evidence = new Evidence();
+                evidence.setTarget(target);
+                evidence.setReportingDate(commonService.getActiveReportingDate(request));
+                evidence.setEvidence(wrapper.getEvidence());
+                evidence.setAttachmentName(fileName);
+                evidenceService.saveEvidence(evidence);
 //            }
         }catch (Exception ignored){
 
@@ -1517,5 +1519,35 @@ public class ScorecardController {
             throw  new RuntimeException();
         }
     }
+
+    @RequestMapping(value = "/update-evidence", method = RequestMethod.POST)
+    public String updateEvidence() {
+
+        List<Scorecard> scorecards = scorecardService.listAllScorecards(1);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+
+        for(Scorecard scorecard: scorecards){
+            List<Output> outputs = outputService.listAllOutputs(scorecard);
+            for(Output output: outputs){
+                for(Target target: output.getTargets()){
+                    Evidence evidence = new Evidence();
+                    evidence.setJustification(target.getCurrentJustification());
+                    evidence.setAttachmentName(target.getCurrentAttachmentName());
+                    evidence.setReportingDate(reportingDate);
+                    evidence.setEvidence(target.getCurrentEvidence());
+                    evidence.setTarget(target);
+
+                    if(evidence.getEvidence() == null && evidence.getJustification() == null && evidence.getAttachmentName() == null){
+
+                    }else {
+                        evidenceService.saveEvidence(evidence);
+                    }
+                }
+            }
+        }
+
+        return "redirect:/";
+    }
+
 
 }

@@ -43,7 +43,8 @@ public class Target {
     private String currentEvidence;
     private String currentAttachmentName;
     private String currentJustification;
-
+    @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Evidence> evidence;
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Comment> comments;
     private String flag;

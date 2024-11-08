@@ -32,10 +32,13 @@ public class Score implements Serializable {
     private double agreedScore;
     private double moderatedScore;
     private double weightedScore;
+    @Transient
     private String evidence;
+    @Transient
     private String attachmentName;
     @Transient
     private MultipartFile attachment;
+    @Transient
     private String justification;
     @CreationTimestamp
     private Date date;
