@@ -72,6 +72,8 @@ public class ScorecardController {
     private final Environment environment;
     @Autowired
     private EvidenceService evidenceService;
+    @Autowired
+    private OverallCommentService overallCommentService;
 
     public ScorecardController(Environment environment) {
         this.environment = environment;
@@ -283,6 +285,7 @@ public class ScorecardController {
             }
             int scoreColumns = getScoreColumns(scorecard, true);
             OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
             List<OverallScore> overallScores = overallScoreService.getOverallScoreByScorecard(scorecard);
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
@@ -291,6 +294,7 @@ public class ScorecardController {
             modelAndView.addObject("url", url);
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("overallScore", overallScore);
+            modelAndView.addObject("overallComments", overallComments);
             modelAndView.addObject("overallScores", overallScores);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("reportingDates", reportingDates);
@@ -356,15 +360,20 @@ public class ScorecardController {
     public void saveComment(HttpServletRequest request, HttpServletResponse response, Long scorecardId, String userType, String comment) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+
+        OverallComment overallComment = new OverallComment();
+        overallComment.setScorecard(scorecard);
+        overallComment.setReportingDate(reportingDate);
 
         if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
-            scorecard.setOwnerComment(comment);
+            overallComment.setOwnerComment(comment);
         } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
-            scorecard.setSupervisorComment(comment);
+            overallComment.setSupervisorComment(comment);
         } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
-            scorecard.setModeratorComment(comment);
+            overallComment.setModeratorComment(comment);
         }
-        scorecardService.saveScorecard(scorecard);
+        overallCommentService.saveOverallComment(overallComment);
 
         if(!PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
             URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
@@ -962,11 +971,15 @@ public class ScorecardController {
 
             int scoreColumns = getScoreColumns(scorecard, false);
             OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
+            List<OverallScore> overallScores = overallScoreService.getOverallScoreByScorecard(scorecard);
             modelAndView.addObject("pageTitle", "View Contract {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
             modelAndView.addObject("selectedGears", selectedGears);
             modelAndView.addObject("overallScore", overallScore);
+            modelAndView.addObject("overallScores", overallScores);
+            modelAndView.addObject("overallComments", overallComments);
             modelAndView.addObject("comment", new Comment());
             modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("scoreColumns", scoreColumns);
@@ -1089,7 +1102,7 @@ public class ScorecardController {
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
-            Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
+//            Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
             ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
 //            if(commonService.isOwner(scorecard)){
@@ -1549,5 +1562,20 @@ public class ScorecardController {
         return "redirect:/";
     }
 
-
+    public static boolean isMatchFound(List<Score> scores, ReportingDate reportingDate) {
+        for (Score score : scores) {
+            if (score.getReportingDate().getId() == reportingDate.getId()) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public static boolean isCommentFound(List<OverallComment> comments, ReportingDate reportingDate) {
+        for (OverallComment comment : comments) {
+            if (comment.getReportingDate().getId() == reportingDate.getId()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

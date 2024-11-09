@@ -30,4 +30,6 @@ public class ReportingDate {
     @CreationTimestamp
     private Date date;
 
+
+
 }

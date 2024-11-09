@@ -349,22 +349,26 @@
                                                 <span th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
                                                 <span th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
                                             </th>
-                                            <th th:if="${scoreColumns > 0 }" th:attr="class = ${overallScore?.employeeOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
-                                                <span th:text="${overallScore?.employeeOverall == null ? '' : #numbers.formatDecimal(overallScore?.employeeOverall, 0, 2)}"></span>
+                                            <th th:if="${scoreColumns > 0 }" style="vertical-align: middle; text-align: center;">
+                                            <span th:each="score : ${overallScores}" th:attr="class = ${score?.employeeOverall < 2.5 ? 'fail' : 'pass' }">
+                                                <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.employeeOverall == null ? '' : #numbers.formatDecimal(score?.employeeOverall, 0, 2)}"></span>
+                                            </span>
                                             </th>
-                                            <th th:if="${scoreColumns > 1 }" th:attr="class = ${overallScore?.managerOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
-                                                <span th:text="${overallScore?.managerOverall == null ? '' : #numbers.formatDecimal(overallScore?.managerOverall, 0, 2)}"></span>
+                                            <th th:if="${scoreColumns > 1 }" style="vertical-align: middle; text-align: center;">
+                                            <span th:each="score : ${overallScores}" th:attr="class = ${score?.managerOverall < 2.5 ? 'fail' : 'pass' }">
+                                                <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.managerOverall == null ? '' : #numbers.formatDecimal(score?.managerOverall, 0, 2)}" th:attr="class = ${score?.managerOverall < 2.5 ? 'fail' : 'pass' }"></span>
+                                            </span>
                                             </th>
-                                            <th th:if="${scoreColumns > 2 }" th:attr="class = ${overallScore?.agreedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
-                                                <span th:text="${overallScore?.agreedOverall == null ? '' : #numbers.formatDecimal(overallScore?.agreedOverall, 0, 2)}"></span>
+                                            <th th:if="${scoreColumns > 2 }" style="vertical-align: middle; text-align: center;">
+                                            <span th:each="score : ${overallScores}" th:attr="class = ${score?.agreedOverall < 2.5 ? 'fail' : 'pass' }">
+                                                 <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.agreedOverall == null ? '' : #numbers.formatDecimal(score?.agreedOverall, 0, 2)}"></span>
+                                            </span>
                                             </th>
-                                            <th th:if="${scoreColumns > 3 }" th:attr="class = ${overallScore?.moderatedOverall < 2.5 ? 'fail' : 'pass' }" style="vertical-align: middle; text-align: center;">
-                                                <span th:text="${overallScore?.moderatedOverall == null ? '' : #numbers.formatDecimal(overallScore?.moderatedOverall, 0, 2)}"></span>
-                <!--                                <span th:text="${'('+ #numbers.formatDecimal(totalWeightedScore, 0, 2) + '%)'}"></span>-->
+                                            <th th:if="${scoreColumns > 3 }" style="vertical-align: middle; text-align: center;">
+                                            <span th:each="score : ${overallScores}" th:attr="class = ${score?.moderatedOverall < 2.5 ? 'fail' : 'pass' }">
+                                                 <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.moderatedOverall == null ? '' : #numbers.formatDecimal(score?.moderatedOverall, 0, 2)}"></span>
+                                            </span>
                                             </th>
-                <!--                            <td th:attr="class = ${totalWeightedScore < 50 ? 'fail' : 'pass' }">-->
-                <!--                            </td>-->
-                <!--                            <td></td>-->
                                         </tr>
                                         <tr>
                                             <td colspan="8"></td>
@@ -372,6 +376,28 @@
                                         </tbody>
                                      </div>
                                 </table>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Owner's Overall Comment</legend>
+                                        <span th:text="${comment.ownerComment}"></span>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Supervisor's Overall Comment</legend>
+                                        <span th:text="${comment.supervisorComment}"></span>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Moderator's Overall Comment</legend>
+                                        <span th:text="${comment.moderatorComment}"></span>
+                                    </fieldset>
+                                </div>
                             </div>
                     </div>
                 </div>
@@ -407,28 +433,6 @@
 
                     </div>
                  </div>
-                <div class="form-group row">
-                    <div class="col-4" th:if="${scorecard.ownerComment != null}">
-                        <fieldset class="border p-2">
-                            <legend class="w-auto">Owner's Overall Comment</legend>
-                                <span th:text="${scorecard.ownerComment}"></span>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4" th:if="${scorecard.supervisorComment != null}">
-                        <fieldset class="border p-2">
-                            <legend class="w-auto">Supervisor's Overall Comment</legend>
-                                <span th:text="${scorecard.supervisorComment}"></span>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4" th:if="${scorecard.moderatorComment != null}">
-                        <fieldset class="border p-2">
-                            <legend class="w-auto">Moderator's Overall Comment</legend>
-                                <span th:text="${scorecard.moderatorComment}"></span>
-                        </fieldset>
-                    </div>
-                </div>
             </div>
 
         </div>

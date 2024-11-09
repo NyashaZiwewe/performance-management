@@ -397,6 +397,28 @@
                                     </div>
                                 </table>
                             </div>
+                            <div class="form-group row">
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Owner's Overall Comment</legend>
+                                        <span th:text="${comment.ownerComment}"></span>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Supervisor's Overall Comment</legend>
+                                        <span th:text="${comment.supervisorComment}"></span>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Moderator's Overall Comment</legend>
+                                        <span th:text="${comment.moderatorComment}"></span>
+                                    </fieldset>
+                                </div>
+                            </div>
                         </div>
                         <div role="tabpanel" id="capture-tab" class="tab-pane active">
                             <div class="panel-body">
@@ -617,22 +639,16 @@
                 <div class="form-group row">
                     <div class="col-4">
                         <fieldset class="border p-2">
-                            <legend class="w-auto">Owner's Overall Comment</legend>
-                            <span th:text="${scorecard.ownerComment}"></span>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4">
-                        <fieldset class="border p-2">
-                            <legend class="w-auto">Supervisor's Overall Comment</legend>
-                            <span th:text="${scorecard.supervisorComment}"></span>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4">
-                        <fieldset class="border p-2">
                             <legend class="w-auto">Moderator's Overall Comment</legend>
-                            <textarea th:text="${scorecard.moderatorComment}" id="moderatorComment"  class="form-control" oninput="saveComment('moderator')"></textarea>
+                            <div th:if="${T(hr.performancemanagement.controllers.scorecard.ScorecardController).isCommentFound(overallComments, reportingDate)}">
+                                <div th:each="comment : ${overallComments}" >
+                                    <textarea th:text="${comment.moderatorComment}" id="moderatorComment" class="form-control" oninput="saveComment('moderator')"></textarea>
+                                </div>
+                            </div>
+
+                            <div th:if="${!T(hr.performancemanagement.controllers.scorecard.ScorecardController).isCommentFound(overallComments, reportingDate)}">
+                                <textarea id="moderatorComment" class="form-control" oninput="saveComment('moderator')"></textarea>
+                            </div>
                         </fieldset>
                     </div>
                 </div>

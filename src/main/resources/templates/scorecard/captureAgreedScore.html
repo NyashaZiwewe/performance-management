@@ -398,6 +398,28 @@
                                     </div>
                                 </table>
                             </div>
+                            <div class="form-group row">
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Owner's Overall Comment</legend>
+                                        <span th:text="${comment.ownerComment}"></span>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Supervisor's Overall Comment</legend>
+                                        <span th:text="${comment.supervisorComment}"></span>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-4" th:each="comment : ${overallComments}" th:if="${comment.reportingDate.id == date.id}">
+                                    <fieldset class="border p-2">
+                                        <legend class="w-auto">Moderator's Overall Comment</legend>
+                                        <span th:text="${comment.moderatorComment}"></span>
+                                    </fieldset>
+                                </div>
+                            </div>
                         </div>
                         <div role="tabpanel" id="capture-tab" class="tab-pane active">
                             <div class="panel-body">
@@ -464,7 +486,23 @@
                                                     <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.currentManagerScore}"></a>
                                                 </td>
                                                 <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
-                                                    <input type="number" class="validate" step="any" min="1" max="5" th:id="'agreedScore' + ${target.output.id}" th:onChange="saveScore([[${target.id}]],[[${target.output.id}]])" th:value="${target.output.currentAgreedScore}" style="width: 5em">
+                                                    <div th:if="${T(hr.performancemanagement.controllers.scorecard.ScorecardController).isMatchFound(target.output.scores, reportingDate)}">
+                                                        <div th:each="score : ${target.output.scores}">
+                                                            <input type="number" class="validate" step="any" min="1" max="5"
+                                                                   th:id="'agreedScore' + ${target.output.id}"
+                                                                   th:onChange="saveScore([[${target.id}]], [[${target.output.id}]])"
+                                                                   th:if="${score.reportingDate.id == reportingDate.id}"
+                                                                   th:value="${score.agreedScore}"
+                                                                   style="width: 5em" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div th:if="${!T(hr.performancemanagement.controllers.scorecard.ScorecardController).isMatchFound(target.output.scores, reportingDate)}">
+                                                        <input type="number" class="validate" step="any" min="1" max="5"
+                                                               th:id="'agreedScore' + ${target.output.id}"
+                                                               th:onChange="saveScore([[${target.id}]], [[${target.output.id}]])"
+                                                               style="width: 5em" />
+                                                    </div>
                                                 </td>
                                                 <td style="vertical-align: middle; text-align: center;">
                                                     <span th:text="${target.currentJustification}"></span>
@@ -613,15 +651,16 @@
                 <div class="form-group row">
                     <div class="col-4">
                         <fieldset class="border p-2">
-                            <legend class="w-auto">Owner's Overall Comment</legend>
-                            <span th:text="${scorecard.ownerComment}"></span>
-                        </fieldset>
-                    </div>
-
-                    <div class="col-4">
-                        <fieldset class="border p-2">
                             <legend class="w-auto">Supervisor's Overall Comment</legend>
-                            <textarea th:text="${scorecard.supervisorComment}" id="supervisorComment"  class="form-control" oninput="saveComment('supervisor')"></textarea>
+                            <div th:if="${T(hr.performancemanagement.controllers.scorecard.ScorecardController).isCommentFound(overallComments, reportingDate)}">
+                                <div th:each="comment : ${overallComments}" >
+                                    <textarea th:text="${comment.supervisorComment}" id="supervisorComment" class="form-control" oninput="saveComment('supervisor')"></textarea>
+                                </div>
+                            </div>
+
+                            <div th:if="${!T(hr.performancemanagement.controllers.scorecard.ScorecardController).isCommentFound(overallComments, reportingDate)}">
+                                <textarea id="supervisorComment" class="form-control" oninput="saveComment('supervisor')"></textarea>
+                            </div>
                         </fieldset>
                     </div>
                 </div>
