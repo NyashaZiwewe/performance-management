@@ -46,24 +46,25 @@ public class ValueBasedScoreService {
     public OverallScore saveEmployeeScore(Score score, Target target) {
 
         Score savedScore;
+        Output output = score.getOutput();
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setEmployeeScore(score.getEmployeeScore());
 //            existingScore.setJustification(score.getJustification());
               savedScore = scoreRepository.save(existingScore);
-            Output output = existingScore.getOutput();
+//            Output output = existingScore.getOutput();
 //            output.setCurrentEmployeeScore(savedScore.getEmployeeScore());
 //            target.setCurrentJustification(savedScore.getJustification());
 //            targetService.saveTarget(target);
 //            updateOutputData(output);
         }else{
             savedScore = scoreRepository.save(score);
-            Output output = savedScore.getOutput();
+//            Output output = savedScore.getOutput();
             output.setCurrentEmployeeScore(score.getEmployeeScore());
 //            updateOutputData(output);
         }
         createEvidence(score,target);
-        return calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "EMPLOYEE_SCORE");
+        return calculateOverallScore(output.getScorecard(), score.getReportingDate(), "EMPLOYEE_SCORE");
     }
 
     private void createEvidence(Score score, Target target) {
@@ -101,16 +102,17 @@ public class ValueBasedScoreService {
 //    }
 
     public OverallScore saveManagerScore(Score score) {
-
+        Score savedScore;
+        Output output = score.getOutput();
         if(scoreExists(score)){
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setManagerScore(score.getManagerScore());
             score = scoreRepository.save(existingScore);
-            Output output = score.getOutput();
-            output.setCurrentManagerScore(score.getManagerScore());
+//            Output output = score.getOutput();
+//            output.setCurrentManagerScore(score.getManagerScore());
 //            updateOutputData(output);
         }
-        return calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "MANAGER_SCORE");
+        return calculateOverallScore(output.getScorecard(), score.getReportingDate(), "MANAGER_SCORE");
 
     }
 
@@ -136,8 +138,8 @@ public class ValueBasedScoreService {
             existingScore.setWeightedScore(calculateWeightedScore(existingScore));
             score = scoreRepository.save(existingScore);
             Output output = score.getOutput();
-            output.setCurrentModeratedScore(score.getModeratedScore());
-            output.setCurrentWeightedScore(score.getWeightedScore());
+//            output.setCurrentModeratedScore(score.getModeratedScore());
+//            output.setCurrentWeightedScore(score.getWeightedScore());
 //            updateOutputData(output);
         }
         return score;

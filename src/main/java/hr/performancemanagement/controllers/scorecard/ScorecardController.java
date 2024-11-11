@@ -1170,16 +1170,16 @@ public class ScorecardController {
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
-            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+//            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
             ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
-            if(commonService.isSupervisor(scorecard.getOwner())){
+//            if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setOutput(output);
                 score.setReportingDate(reportingDate);
                 score.setManagerScore(managerScore);
                 overallScore = valueBasedScoreService.saveManagerScore(score);
-            }
+//            }
         }catch (Exception ignored){
 
         }
@@ -1204,16 +1204,16 @@ public class ScorecardController {
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
-            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+//            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
             ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
-            if(commonService.isSupervisor(scorecard.getOwner())){
+//            if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setOutput(output);
                 score.setReportingDate(reportingDate);
                 score.setAgreedScore(agreedScore);
                 overallScore = valueBasedScoreService.saveAgreedScore(score);
-            }
+//            }
         }catch (Exception ignored){
 
         }
@@ -1235,7 +1235,7 @@ public class ScorecardController {
 
     @RequestMapping(value = "/save-value-based-moderated-score", method = RequestMethod.POST, consumes = {"*/*"})
     public void saveModeratedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double moderatedScore) {
-
+        OverallScore overallScore = new OverallScore();
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
