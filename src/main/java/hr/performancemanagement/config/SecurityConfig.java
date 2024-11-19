@@ -109,19 +109,30 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests().antMatchers("/login**","/logout","/reset-password","/save-password","/change-password/**","/set-reset").permitAll()
-                .and().authorizeRequests().anyRequest().authenticated()
-                .and().formLogin().loginPage("/login")
-                .defaultSuccessUrl("/",false)
+        http
+                .authorizeRequests()
+                .antMatchers("/login**", "/logout", "/reset-password", "/save-password", "/change-password/**", "/set-reset").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                .formLogin()
+                .loginPage("/login")
+                .defaultSuccessUrl("/", false)
                 .permitAll()
-                .and().logout()
+                .and()
+                .logout()
                 .deleteCookies("remove")
                 .invalidateHttpSession(true)
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/")
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
-                .and().csrf().disable().cors();
+                .and()
+                .sessionManagement()
+                .invalidSessionUrl("/login?timeout") // Redirect when the session is invalid
+                .and()
+                .csrf().disable()
+                .cors();
     }
+
 
     @Bean
     public AuthenticationSuccessHandler successHandler() {
