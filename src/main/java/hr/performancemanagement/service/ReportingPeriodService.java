@@ -1,6 +1,7 @@
 package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.Account;
+import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
@@ -41,8 +42,19 @@ public class ReportingPeriodService {
     }
 
     public void saveReportingPeriod(ReportingPeriod reportingPeriod) {
-
+        if(PMConstants.STATUS_ACTIVE.equalsIgnoreCase(reportingPeriod.getStatus())){
+            deactivateReportingPeriods(reportingPeriod);
+        }
         reportingPeriodRepository.save(reportingPeriod);
+    }
+
+    private void deactivateReportingPeriods(ReportingPeriod reportingPeriod){
+        Long clientId = reportingPeriod.getClientId();
+        List<ReportingPeriod> reportingPeriodList = reportingPeriodRepository.findAllReportingPeriodsByClientId(clientId);
+        for(ReportingPeriod period: reportingPeriodList){
+            period.setStatus(PMConstants.STATUS_IN_ACTIVE);
+            reportingPeriodRepository.save(period);
+        }
     }
 
     @Transactional

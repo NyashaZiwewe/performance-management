@@ -23,6 +23,9 @@ public class Outcome implements Serializable {
     @ManyToOne
     @JoinColumn(name = "goal_id")
     private Goal goal;
+    @ManyToOne
+    @JoinColumn(name = "pillar_id")
+    private Pillar pillar;
     private String name;
     @OneToMany(mappedBy = "outcome", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Output> outputs;

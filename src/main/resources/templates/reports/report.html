@@ -214,14 +214,32 @@
                             </tr>
                         </table>
 
-                        <div>
-                            <h5>Incumbent's comment:</h5>
-                            <p style="text-align: justify" th:text="${scorecard.ownerComment}"></p>
-                            <h5>Supervisor's comment:</h5>
-                            <p style="text-align: justify" th:text="${scorecard.supervisorComment}"></p>
-                            <h5>Moderator's comment:</h5>
-                            <p style="text-align: justify" th:text="${scorecard.moderatorComment}"></p>
-                        </div>
+<!--                        <div >-->
+<!--                            <h5>Incumbent's comment:</h5>-->
+<!--                            <p style="text-align: justify" th:text="${comment.ownerComment}"></p>-->
+<!--                            <h5>Supervisor's comment:</h5>-->
+<!--                            <p style="text-align: justify" th:text="${scorecard.supervisorComment}"></p>-->
+<!--                            <h5>Moderator's comment:</h5>-->
+<!--                            <p style="text-align: justify" th:text="${scorecard.moderatorComment}"></p>-->
+<!--                        </div>-->
+                        <table style="width: 100%; border-collapse: separate; border-spacing: 0;" border="1">
+                            <thead>
+                              <tr>
+                                  <th>Reporting Date</th>
+                                  <th>Incumbent's comment</th>
+                                  <th>Supervisor's comment</th>
+                                  <th>Moderator's comment</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                               <tr th:each="comment : ${overallComments}">
+                                   <td th:text="${comment.date}"></td>
+                                   <td th:text="${comment.ownerComment}"></td>
+                                   <td th:text="${comment.supervisorComment}"></td>
+                                   <td th:text="${comment.moderatorComment}"></td>
+                               </tr>
+                            </tbody>
+                        </table>
                 </div>
                     <div class="ibox-footer">
                         <h5 style="text-align: center">------------------The End--------------</h5>

@@ -43,6 +43,7 @@ public class Pages {
     public static final String VIEW_ACTION_PLAN = "action-plan/viewActionPlan";
     public static final String ADD_ACTION_PLAN = "action-plan/addActionPlan";
     public static final String VIEW_SCORES_SELECT_YEAR = "assessment/viewScoresSelectYear";
+    public static final String VIEW_SCORECARDS_SELECT_YEAR = "scorecard/viewScoreCardsSelectYear";
     public static final String VIEW_PERFORMANCE_LEVELS_SELECT_YEAR = "assessment/viewPerformanceLevelsSelectYear";
     public static final String VIEW_INDIVIDUAL_TRENDS_SELECT_EMPLOYEE = "assessment/viewIndividualTrendsSelectEmployee";
     public static final String VIEW_PERFORMANCE_LEVELS_SELECT_SCORECARDS = "assessment/viewPerformanceLevelsSelectScorecards";

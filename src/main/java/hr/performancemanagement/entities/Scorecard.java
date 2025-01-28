@@ -31,6 +31,7 @@ public class Scorecard {
     @ManyToOne
     @JoinColumn(name = "scorecard_model_id")
     private ScorecardModel scorecardModel;
+    private String model;
     private String status;
     private double employeeScore;
     private double managerScore;

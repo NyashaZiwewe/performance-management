@@ -95,8 +95,8 @@
                                  <div class="row table-responsive" th:each="gear, gstat : ${selectedGears}">
                                         <thead>
                                         <tr>
-                                            <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
-                                            <td colspan="3">Total Gear Weight: </td>
+                                            <td colspan="3" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
+                                            <td colspan="3">Total <span th:text="${stage1}"></span> Weight: </td>
                                             <td> <h4 th:text="${gear.totalAllocatedWeight == null ? '' : #numbers.formatDecimal(gear.totalAllocatedWeight, 0,  2)} + '%'"></h4> </td>
                                             <td th:if="${scoreColumns > 0 }" th:colspan="${scoreColumns}"></td>
                                             <th></th>
@@ -104,7 +104,7 @@
                                             <th></th>
                                         </tr>
                                         <tr>
-                                            <th colspan="7">GOAL : <span th:text="${gear.goals[0].name}"></span></th>
+                                            <th colspan="7"><span th:text="${stage2}"></span> : <span th:text="${gear.goals[0].name}"></span></th>
                                             <th th:if="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center">Scores</th>
                                             <th th:unless="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center"></th>
                                             <th></th>
@@ -112,7 +112,7 @@
                                             <th></th>
                                         </tr>
                                         <tr th:if="${gstat.index == 0}">
-                                            <th>Outcome</th>
+                                            <th><span th:text="${stage4}"></span></th>
                                             <th>Output</th>
                                             <th>Performance Indicator</th>
                                             <th>Unit</th>

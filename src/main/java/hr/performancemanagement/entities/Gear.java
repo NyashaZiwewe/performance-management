@@ -25,6 +25,7 @@ public class Gear {
     @Column(updatable = false)
     private long clientId;
     private String name;
+    private String category;
     private String description;
     private String graphColor;
     private String fill;

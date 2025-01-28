@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.FileCopyUtils;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -27,6 +28,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -96,20 +98,36 @@ public class ScorecardController {
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("loggedUser", loggedUser);
         modelAndView.addObject("role", role);
+        addTerminology(modelAndView);
         PortletUtils.addMessagesToPage(modelAndView, request);
 
     }
 
-    @RequestMapping
-    public ModelAndView viewScorecards(HttpServletRequest request, HttpSession session) {
+    @RequestMapping(value = "/view-scorecards/{periodId}")
+    public ModelAndView viewScorecards(HttpServletRequest request, @PathVariable("periodId") long periodId, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARDS);
         modelAndView.addObject("pageTitle", "View Contracts");
-        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(periodId);
         List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
-
         modelAndView.addObject("scorecards", scorecards);
         preparePage(modelAndView, request, session);
         return modelAndView;
+    }
+
+    @RequestMapping
+    public ModelAndView viewScorecardsSelectYear(HttpServletRequest request, HttpSession session) {
+        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARDS_SELECT_YEAR);
+        modelAndView.addObject("pageTitle", "Select Reporting Period");
+        List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
+        modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
+        preparePage(modelAndView, request, session);
+        return modelAndView;
+    }
+
+    @RequestMapping(value = "/view-scorecards-select-year", method = RequestMethod.POST)
+    public String goToViewScoreCards(HttpServletRequest request, long reportingPeriodId) {
+
+        return "redirect:/scorecards/view-scorecards/"+ reportingPeriodId;
     }
 
     @RequestMapping(value = "/view-user-scorecards/{id}")
@@ -148,6 +166,7 @@ public class ScorecardController {
             newScorecard.setLockStatus("OPEN");
             newScorecard.setStatus("ACTIVE");
             newScorecard.setApprovalStatus("NEW");
+            newScorecard.setModel("PILLAR");
             scorecardService.addScorecard(newScorecard);
 
             String recipient = newScorecard.getOwner().getEmail();
@@ -1577,5 +1596,29 @@ public class ScorecardController {
             }
         }
         return false;
+    }
+
+    public ModelAndView addTerminology(ModelAndView modelAndView) {
+        if(modelAndView.getModel().containsKey("scorecard")){
+            String stage1, stage2,stage3,stage4;
+            Scorecard scorecard = (Scorecard) modelAndView.getModel().get("scorecard");
+            if("PILLAR".equalsIgnoreCase(scorecard.getModel())){
+                stage1 = "Programme";
+                stage2 = "Outcome";
+                stage3 = "Pillar";
+                stage4 = "Strategic Goal";
+            }else {
+                stage1 = "Gear";
+                stage2 = "Goal";
+                stage3 = "";
+                stage4 = "Outcome";
+            }
+            modelAndView.addObject("stage1", stage1);
+            modelAndView.addObject("stage2", stage2);
+            modelAndView.addObject("stage3", stage3);
+            modelAndView.addObject("stage4", stage4);
+        };
+
+        return modelAndView;
     }
 }

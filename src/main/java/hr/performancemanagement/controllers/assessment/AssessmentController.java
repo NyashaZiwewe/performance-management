@@ -61,6 +61,8 @@ public class AssessmentController {
     CommonService cs;
     @Autowired
     private PdfGeneratorService pdfGeneratorService;
+    @Autowired
+    OverallCommentService overallCommentService;
     private List<Double> scores;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
@@ -375,6 +377,7 @@ public class AssessmentController {
             Account loggedUser = cs.getLoggedUser();
             Account owner = scorecard.getOwner();
             List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+            List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
             long loggedUserId = loggedUser.getId();
             String role = loggedUser.getRole();
 
@@ -385,6 +388,7 @@ public class AssessmentController {
 
             context.setVariable("loggedUserId", loggedUserId);
             context.setVariable("pips", pips);
+            context.setVariable("overallComments", overallComments);
             context.setVariable("owner", owner);
             context.setVariable("role", role);
             context.setVariable("reportingPeriod", reportingPeriod);

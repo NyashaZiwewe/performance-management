@@ -43,7 +43,7 @@
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Gear Name</label>
+                                <label class="col-form-label col-lg-4 required">Metric Name</label>
                                 <div class="col-lg-8">
                                     <div class="input-group m-b">
                                         <div class="input-group-prepend">
@@ -51,6 +51,17 @@
                                         </div>
                                         <input type="text" class="form-control" th:field="*{name}" required>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-12">
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4 required">Category</label>
+                                <div class="col-lg-8">
+                                  <select class="form-control select2_demo_1" name="category">
+                                      <option value="programme">Programme</option>
+                                      <option value="gear">Gear</option>
+                                  </select>
                                 </div>
                             </div>
                         </div>

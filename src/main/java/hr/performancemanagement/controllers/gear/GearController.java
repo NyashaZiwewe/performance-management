@@ -1,12 +1,7 @@
 package hr.performancemanagement.controllers.gear;
-import hr.performancemanagement.entities.Gear;
-import hr.performancemanagement.entities.Goal;
-import hr.performancemanagement.entities.Outcome;
+import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.GearRepository;
-import hr.performancemanagement.service.CommonService;
-import hr.performancemanagement.service.GearService;
-import hr.performancemanagement.service.GoalService;
-import hr.performancemanagement.service.OutcomeService;
+import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
@@ -32,11 +27,14 @@ public class GearController {
     GoalService goalService;
     @Autowired
     OutcomeService outcomeService;
+    @Autowired
+    private PillarService pillarService;
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
 
         modelAndView.addObject("pageDomain", "Administration");
         modelAndView.addObject("pageName", "Key Focus Area");
+        modelAndView = addTerminology(modelAndView);
         PortletUtils.addMessagesToPage(modelAndView, request);
     }
 
@@ -44,7 +42,7 @@ public class GearController {
     @RequestMapping
     public ModelAndView viewgears(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_GEARS);
-        modelAndView.addObject("pageTitle", "View gears");
+        modelAndView.addObject("pageTitle", "View Metrics");
         List<Gear> gears = gearService.listAllGears(commonService.getLoggedUser().getClientId());
         modelAndView.addObject("gears", gears);
         preparePage(modelAndView, request);
@@ -55,7 +53,7 @@ public class GearController {
     public ModelAndView addGear(HttpServletRequest request) {
 
         ModelAndView modelAndView = new ModelAndView(Pages.ADD_GEAR);
-        modelAndView.addObject("pageTitle", "New gear");
+        modelAndView.addObject("pageTitle", "New Metric");
         modelAndView.addObject("gear", new Gear());
         preparePage(modelAndView, request);
         return modelAndView;
@@ -66,7 +64,7 @@ public class GearController {
 
         newGear.setClientId(Client.CLIENT_ID);
         gearService.addGear(newGear);
-        PortletUtils.addInfoMsg("Gear was successfully created or updated.", request);
+        PortletUtils.addInfoMsg("Metric was successfully created or updated.", request);
         return "redirect:/gears";
     }
 
@@ -74,7 +72,7 @@ public class GearController {
     @RequestMapping("/edit-gear/{id}")
     public ModelAndView editGear(@PathVariable("id") long id, HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.EDIT_GEAR);
-        modelAndView.addObject("pageTitle", "Update Gear");
+        modelAndView.addObject("pageTitle", "Update Metric");
         Gear gear = gearService.getGearById(id);
         modelAndView.addObject("gear", gear);
         preparePage(modelAndView, request);
@@ -84,7 +82,7 @@ public class GearController {
     @RequestMapping("/view-gear/{id}")
     public ModelAndView viewGear(@PathVariable("id") long id, HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_GEAR);
-        modelAndView.addObject("pageTitle", "Update Gear");
+        modelAndView.addObject("pageTitle", "Update Metric");
         Gear gear = gearService.getGearById(id);
         modelAndView.addObject("gear", gear);
         preparePage(modelAndView, request);
@@ -112,14 +110,76 @@ public class GearController {
     }
 
     @RequestMapping(value = "/save-outcome", method = RequestMethod.POST)
-    public String saveOutcome( HttpServletRequest request, String name, long goalId, long gearId) {
+    public String saveOutcome( HttpServletRequest request, String name, long goalId, long gearId, long pillarId) {
 
         Outcome outcome = new Outcome();
         outcome.setName(name);
-        outcome.setGoal(goalService.getGoalById(goalId));
+        if(pillarId !=0){
+            outcome.setPillar(pillarService.findById(pillarId));
+        }else{
+            outcome.setGoal(goalService.getGoalById(goalId));
+        }
         outcomeService.saveOutcome(outcome);
-        PortletUtils.addInfoMsg("Outcome successfully added.", request);
+        PortletUtils.addInfoMsg("Record successfully added.", request);
         return "redirect:/gears/view-gear/" + gearId;
+    }
+
+    @RequestMapping(value = "/update-outcome", method = RequestMethod.POST)
+    public String updateOutcome( HttpServletRequest request, String name, long outcomeId, long gearId) {
+
+        Outcome outcome = outcomeService.getOutcomeById(outcomeId);
+        outcome.setName(name);
+        outcomeService.saveOutcome(outcome);
+        PortletUtils.addInfoMsg("Record successfully updated.", request);
+        return "redirect:/gears/view-gear/" + gearId;
+    }
+
+    @RequestMapping(value = "/save-pillar", method = RequestMethod.POST)
+    public String savePillar( HttpServletRequest request, String name, long goalId, long gearId) {
+
+        Pillar pillar = new Pillar();
+        pillar.setName(name);
+        pillar.setGoal(goalService.getGoalById(goalId));
+        pillarService.savePillar(pillar);
+        PortletUtils.addInfoMsg("Pillar successfully added.", request);
+        return "redirect:/gears/view-gear/" + gearId;
+    }
+
+    @RequestMapping(value = "/update-pillar", method = RequestMethod.POST)
+    public String updatePillar( HttpServletRequest request, String name, long pillarId, long gearId) {
+
+        Pillar pillar = pillarService.findById(pillarId);
+        pillar.setName(name);
+        pillarService.savePillar(pillar);
+        PortletUtils.addInfoMsg("Pillar successfully updated.", request);
+        return "redirect:/gears/view-gear/" + gearId;
+    }
+
+    public ModelAndView addTerminology(ModelAndView modelAndView) {
+        if(modelAndView.getModel().containsKey("gear")){
+            String stage1, stage2,stage3,stage4, model;
+            Gear gear = (Gear) modelAndView.getModel().get("gear");
+            if("programme".equalsIgnoreCase(gear.getCategory())){
+                stage1 = "Programme";
+                stage2 = "Outcome";
+                stage3 = "Pillar";
+                stage4 = "Strategic Goal";
+                model = "programme";
+            }else {
+                stage1 = "Gear";
+                stage2 = "Goal";
+                stage3 = "Goal";
+                stage4 = "Outcome";
+                model = "gear";
+            }
+            modelAndView.addObject("stage1", stage1);
+            modelAndView.addObject("stage2", stage2);
+            modelAndView.addObject("stage3", stage3);
+            modelAndView.addObject("stage4", stage4);
+            modelAndView.addObject("model", model);
+        };
+
+        return modelAndView;
     }
 
 }

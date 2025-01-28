@@ -28,9 +28,8 @@ public class Goal implements Serializable {
     private String name;
     @OneToMany(mappedBy = "goal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Outcome> outcomes;
-//    @ManyToOne
-//    @JoinColumn(name = "reporting_period_id")
-//    private ReportingPeriod reportingPeriod;
+    @OneToMany(mappedBy = "goal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Pillar> pillars;
     @Transient
     private Double weightedScore;
     @CreationTimestamp
