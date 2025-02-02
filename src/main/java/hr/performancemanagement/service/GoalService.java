@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,5 +51,10 @@ public class GoalService {
     public Goal saveGoal(Goal Goal){
         Goal savedGoal = goalRepository.save(Goal);
         return savedGoal;
+    }
+
+    @Transactional
+    public void deleteGoal(long id){
+        goalRepository.deleteById(id);
     }
 }

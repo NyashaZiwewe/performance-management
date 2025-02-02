@@ -26,6 +26,8 @@ public class Outcome implements Serializable {
     @ManyToOne
     @JoinColumn(name = "pillar_id")
     private Pillar pillar;
+    @Transient
+    private Gear gear;
     private String name;
     @OneToMany(mappedBy = "outcome", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Output> outputs;
@@ -33,4 +35,16 @@ public class Outcome implements Serializable {
     @Column(updatable = false)
     private Date date;
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Outcome outcome = (Outcome) o;
+        return id == outcome.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 }

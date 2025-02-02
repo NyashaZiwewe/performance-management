@@ -27,10 +27,8 @@ import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping(value="/scorecards")
@@ -166,7 +164,7 @@ public class ScorecardController {
             newScorecard.setLockStatus("OPEN");
             newScorecard.setStatus("ACTIVE");
             newScorecard.setApprovalStatus("NEW");
-            newScorecard.setModel("PILLAR");
+            newScorecard.setModel("programme");
             scorecardService.addScorecard(newScorecard);
 
             String recipient = newScorecard.getOwner().getEmail();
@@ -224,7 +222,13 @@ public class ScorecardController {
                System.out.println(e.getMessage());
            }
 
-
+            for (Gear gear : selectedGears) {
+                if (gear.getTargetsList() != null) {
+                    gear.getTargetsList().sort(Comparator
+                            .comparing((Target target) -> target.getOutcome().getId())
+                            .thenComparing(target -> target.getOutput().getId()));
+                }
+            }
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
             modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
@@ -275,6 +279,14 @@ public class ScorecardController {
             }
         }catch (Exception e){
             System.out.println(e.getMessage());
+        }
+
+        for (Gear gear : selectedGears) {
+            if (gear.getTargetsList() != null) {
+                gear.getTargetsList().sort(Comparator
+                        .comparing((Target target) -> target.getOutcome().getId())
+                        .thenComparing(target -> target.getOutput().getId()));
+            }
         }
 
         ModelAndView modelAndView;
@@ -988,6 +1000,14 @@ public class ScorecardController {
                 System.out.println(e.getMessage());
             }
 
+            for (Gear gear : selectedGears) {
+                if (gear.getTargetsList() != null) {
+                    gear.getTargetsList().sort(Comparator
+                            .comparing((Target target) -> target.getOutcome().getId())
+                            .thenComparing(target -> target.getOutput().getId()));
+                }
+            }
+
             int scoreColumns = getScoreColumns(scorecard, false);
             OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
             List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
@@ -1451,20 +1471,39 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/select-gear", method = RequestMethod.POST)
-    public String selectGear(long gearId, long scorecardId) {
+    public String selectGear(HttpServletRequest request, long gearId, long scorecardId) {
 
         Gear gear = gearService.getGearById(gearId);
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if(gear.getGoals().isEmpty()){
+            PortletUtils.addErrorMsg("Not added. The records are not well cascaded. Contact the admin who can put all pre requisites.", request);
+        }
         for(Goal goal : gear.getGoals()){
-            for(Outcome outcome: goal.getOutcomes()){
-                Output output = new Output();
-                output.setOutcome(outcome);
-                output.setScorecard(scorecardService.getScorecardById(scorecardId));
-                output = outputService.saveOutput(output);
-
-//                Target target = new Target();
-//                target.setOutput(output);
-//                target = targetService.saveTarget(target);
+            if(goal.getOutcomes().isEmpty() && "gear".equalsIgnoreCase(gear.getCategory())){
+                PortletUtils.addErrorMsg("Not added. The records are not well cascaded. Contact the admin who can add outcomes to all goals under this gear.", request);
+            }else if(goal.getPillars().isEmpty() && "programme".equalsIgnoreCase(gear.getCategory())){
+                PortletUtils.addErrorMsg("Not added. The records are not well cascaded. Contact the admin who can add pillars and strategic goals under this programme.", request);
             }
+            if("programme".equalsIgnoreCase(gear.getCategory())){
+                for(Pillar pillar: goal.getPillars()){
+                    for(Outcome outcome : pillar.getOutcomes()){
+                        Output output = new Output();
+                        output.setOutcome(outcome);
+                        output.setScorecard(scorecard);
+                        output = outputService.saveOutput(output);
+                    }
+                }
+            }else if("gear".equalsIgnoreCase(gear.getCategory())){
+                for(Outcome outcome: goal.getOutcomes()){
+                    Output output = new Output();
+                    output.setOutcome(outcome);
+                    output.setScorecard(scorecard);
+                    output = outputService.saveOutput(output);
+                }
+            }else {
+                PortletUtils.addErrorMsg("Unknown category for this metric. contact the admin", request);
+            }
+
         }
 
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
@@ -1600,23 +1639,26 @@ public class ScorecardController {
 
     public ModelAndView addTerminology(ModelAndView modelAndView) {
         if(modelAndView.getModel().containsKey("scorecard")){
-            String stage1, stage2,stage3,stage4;
+            String stage1, stage2,stage3,stage4, model;
             Scorecard scorecard = (Scorecard) modelAndView.getModel().get("scorecard");
-            if("PILLAR".equalsIgnoreCase(scorecard.getModel())){
-                stage1 = "Programme";
-                stage2 = "Outcome";
-                stage3 = "Pillar";
-                stage4 = "Strategic Goal";
+            if("programme".equalsIgnoreCase(scorecard.getModel())){
+                stage1 = "programme";
+                stage2 = "outcome";
+                stage3 = "pillar";
+                stage4 = "strategic goal";
+                model = "programme";
             }else {
-                stage1 = "Gear";
-                stage2 = "Goal";
+                stage1 = "gear";
+                stage2 = "goal";
                 stage3 = "";
-                stage4 = "Outcome";
+                stage4 = "outcome";
+                model = "gear";
             }
             modelAndView.addObject("stage1", stage1);
             modelAndView.addObject("stage2", stage2);
             modelAndView.addObject("stage3", stage3);
             modelAndView.addObject("stage4", stage4);
+            modelAndView.addObject("model", model);
         };
 
         return modelAndView;

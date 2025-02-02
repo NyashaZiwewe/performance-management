@@ -104,7 +104,7 @@
                                             <th></th>
                                         </tr>
                                         <tr>
-                                            <th colspan="7"><span th:text="${stage2}"></span> : <span th:text="${gear.goals[0].name}"></span></th>
+                                            <th colspan="7"></th>
                                             <th th:if="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center">Scores</th>
                                             <th th:unless="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center"></th>
                                             <th></th>
@@ -112,8 +112,9 @@
                                             <th></th>
                                         </tr>
                                         <tr th:if="${gstat.index == 0}">
-                                            <th><span th:text="${stage4}"></span></th>
-                                            <th>Output</th>
+                                            <th th:if="${model =='gear'}"><span th:text="${stage2}"></span> >> <span th:text="${stage4}"></span></th>
+                                            <th th:if="${model =='programme'}"><span th:text="${stage2}"></span> >> <span th:text="${stage3}"></span> >> <span th:text="${stage4}"></span></th>
+                                            <th>Output1</th>
                                             <th>Performance Indicator</th>
                                             <th>Unit</th>
                                             <th>Base</th>

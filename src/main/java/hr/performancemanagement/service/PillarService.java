@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
+import javax.transaction.Transactional;
+
 @Service
 public class PillarService {
 
@@ -18,5 +20,10 @@ public class PillarService {
 
     public Pillar savePillar(Pillar pillar) {
         return pillarRepository.save(pillar);
+    }
+
+    @Transactional
+    public void deletePillar(long id) {
+        pillarRepository.deleteById(id);
     }
 }

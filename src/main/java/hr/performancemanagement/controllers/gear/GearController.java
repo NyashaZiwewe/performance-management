@@ -5,6 +5,7 @@ import hr.performancemanagement.service.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +14,10 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
@@ -68,6 +73,13 @@ public class GearController {
         return "redirect:/gears";
     }
 
+    @RequestMapping(value = "/delete-gear", method = RequestMethod.POST)
+    public String deleteGear(HttpServletRequest request, long gearId) {
+        gearService.deleteGear(gearId);
+        PortletUtils.addInfoMsg("Record was successfully deleted.", request);
+        return "redirect:/gears";
+    }
+
 
     @RequestMapping("/edit-gear/{id}")
     public ModelAndView editGear(@PathVariable("id") long id, HttpServletRequest request) {
@@ -102,11 +114,21 @@ public class GearController {
     }
 
     @RequestMapping(value = "/save-goal", method = RequestMethod.POST)
-    public String saveGoal( HttpServletRequest request, Goal Goal) {
+    public String saveGoal( HttpServletRequest request, Goal updatedGoal, String gearId) {
 
-        goalService.saveGoal(Goal);
-        PortletUtils.addInfoMsg("Strategic goal successfully updated.", request);
-        return "redirect:/gears/view-gear/" + Goal.getGear().getId();
+        Goal goal = goalService.getGoalById(updatedGoal.getId());
+        goal.setName(updatedGoal.getName());
+        goalService.saveGoal(goal);
+        PortletUtils.addInfoMsg("Record successfully updated.", request);
+        return "redirect:/gears/view-gear/" + gearId;
+    }
+
+    @RequestMapping(value = "/delete-goal", method = RequestMethod.POST)
+    public String deleteGoal( HttpServletRequest request, long goalId, long gearId) {
+
+        goalService.deleteGoal(goalId);
+        PortletUtils.addInfoMsg("Record successfully deleted.", request);
+        return "redirect:/gears/view-gear/" + gearId;
     }
 
     @RequestMapping(value = "/save-outcome", method = RequestMethod.POST)
@@ -134,6 +156,15 @@ public class GearController {
         return "redirect:/gears/view-gear/" + gearId;
     }
 
+    @RequestMapping(value = "/delete-outcome", method = RequestMethod.POST)
+    public String deleteOutcome( HttpServletRequest request, long outcomeId, long gearId) {
+
+        Outcome outcome = outcomeService.getOutcomeById(outcomeId);
+        outcomeService.deleteOutcome(outcome);
+        PortletUtils.addInfoMsg("Record successfully deleted.", request);
+        return "redirect:/gears/view-gear/" + gearId;
+    }
+
     @RequestMapping(value = "/save-pillar", method = RequestMethod.POST)
     public String savePillar( HttpServletRequest request, String name, long goalId, long gearId) {
 
@@ -155,21 +186,28 @@ public class GearController {
         return "redirect:/gears/view-gear/" + gearId;
     }
 
+    @RequestMapping(value = "/delete-pillar", method = RequestMethod.POST)
+    public String deletePillar( HttpServletRequest request,long pillarId, long gearId) {
+        pillarService.deletePillar(pillarId);
+        PortletUtils.addInfoMsg("Pillar successfully deleted.", request);
+        return "redirect:/gears/view-gear/" + gearId;
+    }
+
     public ModelAndView addTerminology(ModelAndView modelAndView) {
         if(modelAndView.getModel().containsKey("gear")){
             String stage1, stage2,stage3,stage4, model;
             Gear gear = (Gear) modelAndView.getModel().get("gear");
             if("programme".equalsIgnoreCase(gear.getCategory())){
-                stage1 = "Programme";
-                stage2 = "Outcome";
-                stage3 = "Pillar";
-                stage4 = "Strategic Goal";
+                stage1 = "programme";
+                stage2 = "outcome";
+                stage3 = "pillar";
+                stage4 = "strategic Goal";
                 model = "programme";
             }else {
-                stage1 = "Gear";
-                stage2 = "Goal";
-                stage3 = "Goal";
-                stage4 = "Outcome";
+                stage1 = "gear";
+                stage2 = "goal";
+                stage3 = "goal";
+                stage4 = "outcome";
                 model = "gear";
             }
             modelAndView.addObject("stage1", stage1);

@@ -71,7 +71,9 @@
 <!--                                        <td th:text="${perspective.graphColor}"></td>-->
 <!--                                        <td th:text="${perspective.fill}"></td>-->
                                         <td>
-                                            <button class="btn btn-danger btn-sm" type="button">Delete</button>
+                                            <a th:href="@{/gears/view-gear/} + ${gear.id} + '?deleteModal=true'">
+                                                <button class="btn btn-danger btn-sm" type="button">Delete</button>
+                                            </a>
                                             <a th:href="@{/gears/edit-gear/} + ${gear.id}">
                                                <button class="btn btn-success btn-sm">Edit</button>
                                             </a>
@@ -93,6 +95,13 @@
         </div>
         <div th:replace="fragments/template :: footer"></div>
 
+    </div>
+</div>
+
+<div id="myModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+    <div style="background: white; padding: 20px; margin: 15% auto; width: 50%;">
+        <p>Modal Content</p>
+        <button onclick="closeModal()">Close</button>
     </div>
 </div>
 
@@ -169,6 +178,11 @@
     $(document).ready(function () {
         $('.select2_demo_1').select2({});
     })
+
+    function closeModal() {
+        document.getElementById("myModal").style.display = "none";
+    }
+
 
 </script>
 

@@ -35,8 +35,17 @@ public class Gear {
     private double totalAllocatedWeight;
     @Transient
     private List<Target> targetsList;
+    @Transient
+    private List<Outcome> outcomes;
     @CreationTimestamp
     @Column(updatable = false)
     private Date date;
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Gear gear = (Gear) o;
+        return id == gear.id;
+    }
 }

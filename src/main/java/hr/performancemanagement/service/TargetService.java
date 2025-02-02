@@ -29,11 +29,16 @@ public class TargetService {
         List<Output> outputs = outputRepository.findOutputsByScorecard(scorecard);
 
         for(Output output: outputs){
-//           List<Target> targets = targetRepository.findTargetsByOutput(output);
             for(Target target: output.getTargets()){
                 target.setOutcome(output.getOutcome());
-                target.setGoal(output.getOutcome().getGoal());
-                target.setGear(output.getOutcome().getGoal().getGear());
+                if("programme".equalsIgnoreCase(scorecard.getModel())){
+                    target.setGoal(output.getOutcome().getPillar().getGoal());
+                    target.setGear(output.getOutcome().getPillar().getGoal().getGear());
+                }else{
+                    target.setGoal(output.getOutcome().getGoal());
+                    target.setGear(output.getOutcome().getGoal().getGear());
+                }
+
                 targetList.add(target);
             }
         }

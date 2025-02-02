@@ -28,10 +28,22 @@ public class GearService {
         return gears;
     }
 
+    public List<Gear> listApplicableGears(long clientId, String category)
+    {
+        List<Gear> gears = new ArrayList<>();
+        gearRepository.findGearsByClientIdAndCategory(clientId, category).forEach(gear ->  gears.add(gear));
+        return gears;
+    }
+
     public List<Gear> listSelectedGears(Scorecard scorecard)
     {
         List<Gear> gears = new ArrayList<>();
-        gearRepository.selectedGearsByScorecard(scorecard).forEach(gear ->  gears.add(gear));
+
+        if("programme".equalsIgnoreCase(scorecard.getModel())){
+            gearRepository.selectedProgrammesByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+        }else{
+            gearRepository.selectedGearsByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+        }
         for(Gear gear: gears){
             gear.setTotalAllocatedWeight(getGearTotalAllocatedWeight(scorecard.getId(), gear));
         }
@@ -41,9 +53,14 @@ public class GearService {
     public List<Gear> listRemainingGears(Scorecard scorecard)
     {
         List<Gear> gears = new ArrayList<>();
-        List<Gear> allGears = gearRepository.findAll();
+        List<Gear> allGears = listApplicableGears(1, scorecard.getModel());
         List<Gear> remainingGears = new ArrayList<>();
-        gearRepository.selectedGearsByScorecard(scorecard).forEach(gear ->  gears.add(gear));
+
+        if("programme".equalsIgnoreCase(scorecard.getModel())){
+            gearRepository.selectedProgrammesByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+        }else{
+            gearRepository.selectedGearsByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+        }
 
         for(Gear gear: allGears){
             try {
@@ -69,6 +86,10 @@ public class GearService {
     public void addGear(Gear gear) {
 
         gearRepository.save(gear);
+    }
+
+    public void deleteGear(long id) {
+        gearRepository.deleteById(id);
     }
 
 }
