@@ -115,8 +115,8 @@
                                     <div class="row table-responsive" th:each="gear, gstat : ${selectedGears}">
                                         <thead>
                                         <tr>
-                                            <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
-                                            <td colspan="3">Total Gear Weight: </td>
+                                            <td colspan="3" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
+                                            <td colspan="3">Total <span th:text="${stage1}"></span> Weight: </td>
                                             <td> <h4 th:text="${gear.totalAllocatedWeight == null ? '' : #numbers.formatDecimal(gear.totalAllocatedWeight, 0,  2)} + '%'"></h4> </td>
                                             <td th:if="${scoreColumns > 0 }" th:colspan="${scoreColumns}"></td>
                                             <th></th>
@@ -124,7 +124,7 @@
                                             <th></th>
                                         </tr>
                                         <tr>
-                                            <th colspan="7">GOAL : <span th:text="${gear.goals[0].name}"></span></th>
+                                            <th colspan="7"></th>
                                             <th th:if="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center">Scores</th>
                                             <th th:unless="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center"></th>
                                             <th></th>
@@ -132,7 +132,8 @@
                                             <th></th>
                                         </tr>
                                         <tr th:if="${gstat.index == 0}">
-                                            <th>Outcome</th>
+                                            <th th:if="${model =='gear'}"><span th:text="${stage2}"></span> >> <span th:text="${stage4}"></span></th>
+                                            <th th:if="${model =='programme'}"><span th:text="${stage2}"></span> >> <span th:text="${stage3}"></span> >> <span th:text="${stage4}"></span></th>
                                             <th>Output</th>
                                             <th>Performance Indicator</th>
                                             <th>Unit</th>
@@ -152,7 +153,8 @@
                                         <tr th:unless="${#lists.isEmpty(gear.targetsList)}" th:each="target, stat :  ${gear.targetsList}"  th:with="newOutcome=${(stat.index == 0) || (gear.targetsList[stat.index - 1].outcome.id != target?.outcome.id)},
                                                                                                                                      newOutput=${newOutcome || (stat.index == 0) ||  (gear.targetsList[stat.index - 1].output.id != target?.output.id)}">
 
-                                            <td th:if="${newOutcome}" th:text="${target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                                            <td th:if="${newOutcome && stage1=='gear'}" th:text="${target.outcome.goal.name +' > target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                                            <td th:if="${newOutcome && stage1=='programme'}" th:text="${target.outcome.pillar.goal.name +' > '+ target.outcome.pillar.name +' > '+ target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
                                             <td th:if="${newOutput}" th:text="${target?.output?.name}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}"></td>
                                             <td>
                                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}"  th:text="${target.measure}"></a>
@@ -428,16 +430,17 @@
                                          <div class="row table-responsive" th:each="gear, gstat : ${selectedGears}">
                                             <thead>
                                             <tr>
-                                                <td colspan="3" style="font-weight: bold">GEAR : <span th:text="${gear.name}"></span></td>
-                                                <td colspan="3">Total Gear Weight: </td>
+                                                <td colspan="3" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
+                                                <td colspan="3">Total <span th:text="${stage1}"></span> Weight: </td>
                                                 <td> <h4 th:text="${gear.totalAllocatedWeight == null ? '' : #numbers.formatDecimal(gear.totalAllocatedWeight, 0,  2)} + '%'"></h4> </td>
                                                 <td colspan="7"></td>
                                             </tr>
                                             <tr>
-                                                <td colspan="14" style="font-weight: bold">GOAL : <span th:text="${gear.goals[0].name}"></span></td>
+                                                <td colspan="14" style="font-weight: bold"></td>
                                             </tr>
                                             <tr th:if="${gstat.index == 0}">
-                                                <th>Outcome</th>
+                                                <th th:if="${model =='gear'}"><span th:text="${stage2}"></span> >> <span th:text="${stage4}"></span></th>
+                                                <th th:if="${model =='programme'}"><span th:text="${stage2}"></span> >> <span th:text="${stage3}"></span> >> <span th:text="${stage4}"></span></th>
                                                 <th>Output</th>
                                                 <th>Performance Indicator</th>
                                                 <th>Unit</th>
@@ -457,12 +460,9 @@
                                             <tr th:unless="${#lists.isEmpty(gear.targetsList)}" th:each="target, stat :  ${gear.targetsList}"  th:with="newOutcome=${(stat.index == 0) || (gear.targetsList[stat.index - 1].outcome.id != target?.outcome.id)},
                                                                                                                      newOutput=${newOutcome || (stat.index == 0) ||  (gear.targetsList[stat.index - 1].output != target?.output)}">
 
-                                                <td th:if="${newOutcome}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}">
-                                                    <div class="rotate-270" th:text="${target?.outcome?.name}"></div>
-                                                </td>
-                                                <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}">
-                                                    <div class="rotate-270" th:text="${target?.output?.name}"></div>
-                                                </td>
+                                                <td th:if="${newOutcome && stage1=='gear'}" th:text="${target.outcome.goal.name +' > target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                                                <td th:if="${newOutcome && stage1=='programme'}" th:text="${target.outcome.pillar.goal.name +' > '+ target.outcome.pillar.name +' > '+ target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                                                <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" th:text="${target?.output?.name}"></td>
                                                 <td th:text="${target.measure}"></td>
                                                 <td th:text="${target.unit}"></td>
                                                 <td>
