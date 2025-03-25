@@ -57,7 +57,7 @@ public class CommonService {
     public ReportingDate getActiveReportingDate(){
 
         Account loggedUser = getLoggedUser();
-        ReportingDate reportingDate = repository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
+        ReportingDate reportingDate = repository.findActiveReportingDate(PMConstants.STATUS_ACTIVE, PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
         return reportingDate;
     }
 

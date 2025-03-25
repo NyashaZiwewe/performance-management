@@ -71,7 +71,8 @@
                     <table class="table table-bordered">
                         <thead>
                         <tr>
-                            <td colspan="5" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
+                            <td th:if="${model =='gear'}" colspan="5" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
+                            <td th:if="${model =='programme'}" colspan="7" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
                             <td>Total <span th:text="${stage1}"></span> Weight: </td>
                             <td> <h4 th:text="${gear.totalAllocatedWeight} + '%'"></h4> </td>
                             <td></td>
@@ -80,8 +81,10 @@
                         <!--                                    <td colspan="8" style="font-weight: bold"><span th:text="${stage2}"></span> : <span th:text="${gear.goals[0].name}"></span></td>-->
                         <!--                                </tr>-->
                         <tr th:if="${gstat.index == 0}">
-                            <th th:if="${model =='gear'}"><span th:text="${stage2}"></span> >> <span th:text="${stage4}"></span></th>
-                            <th th:if="${model =='programme'}"><span th:text="${stage2}"></span> >> <span th:text="${stage3}"></span> >> <span th:text="${stage4}"></span></th>
+                            <th th:if="${model =='gear'}"><span th:text="${stage4}"></span></th>
+                            <th th:if="${model =='programme'}"><span th:text="${stage2}"></span></th>
+                            <th th:if="${model =='programme'}"> <span th:text="${stage3}"></span> </th>
+                            <th th:if="${model =='programme'}"><span th:text="${stage4}"></span></th>
                             <th>Output</th>
                             <th data-toggle="popover" data-placement="top" data-content="Represents evidence of success and failure">Performance Indicator</th>
                             <th data-toggle="popover" data-placement="top" data-content="Unit of measurement can be in currency, number or percentage">Unit</th>
@@ -95,8 +98,10 @@
                         <tr th:unless="${#lists.isEmpty(gear.targetsList)}" th:each="target, stat :  ${gear.targetsList}"  th:with="newOutcome=${(stat.index == 0) || (gear.targetsList[stat.index - 1].outcome.id != target?.outcome.id)},
                                                                                                                      newOutput=${newOutcome || (stat.index == 0) ||  (gear.targetsList[stat.index - 1].output != target?.output)}">
 
-                            <td th:if="${newOutcome && stage1=='gear'}" th:text="${target.outcome.goal.name +' > target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
-                            <td th:if="${newOutcome && stage1=='programme'}" th:text="${target.outcome.pillar.goal.name +' > '+ target.outcome.pillar.name +' > '+ target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                            <td th:if="${newOutcome && model=='gear'}" th:text="${target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                            <td th:if="${newOutcome && model=='programme'}" th:text="${target.outcome.pillar.goal.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                            <td th:if="${newOutcome && model=='programme'}" th:text="${target.outcome.pillar.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
+                            <td th:if="${newOutcome && model=='programme'}" th:text="${target?.outcome?.name}" th:rowspan="${gear.targetsList.?[outcome == #root.target?.outcome].size()}"></td>
                             <td th:if="${newOutput}" th:text="${target?.output?.name}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}"></td>
                             <td th:text="${target.measure}"></td>
                                     <td th:text="${target.unit}"></td>
@@ -108,7 +113,7 @@
                                         <a th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></a>
                                         <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></a>
                                     </td>
-                                    <td th:if="${newOutput}" th:rowspan="${outputSpan}" style="vertical-align: middle; text-align: center;">
+                                    <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                         <a th:text="${target.output.allocatedWeight == null ? '' : #numbers.formatDecimal(target.output.allocatedWeight, 0,  2)}"></a>
                                     </td>
                                     <td style="width: 70px !important;">
@@ -130,7 +135,7 @@
                                                         <div class="row">
                                                             <div class="col-sm-12">
                                                                 <div class="form-group row">
-                                                                    <label class="col-form-label col-lg-4">Gear</label>
+                                                                    <label class="col-form-label col-lg-4"><span th:text="${stage1}"></span></label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
                                                                             <select name="gearId" class="form-control select2_demo_1" style="width: 100%">
@@ -145,7 +150,7 @@
                                                             </div>
                                                             <div class="col-sm-12">
                                                                 <div class="form-group row">
-                                                                    <label class="col-form-label col-lg-4">Goal</label>
+                                                                    <label class="col-form-label col-lg-4"><span th:text="${stage2}"></span></label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
                                                                             <select name="goalId" class="form-control select2_demo_1" style="width: 100%">
@@ -161,7 +166,7 @@
                                                             </div>
                                                             <div class="col-sm-12">
                                                                 <div class="form-group row">
-                                                                    <label class="col-form-label col-lg-4">Outcome</label>
+                                                                    <label class="col-form-label col-lg-4"><span th:text="${stage4}"></span></label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
                                                                             <select name="outcomeId" class="form-control select2_demo_1" style="width: 100%">
@@ -180,7 +185,7 @@
                                                                     <label class="col-form-label col-lg-4">Output</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="text" name="name" class="form-control" th:value="${target.output?.name}" style="width: 100%">
+                                                                            <input type="text" name="name" class="form-control" th:value="${target.output?.name}" style="width: 100%" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -190,7 +195,7 @@
                                                                     <label class="col-form-label col-lg-4">Performance Indicator</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="text" name="measure" class="form-control" th:value="${target.measure}">
+                                                                            <input type="text" name="measure" class="form-control" th:value="${target.measure}" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -200,7 +205,7 @@
                                                                     <label class="col-form-label col-lg-4">Unit of Measurement</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <select name="unit" class="form-control myselect">
+                                                                            <select name="unit" class="form-control myselect" required>
                                                                                 <option th:value="${target.unit}" th:text="${target.unit}" selected></option>
                                                                                 <option th:each="unit :${unitsList}" th:text="${unit}" th:value="${unit}">#</option>
                                                                                 <!--                                                                                <option>#</option>-->
@@ -217,7 +222,7 @@
                                                                     <label class="col-form-label col-lg-4">Base Target</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" name="baseTarget" class="form-control" th:value="${target.baseTarget}">
+                                                                            <input type="number" step="any" name="baseTarget" class="form-control" th:value="${target.baseTarget}" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -227,7 +232,7 @@
                                                                     <label class="col-form-label col-lg-4">Target</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" name="normalTarget" class="form-control" th:value="${target.normalTarget}">
+                                                                            <input type="number" step="any" name="normalTarget" class="form-control" th:value="${target.normalTarget}" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -237,7 +242,7 @@
                                                                     <label class="col-form-label col-lg-4">Allocated Weight</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" class="form-control" th:value="${target.output.allocatedWeight}">
+                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" class="form-control" th:value="${target.output.allocatedWeight}" required>
                                                                             <input type="hidden" th:value="${target.id}" name="targetId">
                                                                             <input type="hidden" th:value="${target.output.id}" name="outputId">
                                                                             <input type="hidden" th:value="${scorecard.id}" name="scorecardId">
@@ -272,7 +277,7 @@
                                                                     <label class="col-form-label col-lg-4">Output</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <select name="output" class="form-control select2_demo_1" style="width: 100%">
+                                                                            <select name="output" class="form-control select2_demo_1" style="width: 100%" required>
                                                                                 <option th:value="${target.output?.id}" th:text="${target.output?.name}" selected></option>
                                                                             </select>
                                                                         </div>
@@ -284,7 +289,7 @@
                                                                     <label class="col-form-label col-lg-4">Performance Indicator</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="text" name="measure" class="form-control">
+                                                                            <input type="text" name="measure" class="form-control" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -294,7 +299,7 @@
                                                                     <label class="col-form-label col-lg-4">Unit of Measurement</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <select name="unit" class="form-control myselect">
+                                                                            <select name="unit" class="form-control myselect" required>
                                                                                 <option th:value="${target.unit}" th:text="${target.unit}" selected></option>
                                                                                 <option th:each="unit :${unitsList}" th:text="${unit}" th:value="${unit}">#</option>
                                                                                 <!--                                                                                <option>#</option>-->
@@ -311,7 +316,7 @@
                                                                     <label class="col-form-label col-lg-4">Base Target</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" name="baseTarget" class="form-control">
+                                                                            <input type="number" step="any" name="baseTarget" class="form-control" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -321,7 +326,7 @@
                                                                     <label class="col-form-label col-lg-4">Target</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" name="normalTarget" class="form-control">
+                                                                            <input type="number" step="any" name="normalTarget" class="form-control" required>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -332,7 +337,7 @@
                                                                     <label class="col-form-label col-lg-4">Allocated Weight</label>
                                                                     <div class="col-lg-8">
                                                                         <div class="input-group m-b">
-                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" th:value="${target.output.allocatedWeight}" class="form-control">
+                                                                            <input type="number" step="any" min="0.1" max="100" name="allocatedWeight" th:value="${target.output.allocatedWeight}" class="form-control" required>
                                                                             <input type="hidden" th:value="${scorecard.id}" name="scorecardId">
                                                                         </div>
                                                                     </div>
@@ -382,27 +387,28 @@
 
                         <form th:if="${totalAllocatedWeight != 100.0}" th:action="@{/scorecards/save-target}" method="post" th:object="${output}">
                             <tr>
-                                <td>
-                                    <select class="form-control select2_demo_1" name="outcomeId">
-                                        <th:block  th:if="${stage1 == 'gear'}" th:each="goal : ${gear.goals}">
+                                <td colspan="3">
+                                    <select class="form-control select2_demo_1" name="outcomeId" required>
+                                        <th:block  th:if="${model == 'gear'}" th:each="goal : ${gear.goals}">
                                             <option th:each="outcome : ${goal.outcomes}" th:value="${outcome.id}" th:text="${outcome.name}"></option>
                                         </th:block>
-                                        <th:block th:if="${stage1 == 'programme'}" th:each="goal : ${gear.goals}">
+                                        <th:block th:if="${model == 'programme'}" th:each="goal : ${gear.goals}" required>
                                             <th:block th:each="pillar : ${goal.pillars}">
-                                                <option th:each="outcome : ${pillar.outcomes}" th:value="${outcome.id}" th:text="${goal.name +' >> '+ pillar.name +' >> '+outcome.name}">
+                                                <option th:each="outcome : ${pillar.outcomes}" th:value="${outcome.id}" th:text="${outcome.name}">
                                                 </option>
                                             </th:block>
                                         </th:block>
                                     </select>
                                 </td>
                                 <td>
-                                    <textarea class="form-control" name="name" rows="1"></textarea>
+                                    <textarea class="form-control" name="name" rows="1" required></textarea>
                                 </td>
                                 <td>
-                                    <textarea class="form-control" name="measure" rows="1"></textarea>
+                                    <textarea class="form-control" name="measure" rows="1" required></textarea>
                                 </td>
                                 <td>
                                     <select class="form-control myselect" name="unit">
+                                        <option value="" selected></option>
                                         <option th:each="unit :${unitsList}" th:text="${unit}" th:value="${unit}">#</option>
                                         <!--                                                <option>$</option>-->
                                         <!--                                                <option>%</option>-->
@@ -410,13 +416,13 @@
                                     </select>
                                 </td>
                                 <td>
-                                    <input type="number" class="form-control" name="baseTarget">
+                                    <input type="number" class="form-control" name="baseTarget" required>
                                 </td>
                                 <td>
-                                    <input type="number" class="form-control" name="normalTarget">
+                                    <input type="number" class="form-control" name="normalTarget" required>
                                 </td>
                                 <td>
-                                    <input type="number" step="any" min="0.1" max="100" style="width: 6em" class="form-control" name="allocatedWeight">
+                                    <input type="number" step="any" min="0.1" max="100" style="width: 6em" class="form-control" name="allocatedWeight" required>
                                 </td>
                                 <td>
                                     <input type="hidden" name="scorecardId" th:value="${id}">
@@ -425,10 +431,12 @@
                             </tr>
                         </form>
                         <tr th:if="${gstat.last}">
-                            <td colspan="8"></td>
+                            <td th:if="${model =='gear'}" colspan="8"></td>
+                            <td th:if="${model =='programme'}" colspan="10"></td>
                         </tr>
                         <tr  th:if="${gstat.last}">
-                            <td colspan="4"></td>
+                            <td th:if="${model =='gear'}" colspan="4"></td>
+                            <td th:if="${model =='programme'}" colspan="6"></td>
                             <td colspan="2" style="text-align: right"><b>Total Allocated Weight:</b></td>
                             <td>
                                 <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
@@ -467,76 +475,76 @@
     </div>
 </div>
 
-<div class="modal fade modal-lg" id="addModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add Outcome</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form method="post" th:action="@{/scorecards/select-gear}">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="form-group row">
-                                <label class="col-form-label col-4">Select <span th:text="${stage1}"></span></label>
-                                <div class="col-8">
-                                    <div class="input-group m-b">
-                                        <select name="gearId" class="form-control select2_demo_1" onchange="loadGoals(this.value)">
-                                            <option th:each="gear: ${remainingGears}" th:value="${gear.id}" th:text="${gear.name}"></option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group row">
-                                <label class="col-form-label col-4">Select <span th:text="${stage2}"></span></label>
-                                <div class="col-8">
-                                    <div class="input-group m-b">
-                                        <select name="goalId" class="form-control select2_demo_1" onchange="loadPillars(this.value)">
+<!--<div class="modal fade modal-lg" id="addModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">-->
+<!--    <div class="modal-dialog modal-lg" role="document">-->
+<!--        <div class="modal-content">-->
+<!--            <div class="modal-header">-->
+<!--                <h5 class="modal-title">Add Outcome</h5>-->
+<!--                <button type="button" class="close" data-dismiss="modal" aria-label="Close">-->
+<!--                    <span aria-hidden="true">&times;</span>-->
+<!--                </button>-->
+<!--            </div>-->
+<!--            <form method="post" th:action="@{/scorecards/select-gear}">-->
+<!--                <div class="modal-body">-->
+<!--                    <div class="row">-->
+<!--                        <div class="col-12">-->
+<!--                            <div class="form-group row">-->
+<!--                                <label class="col-form-label col-4">Select <span th:text="${stage1}"></span></label>-->
+<!--                                <div class="col-8">-->
+<!--                                    <div class="input-group m-b">-->
+<!--                                        <select name="gearId" class="form-control select2_demo_1" onchange="loadGoals(this.value)" required>-->
+<!--                                            <option th:each="gear: ${remainingGears}" th:value="${gear.id}" th:text="${gear.name}"></option>-->
+<!--                                        </select>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <div class="col-12">-->
+<!--                            <div class="form-group row">-->
+<!--                                <label class="col-form-label col-4">Select <span th:text="${stage2}"></span></label>-->
+<!--                                <div class="col-8">-->
+<!--                                    <div class="input-group m-b">-->
+<!--                                        <select name="goalId" class="form-control select2_demo_1" onchange="loadPillars(this.value)" required>-->
 
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 hide">
-                            <div class="form-group row">
-                                <label class="col-form-label col-4">Select <span th:text="${stage3}"></span></label>
-                                <div class="col-8">
-                                    <div class="input-group m-b">
-                                        <select name="pillarId" class="form-control select2_demo_1" onchange="loadOutcomes(this.value)">
+<!--                                        </select>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <div class="col-12 hide">-->
+<!--                            <div class="form-group row">-->
+<!--                                <label class="col-form-label col-4">Select <span th:text="${stage3}"></span></label>-->
+<!--                                <div class="col-8">-->
+<!--                                    <div class="input-group m-b">-->
+<!--                                        <select name="pillarId" class="form-control select2_demo_1" onchange="loadOutcomes(this.value)">-->
 
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group row">
-                                <label class="col-form-label col-4">Select <span th:text="${stage4}"></span></label>
-                                <div class="col-8">
-                                    <div class="input-group m-b">
-                                        <select name="outcomeId" class="form-control select2_demo_1">
+<!--                                        </select>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <div class="col-12">-->
+<!--                            <div class="form-group row">-->
+<!--                                <label class="col-form-label col-4">Select <span th:text="${stage4}"></span></label>-->
+<!--                                <div class="col-8">-->
+<!--                                    <div class="input-group m-b">-->
+<!--                                        <select name="outcomeId" class="form-control select2_demo_1" required>-->
 
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!--                                        </select>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="modal-footer">-->
+<!--                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>-->
+<!--                    <button type="submit" class="btn btn-primary">Save</button>-->
+<!--                </div>-->
+<!--            </form>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</div>-->
 
 <!-- Mainly scripts -->
 <script src="../../../static/js/jquery-3.6.0.min.js"

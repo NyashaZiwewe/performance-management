@@ -108,8 +108,7 @@ public class ValueBasedScoreService {
             Score existingScore = scoreRepository.findScoreByOutputAndReportingDate(score.getOutput(), score.getReportingDate());
             existingScore.setManagerScore(score.getManagerScore());
             score = scoreRepository.save(existingScore);
-//            Output output = score.getOutput();
-//            output.setCurrentManagerScore(score.getManagerScore());
+            output.setCurrentManagerScore(score.getManagerScore());
 //            updateOutputData(output);
         }
         return calculateOverallScore(output.getScorecard(), score.getReportingDate(), "MANAGER_SCORE");

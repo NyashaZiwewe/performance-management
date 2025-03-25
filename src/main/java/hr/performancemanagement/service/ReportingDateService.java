@@ -34,7 +34,7 @@ public class ReportingDateService {
     public ReportingDate getActiveReportingDate(){
 
         Account loggedUser = cs.getLoggedUser();
-        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
+        ReportingDate reportingDate = reportingDateRepository.findActiveReportingDate(PMConstants.STATUS_ACTIVE,PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
         return reportingDate;
     }
 
@@ -92,32 +92,35 @@ public class ReportingDateService {
         List<Scorecard>  scorecards = reportingDateRepository.findScorecardsByReportingPeriod(reportingDate.getReportingPeriod());
         for(Scorecard scorecard : scorecards){
             for(Output output: Objects.requireNonNull(scoreCardRepository.findOutputsFromScorecard(scorecard))){
-                Score score = scoreRepository.getOutputScoreByReportingDate(output,reportingDate);
-                if(score != null){
-                    output.setCurrentEmployeeScore(score.getEmployeeScore());
-                    output.setCurrentManagerScore(score.getManagerScore());
-                    output.setCurrentAgreedScore(score.getAgreedScore());
-                    output.setCurrentModeratedScore(score.getModeratedScore());
-                    output.setCurrentActual(score.getActual());
+                List<Score> scores = scoreRepository.getOutputScoresByReportingDate(output,reportingDate);
+                for(Score score: scores){
+                    if(score != null){
+                        output.setCurrentEmployeeScore(score.getEmployeeScore());
+                        output.setCurrentManagerScore(score.getManagerScore());
+                        output.setCurrentAgreedScore(score.getAgreedScore());
+                        output.setCurrentModeratedScore(score.getModeratedScore());
+                        output.setCurrentActual(score.getActual());
 
-                    for(Target target: output.getTargets()){
-                        target.setCurrentEvidence(score.getEvidence());
-                        target.setCurrentJustification(score.getJustification());
-                        target.setCurrentAttachmentName(score.getAttachmentName());
-                    }
-                }else{
-                    output.setCurrentEmployeeScore(null);
-                    output.setCurrentManagerScore(null);
-                    output.setCurrentAgreedScore(null);
-                    output.setCurrentModeratedScore(null);
-                    output.setCurrentActual(null);
+                        for(Target target: output.getTargets()){
+                            target.setCurrentEvidence(score.getEvidence());
+                            target.setCurrentJustification(score.getJustification());
+                            target.setCurrentAttachmentName(score.getAttachmentName());
+                        }
+                    }else{
+                        output.setCurrentEmployeeScore(null);
+                        output.setCurrentManagerScore(null);
+                        output.setCurrentAgreedScore(null);
+                        output.setCurrentModeratedScore(null);
+                        output.setCurrentActual(null);
 
-                    for(Target target: output.getTargets()){
-                        target.setCurrentEvidence(null);
-                        target.setCurrentJustification(null);
-                        target.setCurrentAttachmentName(null);
+                        for(Target target: output.getTargets()){
+                            target.setCurrentEvidence(null);
+                            target.setCurrentJustification(null);
+                            target.setCurrentAttachmentName(null);
+                        }
                     }
                 }
+
             }
             System.out.println("in reset scorecard current scores: "+ scorecard.getOwner().getFullName());
             scoreCardRepository.save(scorecard);

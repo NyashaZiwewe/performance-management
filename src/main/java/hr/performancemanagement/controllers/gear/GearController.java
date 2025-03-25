@@ -198,16 +198,16 @@ public class GearController {
             String stage1, stage2,stage3,stage4, model;
             Gear gear = (Gear) modelAndView.getModel().get("gear");
             if("programme".equalsIgnoreCase(gear.getCategory())){
-                stage1 = "programme";
-                stage2 = "outcome";
-                stage3 = "pillar";
-                stage4 = "strategic Goal";
+                stage1 = "Programme";
+                stage2 = "Outcome";
+                stage3 = "Pillar";
+                stage4 = "Strategic Goal";
                 model = "programme";
             }else {
-                stage1 = "gear";
-                stage2 = "goal";
-                stage3 = "goal";
-                stage4 = "outcome";
+                stage1 = "Gear";
+                stage2 = "Goal";
+                stage3 = "Goal";
+                stage4 = "Outcome";
                 model = "gear";
             }
             modelAndView.addObject("stage1", stage1);

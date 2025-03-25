@@ -338,7 +338,7 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
-    public String saveTarget(OutputWrapper wrapper) {
+    public String saveTarget(OutputWrapper wrapper, HttpServletRequest request) {
 
         long scorecardId = wrapper.getScorecardId();
         Output output;
@@ -368,13 +368,23 @@ public class ScorecardController {
         }
 
         target.setOutput(savedOutput);
-        target.setMeasure(wrapper.getMeasure());
-        target.setUnit(wrapper.getUnit());
-        target.setNormalTarget(wrapper.getNormalTarget());
-        target.setBaseTarget(wrapper.getBaseTarget());
-        target.setStretchTarget(wrapper.getStretchTarget());
-        targetService.saveTarget(target);
-
+        boolean missingData = false;
+        if("".equalsIgnoreCase(wrapper.getMeasure().trim())){
+            missingData = true;
+        }
+        if("".equalsIgnoreCase(wrapper.getUnit().trim())){
+            missingData = true;
+        }
+        if(missingData){
+            PortletUtils.addErrorMsg("There are some missing fields please complete before submitting", request);
+        }else{
+            target.setMeasure(wrapper.getMeasure());
+            target.setUnit(wrapper.getUnit());
+            target.setNormalTarget(wrapper.getNormalTarget());
+            target.setBaseTarget(wrapper.getBaseTarget());
+            target.setStretchTarget(wrapper.getStretchTarget());
+            targetService.saveTarget(target);
+        }
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
@@ -1362,6 +1372,7 @@ public class ScorecardController {
             newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
             newScorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_NEW);
             newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
+            newScorecard.setModel(scorecard.getModel());
 
             newScorecard = scorecardService.saveScorecard(newScorecard);
             long id = newScorecard.getId();
@@ -1642,16 +1653,16 @@ public class ScorecardController {
             String stage1, stage2,stage3,stage4, model;
             Scorecard scorecard = (Scorecard) modelAndView.getModel().get("scorecard");
             if("programme".equalsIgnoreCase(scorecard.getModel())){
-                stage1 = "programme";
-                stage2 = "outcome";
-                stage3 = "pillar";
-                stage4 = "strategic goal";
+                stage1 = "Programme";
+                stage2 = "Outcome";
+                stage3 = "Pillar";
+                stage4 = "Strategic goal";
                 model = "programme";
             }else {
-                stage1 = "gear";
-                stage2 = "goal";
-                stage3 = "";
-                stage4 = "outcome";
+                stage1 = "Gear";
+                stage2 = "Goal";
+                stage3 = "goal";
+                stage4 = "Outcome";
                 model = "gear";
             }
             modelAndView.addObject("stage1", stage1);

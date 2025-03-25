@@ -65,4 +65,7 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
 
     @Query(value = "SELECT s FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
     Score getOutputScoreByReportingDate(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
+
+    @Query(value = "SELECT s FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
+    List<Score> getOutputScoresByReportingDate(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
 }
