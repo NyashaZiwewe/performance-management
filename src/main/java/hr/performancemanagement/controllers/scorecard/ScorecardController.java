@@ -220,6 +220,10 @@ public class ScorecardController {
                }
            }catch (Exception e){
                System.out.println(e.getMessage());
+               PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
+               modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+               preparePage(modelAndView, request, session);
+               return modelAndView;
            }
 
             for (Gear gear : selectedGears) {
@@ -279,6 +283,7 @@ public class ScorecardController {
             }
         }catch (Exception e){
             System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
         }
 
         for (Gear gear : selectedGears) {
@@ -1008,6 +1013,8 @@ public class ScorecardController {
                 }
             }catch (Exception e){
                 System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
+                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
             }
 
             for (Gear gear : selectedGears) {
