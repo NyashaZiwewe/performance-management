@@ -638,7 +638,7 @@
                                             <div class="col-lg-8">
                                                 <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
                                                 <button onclick="location.reload()" class="btn btn-success" type="button">Refresh</button>
-                                                <button class="btn btn-success" type="button" onclick="validateFields()">Validate & Submit</button>
+                                                <button class="btn btn-success" type="button" onclick="return validateFields()">Validate & Submit</button>
                                             </div>
                                         </div>
                                     </form>
@@ -761,7 +761,9 @@
     }
 
 
+    let formSubmitted = false;
     function validateFields(){
+        if (formSubmitted) return false;
         const elements = document.getElementsByClassName('validate');
         let countEmpty = 0;
 
@@ -777,10 +779,12 @@
             alert("Please fill in the ("+ countEmpty +") empty fields !!!");
             return false;
         } else {
+            formSubmitted = true;
             const formElement = document.getElementById('scoresForm');
             formElement.submit();
         }
     }
+
 
 
     const elements = document.getElementsByClassName('validate');
