@@ -143,19 +143,27 @@ public class AssessmentController {
         ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(id);
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
-        List<Scorecard> scoresList = scorecardService.getScoresByPeriodId(reportingPeriod);
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-
-        for(Scorecard scorecard: scoresList){
-            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-            scorecard.setOverallScore(overallScore);
-        }
+        List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
+        List<ReportingDate> reportingDates = reportingPeriod.getReportingDates();
+        OverallScore overallScore;
 
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
-        modelAndView.addObject("scoresList", scoresList);
+        for(ReportingDate reportingDate : reportingDates) {
+            List<OverallScore> overallScores = new ArrayList<>();
+
+            for(Scorecard scorecard : scorecards) {
+                overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+                overallScores.add(overallScore);
+            }
+            reportingDate.setOverallScores(overallScores);
+
+        }
+
+        modelAndView.addObject("reportingDates", reportingDates);
+//        modelAndView.addObject("scoresList", scoresList);
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);

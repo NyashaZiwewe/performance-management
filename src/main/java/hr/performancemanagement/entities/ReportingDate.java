@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
@@ -25,6 +26,8 @@ public class ReportingDate {
     private ReportingPeriod reportingPeriod;
     private String assessmentStatus;
     private String status;
+    @Transient
+    private List<OverallScore> overallScores;
     @Transient
     private OverallScore overallScore;
     @CreationTimestamp
