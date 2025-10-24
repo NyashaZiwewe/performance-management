@@ -106,7 +106,7 @@ public class AccountsController {
                             + "Username: " + newAccount.getEmail() + "\n"
                             + "Password: " + password + "\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance Champions";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to."+ recipient, request);

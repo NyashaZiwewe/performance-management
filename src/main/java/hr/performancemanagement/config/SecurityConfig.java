@@ -111,7 +111,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http
                 .authorizeRequests()
-                .antMatchers("/login**", "/logout", "/reset-password", "/save-password", "/change-password/**", "/set-reset").permitAll()
+                .antMatchers("/login**", "/logout", "/reset-password", "/save-password", "/change-password/**", "/set-reset","/whatsapp/webhook").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .formLogin()

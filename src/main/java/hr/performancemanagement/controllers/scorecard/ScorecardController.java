@@ -173,7 +173,7 @@ public class ScorecardController {
                     + "Please note that your scorecard has been successfully created. "
                     + "You can now login and approve\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -255,11 +255,17 @@ public class ScorecardController {
 
     @RequestMapping("/capture-scores/{id}")
     public ModelAndView captureScores(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
-
+        ModelAndView modelAndView;
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String scorecardModel = scorecard.getScorecardModel().getName();
         ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        if(reportingDate == null){
+            PortletUtils.addErrorMsg("Please note that there is no active reporting date, please contact the administrator", request);
+            modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+            preparePage(modelAndView, request, session);
+            return modelAndView;
+        }
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
         String url = "";
 
@@ -293,8 +299,6 @@ public class ScorecardController {
                         .thenComparing(target -> target.getOutput().getId()));
             }
         }
-
-        ModelAndView modelAndView;
 
             if(PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)){
                 modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
@@ -432,7 +436,7 @@ public class ScorecardController {
                                 + "You can now login and response or action\n"
                                 + "Link: "+ link + "\n\n"
                                 + "Best regards,\n"
-                                + "The ZimTrade Team";
+                                + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -494,7 +498,7 @@ public class ScorecardController {
                 + "You can now login and approve\n"
                 + "Link: "+ currentURL +"\n\n"
                 + "Best regards,\n"
-                + "The ZimTrade Team";
+                + "The Performance champions";
 
         try {
             mailservice.sendEmail(recipient, subject, template);
@@ -527,7 +531,7 @@ public class ScorecardController {
                         + "You can now login and add your scores\n"
                         + "Link: "+ currentURL +"\n\n"
                         + "Best regards,\n"
-                        + "The ZimTrade Team";
+                        + "The Performance champions";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -557,7 +561,7 @@ public class ScorecardController {
                 + "You can now login and add your scores\n"
                 + "Link: "+ currentURL + "\n\n"
                 + "Best regards,\n"
-                + "The ZimTrade Team";
+                + "The Performance champions";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -588,7 +592,7 @@ public class ScorecardController {
                     + "You can now login and see results\n"
                     + "Link: "+ currentURL +"\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
 
             String recipient2 = commonService.getHREmail();
 
@@ -598,7 +602,7 @@ public class ScorecardController {
                     + "You can now login and see results\n"
                     + "Link: "+ currentURL + "\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
 
             try {
                 mailservice.sendEmail(recipient, subject, template);
@@ -623,7 +627,7 @@ public class ScorecardController {
                     + "Please note that " + loggedUser.getFullName() + " has failed to submit a moderated scorecard for" + owner.getFullName() + ". "
                     + "Kindly assist\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -655,7 +659,7 @@ public class ScorecardController {
                     + "You can now login and see results\n"
                     + "Link: "+ currentURL + "\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
 
             String recipient2 = supervisor.getEmail();
             String subject2 = "Contract Moderation,";
@@ -663,7 +667,7 @@ public class ScorecardController {
                     + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s contract. "
                     + "You can now login and see results\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
 
             try {
                 mailservice.sendEmail(recipient, subject, template);
@@ -688,7 +692,7 @@ public class ScorecardController {
                     + "Please note that " + loggedUser.getFullName() + " has failed to submit a moderated scorecard for" + owner.getFullName() + ". "
                     + "Kindly assist\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -729,7 +733,7 @@ public class ScorecardController {
                             + "We are now waiting for HR to approve so that you can proceed with capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -745,7 +749,7 @@ public class ScorecardController {
                             + "You are now eligible to review and approve so that they can proceed with capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -765,7 +769,7 @@ public class ScorecardController {
                             + "With error :. \n\n"
                             + e.getMessage() +"\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance champions";
             try {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -811,7 +815,7 @@ public class ScorecardController {
                             + "Please log in and make recommended changes. Also look for comments and flags on your contract and rectify\n"
                             + "Link: "+currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -830,7 +834,7 @@ public class ScorecardController {
                     + "With error :. \n\n"
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -872,7 +876,7 @@ public class ScorecardController {
                             + "The owner is now eligible for capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -888,7 +892,7 @@ public class ScorecardController {
                     + "You are now eligible to capture scores. \n"
                     + "Link: "+ currentURL +"\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
@@ -908,7 +912,7 @@ public class ScorecardController {
                     + "With error :. \n\n"
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -954,7 +958,7 @@ public class ScorecardController {
                             + "Please log in and make recommended changes. Also look for comments and flags on your contract and rectify\n"
                             + "Link: "+ currentURL + "\n\n"
                             + "Best regards,\n"
-                            + "The ZimTrade Team";
+                            + "The Performance champions";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -973,7 +977,7 @@ public class ScorecardController {
                     + "With error :. \n\n"
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -1076,7 +1080,7 @@ public class ScorecardController {
                 + "You can now login and response or action\n"
                 + "Link: "+ link + "\n\n"
                 + "Best regards,\n"
-                + "The ZimTrade Team";
+                + "The Performance champions";
         try {
             mailservice.sendEmail(recipient, subject, template);
 //            PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -1111,7 +1115,7 @@ public class ScorecardController {
                 + "You can now login and response or action\n"
                 + "Link: "+ link + "\n\n"
                 + "Best regards,\n"
-                + "The ZimTrade Team";
+                + "The Performance champions";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -1415,7 +1419,7 @@ public class ScorecardController {
                     + "We are pleased to notify you that your contract has been cloned and is already populated with targets. "
                     + "You can now login and modify targets to match your performance goals\n\n"
                     + "Best regards,\n"
-                    + "The ZimTrade Team";
+                    + "The Performance champions";
             try {
 //                mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);

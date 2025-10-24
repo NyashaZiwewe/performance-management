@@ -133,11 +133,16 @@ public class CommonService {
 
     public boolean isSupervisor(Account employee){
         Account loggedUser = getLoggedUser();
-        if(loggedUser.getId() == employee.getSupervisor().getId()){
-            return true;
-        }else{
+        try {
+            if(loggedUser.getId() == employee.getSupervisor().getId()){
+                return true;
+            }else{
+                return false;
+            }
+        }catch (Exception ignored){
             return false;
         }
+
     }
 
     public boolean isOwner(Scorecard scorecard){

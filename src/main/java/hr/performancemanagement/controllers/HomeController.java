@@ -239,7 +239,7 @@ public class HomeController {
                         + "If you didn't initiate this, you can ignore this email, otherwise click the link below to set the new password\n\n"
                         + "Link: " + resetLink + "\n\n"
                         + "Best regards,\n"
-                        + "The ZimTrade Team";
+                        + "The Performance Champions";
                 try {
                     mailservice.sendEmail(recipient, subject, template);
                     PortletUtils.addInfoMsg("Password reset successfully initiated. Login to your email account "+ recipient +" and click the reset link to change your password", request);

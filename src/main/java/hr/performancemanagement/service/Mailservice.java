@@ -12,11 +12,10 @@ public class Mailservice {
 
     @Autowired
     JavaMailSender javaMailSender;
-    @Async
     public void sendEmail(String to, String subject, String body) throws UnsupportedEncodingException {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
-        message.setFrom("ZimTrade PR System <zimtradesystems@zimtrade.co.zw>");
+        message.setFrom("Performance Champion <support@talentbridgetechnologies.com>");
         message.setSubject(subject);
         message.setText(body);
 
