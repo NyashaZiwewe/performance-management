@@ -441,7 +441,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
         }
 
@@ -504,7 +505,8 @@ public class ScorecardController {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            PortletUtils.addErrorMsg(e.getMessage(), request);
+            System.out.println(e.getMessage());
         }
 
         PortletUtils.addInfoMsg("Scorecard successfully submitted for approval. An email was sent to your supervisor", request);
@@ -515,9 +517,6 @@ public class ScorecardController {
     public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-//        boolean missing = targetService.checkIfOutputHasTargets()
-
         scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE);
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
@@ -536,7 +535,7 @@ public class ScorecardController {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            System.out.println(e.getMessage());
         }
 
         PortletUtils.addInfoMsg("Contract successfully submitted for scoring by supervisor. An email was sent to "+ supervisor.getFullName(), request);
@@ -566,7 +565,8 @@ public class ScorecardController {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            PortletUtils.addErrorMsg(e.getMessage(), request);
+            System.out.println(e.getMessage());
         }
 
         PortletUtils.addInfoMsg("Contract scores successfully captured. You can now start to capture the agreed scores", request);
@@ -608,13 +608,15 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
             PortletUtils.addInfoMsg("Contract successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
@@ -632,7 +634,7 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
             }
             PortletUtils.addErrorMsg("Contract wasn't submitted. An Email was sent to the administrator", request);
         }
@@ -673,16 +675,18 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
-            PortletUtils.addInfoMsg("Contract successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
+            PortletUtils.addInfoMsg("Contract successfully moderated by HR.", request);
 
         }catch (Exception e){
 
@@ -697,9 +701,11 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(x.getMessage(), request);
+                System.out.println(x.getMessage());
             }
-            PortletUtils.addErrorMsg("Contract wasn't submitted. An Email was sent to the administrator", request);
+            PortletUtils.addErrorMsg(e.getMessage(), request);
+            System.out.println(e.getMessage());
         }
 
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -738,7 +744,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
 
@@ -754,10 +761,9 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
-
-
             PortletUtils.addInfoMsg("Contract successfully approved. An email was sent to HR for further approval and to "+ owner + " as feedback", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }catch (Exception e){
@@ -774,7 +780,8 @@ public class ScorecardController {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(x.getMessage());
             }
             PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
@@ -820,7 +827,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
             PortletUtils.addInfoMsg("Contract successfully rejected. An email was sent to "+ owner + " as feedback", request);
@@ -839,7 +847,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(x.getMessage());
             }
             PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
         }
@@ -867,7 +876,8 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-                e.printStackTrace();
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String subject = "Contract Approval,";
@@ -881,7 +891,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
 
@@ -897,7 +908,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
 
@@ -917,7 +929,8 @@ public class ScorecardController {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(x.getMessage());
             }
             PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
@@ -946,7 +959,8 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-              e.printStackTrace();
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String subject = "Contract Approval,";
@@ -963,7 +977,8 @@ public class ScorecardController {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(e.getMessage(), request);
+                System.out.println(e.getMessage());
             }
 
             PortletUtils.addInfoMsg("Contract successfully rejected. An email was sent to "+ supervisor + " as feedback", request);
@@ -982,7 +997,8 @@ public class ScorecardController {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg(x.getMessage(), request);
+                System.out.println(x.getMessage());
             }
             PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
         }
@@ -1085,7 +1101,8 @@ public class ScorecardController {
             mailservice.sendEmail(recipient, subject, template);
 //            PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            PortletUtils.addErrorMsg(e.getMessage(), request);
+            System.out.println(e.getMessage());
         }
         String referer = request.getHeader("Referer");
         if (referer != null) {
@@ -1120,7 +1137,8 @@ public class ScorecardController {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+            PortletUtils.addErrorMsg(e.getMessage(), request);
+            System.out.println(e.getMessage());
         }
         PortletUtils.addInfoMsg("Target successfully flagged and the reason was saved", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecardId;
@@ -1264,16 +1282,13 @@ public class ScorecardController {
         try {
             Target target = targetService.getTargetById(targetId);
             Output output = target.getOutput();
-//            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
             ReportingDate reportingDate = commonService.getActiveReportingDate(request);
 
-//            if(commonService.isSupervisor(scorecard.getOwner())){
                 Score score = new Score();
                 score.setOutput(output);
                 score.setReportingDate(reportingDate);
                 score.setAgreedScore(agreedScore);
                 overallScore = valueBasedScoreService.saveAgreedScore(score);
-//            }
         }catch (Exception ignored){
 
         }

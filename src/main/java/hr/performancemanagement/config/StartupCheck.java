@@ -1,16 +1,16 @@
-//package hr.performancemanagement.config;
-//
-//import org.springframework.beans.factory.annotation.Value;
-//import org.springframework.stereotype.Component;
-//
-//import javax.annotation.PostConstruct;
-//import java.net.InetAddress;
-//import java.net.UnknownHostException;
-//import java.util.Objects;
-//
-//@Component
-//public class StartupCheck {
-//
+package hr.performancemanagement.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Objects;
+
+@Component
+public class StartupCheck {
+
 //    @Value("${server.address:}")
 //    private String expectedAddress;
 //
@@ -29,7 +29,7 @@
 //            }
 //        } catch (UnknownHostException e) {
 //            System.err.println("ERROR: Unable to determine the local address.");
-//            System.exit(1); // Exit with error code
+////            System.exit(1); // Exit with error code
 //        }
 //    }
-//}
+}

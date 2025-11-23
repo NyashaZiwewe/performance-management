@@ -109,7 +109,9 @@ public class ValueBasedScoreService {
             existingScore.setManagerScore(score.getManagerScore());
             score = scoreRepository.save(existingScore);
             output.setCurrentManagerScore(score.getManagerScore());
-//            updateOutputData(output);
+        }else {
+            score.setEmployeeScore(1);
+           score = scoreRepository.save(score);
         }
         return calculateOverallScore(output.getScorecard(), score.getReportingDate(), "MANAGER_SCORE");
 
@@ -123,7 +125,8 @@ public class ValueBasedScoreService {
             score = scoreRepository.save(existingScore);
             Output output = score.getOutput();
             output.setCurrentAgreedScore(score.getAgreedScore());
-//            updateOutputData(output);
+        }else {
+            score = scoreRepository.save(score);
         }
         return calculateOverallScore(score.getOutput().getScorecard(), score.getReportingDate(), "AGREED_SCORE");
     }
@@ -136,10 +139,6 @@ public class ValueBasedScoreService {
             existingScore.setModeratedScore(score.getModeratedScore());
             existingScore.setWeightedScore(calculateWeightedScore(existingScore));
             score = scoreRepository.save(existingScore);
-            Output output = score.getOutput();
-//            output.setCurrentModeratedScore(score.getModeratedScore());
-//            output.setCurrentWeightedScore(score.getWeightedScore());
-//            updateOutputData(output);
         }
         return score;
     }

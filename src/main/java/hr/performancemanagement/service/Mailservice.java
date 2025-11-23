@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.logging.Logger;
 
 @Service
 public class Mailservice {
@@ -13,12 +14,16 @@ public class Mailservice {
     @Autowired
     JavaMailSender javaMailSender;
     public void sendEmail(String to, String subject, String body) throws UnsupportedEncodingException {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setFrom("Performance Champion <support@talentbridgetechnologies.com>");
-        message.setSubject(subject);
-        message.setText(body);
+       try {
+           SimpleMailMessage message = new SimpleMailMessage();
+           message.setTo(to);
+           message.setFrom("Performance Champion <support@talentbridgetechnologies.com>");
+           message.setSubject(subject);
+           message.setText(body);
 
-        javaMailSender.send(message);
+           javaMailSender.send(message);
+       }catch (Exception e){
+           e.printStackTrace();
+       }
     }
 }

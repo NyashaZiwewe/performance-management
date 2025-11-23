@@ -51,6 +51,28 @@
         .pass{
             color: green;
         }
+
+        button[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            display: inline-block;
+            animation: spin 0.8s linear infinite;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <script type="text/javascript">
         function saveScore(targetId, outputId){
@@ -120,7 +142,7 @@
                                             <td th:if="${model =='programme'}" colspan="5" style="font-weight: bold"><span th:text="${stage1}"></span> : <span th:text="${gear.name}"></span></td>
                                             <td colspan="3">Total <span th:text="${stage1}"></span> Weight: </td>
                                             <td> <h4 th:text="${gear.totalAllocatedWeight == null ? '' : #numbers.formatDecimal(gear.totalAllocatedWeight, 0,  2)} + '%'"></h4> </td>
-                                            <td th:if="${scoreColumns > 0 }" th:colspan="${scoreColumns}"></td>
+                                            <td colspan="3"></td>
                                             <th></th>
                                             <th></th>
                                             <th></th>
@@ -128,8 +150,8 @@
                                         <tr>
                                             <th th:if="${model =='gear'}" colspan="7"></th>
                                             <th th:if="${model =='programme'}" colspan="9"></th>
-                                            <th th:if="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center">Scores</th>
-                                            <th th:unless="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center"></th>
+                                            <th th:if="${gstat.index == 0}" colspan="3" style="text-align: center">Scores</th>
+                                            <th th:unless="${gstat.index == 0}" colspan="3" style="text-align: center"></th>
                                             <th></th>
                                             <th></th>
                                             <th></th>
@@ -145,12 +167,11 @@
                                             <th>Base</th>
                                             <th>Stretch</th>
                                             <th>Weight</th>
-                                            <th th:if="${scoreColumns > 0 }">Owner</th>
-                                            <th th:if="${scoreColumns > 1 }">Supervisor</th>
-                                            <th th:if="${scoreColumns > 2 }">Agreed</th>
-                                            <th th:if="${scoreColumns > 0 }">Evidence</th>
-                                            <th th:if="${scoreColumns > 0 }">Justification</th>
-                                            <!--                            <th th:if="${scoreColumns > 3 }">Moderated</th>-->
+                                            <th>Owner</th>
+                                            <th>Supervisor</th>
+                                            <th>Agreed</th>
+                                            <th>Evidence</th>
+                                            <th>Justification</th>
                                             <th></th>
                                         </tr>
                                         </thead>
@@ -180,17 +201,17 @@
                                             <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:text="${target.output.allocatedWeight == null ? '' : #numbers.formatDecimal(target.output.allocatedWeight, 0,  2)}"></a>
                                             </td>
-                                            <td th:if="${newOutput && scoreColumns > 0 }" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                            <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                                 <a th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:attr="class = ${score.employeeScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.employeeScore <= 0.0 || score.employeeScore == null ? '' : #numbers.formatDecimal(score.employeeScore, 0,  2)}"></a>
                                             </td>
-                                            <td th:if="${newOutput && scoreColumns > 1 }" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                            <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                                 <a th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.managerScore <= 0.0 || score.managerScore == null ? '' : #numbers.formatDecimal(score.managerScore, 0, 2)}"></a>
                                             </td>
-                                            <td th:if="${newOutput && scoreColumns > 2 }" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;" th:attr="class = ${target.output.agreedScore < 2.5 ? 'fail' : 'pass'}">
-                                                <a th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}"  th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.agreedScore <= 0.0 || score.agreedScore == null ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}"></a>
+                                            <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                                <a th:each="score : ${target.output.scores}" th:if="${score.reportingDate.id == date.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}"  th:attr="class = ${score.agreedScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.agreedScore <= 0.0 || score.agreedScore == null ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}"></a>
                                             </td>
-                                            <td th:if="${scoreColumns > 0 }">
-                                                <span th:each="evidence : ${target.evidence}" th:if="${evidence.reportingDate.id == date.id}">
+                                            <td>
+                                                   <span th:each="evidence : ${target.evidence}" th:if="${evidence.reportingDate.id == date.id}">
                                                    <a th:if="${evidence.evidence != null}" th:href="${evidence.evidence}" target="_blank">
                                                       <i class="fa fa-link"></i>
                                                    </a>
@@ -199,7 +220,7 @@
                                                 </a>
                                                 </span>
                                             </td>
-                                            <td th:if="${scoreColumns > 0 }">
+                                            <td style="vertical-align: middle; text-align: center;">
                                                 <a th:each="evidence : ${target.evidence}" th:if="${evidence.reportingDate.id == date.id}" th:text="${evidence.justification}"></a>
                                             </td>
 
@@ -216,71 +237,6 @@
                                                 <a th:unless="${target.flag != null}" data-toggle="modal" th:data-target="'#flagModal'+ ${stat.index}">
                                                     <i class="fa fa-lg fa-flag" style="color: grey"></i>
                                                 </a>
-                                                <!--                                                <div class="modal fade" th:id="'scoreModal'+ ${target.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">-->
-                                                <!--                                                    <div class="modal-dialog modal-xl" role="document">-->
-                                                <!--                                                        <div class="modal-content">-->
-                                                <!--                                                            <div class="modal-header">-->
-                                                <!--                                                                <h4 class="modal-title">View Scores: [<span th:text="${target.measure}" class="text-success"></span>]</h4>-->
-                                                <!--                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">-->
-                                                <!--                                                                    <span aria-hidden="true">&times;</span>-->
-                                                <!--                                                                </button>-->
-                                                <!--                                                            </div>-->
-
-                                                <!--                                                            <div class="modal-body">-->
-                                                <!--                                                                <table class="table table-hover table-striped">-->
-                                                <!--                                                                    <thead>-->
-                                                <!--                                                                    <tr>-->
-                                                <!--                                                                        <th>Report Date</th>-->
-                                                <!--                                                                        <th>Base Target</th>-->
-                                                <!--                                                                        <th>Stretch Target</th>-->
-                                                <!--                                                                        <th th:if="${scoreColumns > 0 }">Owner</th>-->
-                                                <!--                                                                        <th th:if="${scoreColumns > 1 }">Supervisor</th>-->
-                                                <!--                                                                        <th th:if="${scoreColumns > 2 }">Agreed</th>-->
-                                                <!--                &lt;!&ndash;                                                        <th th:if="${scoreColumns > 3 }">Moderated</th>&ndash;&gt;-->
-                                                <!--                                                                        <th th:if="${scoreColumns > 0 }">Evidence</th>-->
-                                                <!--                                                                        <th th:if="${scoreColumns > 0 }">Justification</th>-->
-                                                <!--                                                                    </tr>-->
-                                                <!--                                                                    </thead>-->
-                                                <!--                                                                    <tbody>-->
-                                                <!--                                                                    <tr th:each="score : ${target.output.scores}">-->
-                                                <!--                                                                        <td th:text="${score.reportingDate?.endDate}"></td>-->
-                                                <!--                                                                        <td th:if="${#strings.contains(target.baseTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.baseTarget)}"></td>-->
-                                                <!--                                                                        <td th:unless="${#strings.contains(target.baseTarget,'E')}" th:text="${target.baseTarget}"></td>-->
-                                                <!--                                                                        <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>-->
-                                                <!--                                                                        <td th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}"></td>-->
-                                                <!--                                                                        <td th:if="${scoreColumns > 0 }" th:attr="class = ${target.output.employeeScore < 2.5 ? 'fail' : 'pass' }">-->
-                                                <!--                                                                            <a th:text="${score.employeeScore <= 0.0 || score.employeeScore == null ? '' : #numbers.formatDecimal(score.employeeScore, 0, 2)}"></a>-->
-                                                <!--                                                                        </td>-->
-                                                <!--                                                                        <td th:if="${scoreColumns > 1 }" th:attr="class = ${target.output.managerScore < 2.5 ? 'fail' : 'pass' }">-->
-                                                <!--                                                                            <a th:text="${score.managerScore <= 0.0 || score.managerScore == null ? '' : #numbers.formatDecimal(score.managerScore, 0, 2)}"></a>-->
-                                                <!--                                                                        </td>-->
-                                                <!--                                                                        <td th:if="${scoreColumns > 2 }" th:attr="class = ${target.output.moderatedScore < 2.5 ? 'fail' : 'pass' }">-->
-                                                <!--                                                                            <a th:text="${score.agreedScore <= 0.0 || score.agreedScore == null ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}"></a>-->
-                                                <!--                                                                        </td>-->
-                                                <!--                &lt;!&ndash;                                                        <td th:if="${scoreColumns > 2 }" th:attr="class = ${target.output.moderatedScore < 2.5 ? 'fail' : 'pass' }">&ndash;&gt;-->
-                                                <!--                &lt;!&ndash;                                                            <a th:text="${score.moderatedScore <= 0.0 || score.moderatedScore == null ? '' : #numbers.formatDecimal(score.moderatedScore, 0, 2)}"></a>&ndash;&gt;-->
-                                                <!--                &lt;!&ndash;                                                        </td>&ndash;&gt;-->
-                                                <!--                                                                        <td th:if="${scoreColumns > 0 }">-->
-                                                <!--                                                                            <a th:if="${score.evidence != null}" th:href="${score.evidence}" target="_blank">-->
-                                                <!--                                                                                <i class="fa fa-link"></i>-->
-                                                <!--                                                                            </a>-->
-                                                <!--                                                                            <a th:if="${score.attachmentName != null}" th:href="@{/scorecards/view-evidence/} + ${score.attachmentName}" target="_blank">-->
-                                                <!--                                                                                <i class="fa fa-paperclip"></i>-->
-                                                <!--                                                                            </a>-->
-                                                <!--                                                                        </td>-->
-                                                <!--                                                                        <td th:if="${scoreColumns > 0 }">-->
-                                                <!--                                                                            <a th:text="${score.justification}"></a>-->
-                                                <!--                                                                        </td>-->
-                                                <!--                                                                    </tr>-->
-                                                <!--                                                                    </tbody>-->
-                                                <!--                                                                </table>-->
-                                                <!--                                                            </div>-->
-                                                <!--                                                            <div class="modal-footer">-->
-                                                <!--                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>-->
-                                                <!--                                                            </div>-->
-                                                <!--                                                        </div>-->
-                                                <!--                                                    </div>-->
-                                                <!--                                                </div>-->
 
                                             </td>
 
@@ -371,7 +327,7 @@
                                                 <a th:if="${canCaptureTargets}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Capture Targets</a>
                                                 <a th:if="${canCaptureEmployeeScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Capture Employee Scores</a>
                                                 <a th:if="${canCaptureManagerScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Capture Manager Scores</a>
-                                                <a th:if="${canCaptureAgreedScoreAgreedScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Capture Agreed Scores</a>
+                                                <a th:if="${canCaptureAgreedScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Capture Agreed Scores</a>
                                                 <a th:if="${canModerate}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success btn-sm float-right" type="button">Moderate Scores</a>
                                                 <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success btn-sm float-right" type="button" target="_blank">View Report</a>
                                             </th>
@@ -380,22 +336,22 @@
                                                 <span th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
                                                 <span th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight == null ? '' : #numbers.formatDecimal(totalAllocatedWeight, 0,  2)} + '%'"></span>
                                             </th>
-                                            <th th:if="${scoreColumns > 0 }" style="vertical-align: middle; text-align: center;">
+                                            <th style="vertical-align: middle; text-align: center;">
                                             <span th:each="score : ${overallScores}" th:attr="class = ${score?.employeeOverall < 2.5 ? 'fail' : 'pass' }">
                                                 <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.employeeOverall == null ? '' : #numbers.formatDecimal(score?.employeeOverall, 0, 2)}"></span>
                                             </span>
                                             </th>
-                                            <th th:if="${scoreColumns > 1 }" style="vertical-align: middle; text-align: center;">
+                                            <th style="vertical-align: middle; text-align: center;">
                                             <span th:each="score : ${overallScores}" th:attr="class = ${score?.managerOverall < 2.5 ? 'fail' : 'pass' }">
                                                 <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.managerOverall == null ? '' : #numbers.formatDecimal(score?.managerOverall, 0, 2)}" th:attr="class = ${score?.managerOverall < 2.5 ? 'fail' : 'pass' }"></span>
                                             </span>
                                             </th>
-                                            <th th:if="${scoreColumns > 2 }" style="vertical-align: middle; text-align: center;">
+                                            <th style="vertical-align: middle; text-align: center;">
                                             <span th:each="score : ${overallScores}" th:attr="class = ${score?.agreedOverall < 2.5 ? 'fail' : 'pass' }">
                                                  <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.agreedOverall == null ? '' : #numbers.formatDecimal(score?.agreedOverall, 0, 2)}"></span>
                                             </span>
                                             </th>
-                                            <th th:if="${scoreColumns > 3 }" style="vertical-align: middle; text-align: center;">
+                                            <th style="vertical-align: middle; text-align: center;">
                                             <span th:each="score : ${overallScores}" th:attr="class = ${score?.moderatedOverall < 2.5 ? 'fail' : 'pass' }">
                                                  <span th:if="${score.reportingDate.id == date.id}" th:text="${score?.moderatedOverall == null ? '' : #numbers.formatDecimal(score?.moderatedOverall, 0, 2)}"></span>
                                             </span>
@@ -449,8 +405,8 @@
                                             <tr>
                                                 <td th:if="${model =='gear'}" colspan="7" style="font-weight: bold"></td>
                                                 <td th:if="${model =='programme'}" colspan="9" style="font-weight: bold"></td>
-                                                <th th:if="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center">Scores</th>
-                                                <th th:unless="${gstat.index == 0}" th:colspan="${scoreColumns}" style="text-align: center"></th>
+                                                <th th:if="${gstat.index == 0}" colspan="3" style="text-align: center">Scores</th>
+                                                <th th:unless="${gstat.index == 0}" colspan="3" style="text-align: center"></th>
                                                 <th colspan="3"></th>
                                             </tr>
                                             <tr th:if="${gstat.index == 0}">
@@ -495,16 +451,16 @@
                                                 <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                                     <a th:text="${target.output.allocatedWeight == null ? '' : #numbers.formatDecimal(target.output.allocatedWeight, 0,  2)}"></a>
                                                 </td>
-                                                <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.currentEmployeeScore}"></a>
+                                                <td th:if="${newOutput }" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
+                                                    <a th:each="score : ${target.output.scores}" th:if="${score?.reportingDate?.id == reportingDate.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:attr="class = ${score.employeeScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.employeeScore <= 0.0 || score.employeeScore == null ? '' : #numbers.formatDecimal(score.employeeScore, 0,  2)}"></a>
                                                 </td>
                                                 <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
-                                                    <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.output.currentManagerScore}"></a>
+                                                    <a th:each="score : ${target.output.scores}" th:if="${score?.reportingDate?.id == reportingDate.id}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.output.id}" th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass'}" th:text="${score.managerScore <= 0.0 || score.managerScore == null ? '' : #numbers.formatDecimal(score.managerScore, 0, 2)}"></a>
                                                 </td>
                                                 <td th:if="${newOutput}" th:rowspan="${gear.targetsList.?[output == #root.target?.output].size()}" style="vertical-align: middle; text-align: center;">
                                                     <div th:if="${T(hr.performancemanagement.controllers.scorecard.ScorecardController).isMatchFound(target.output.scores, reportingDate)}">
                                                         <div th:each="score : ${target.output.scores}">
-                                                            <input type="number" class="validate" step="any" min="1" max="5"
+                                                            <input type="number" class="validate" step="0.1" min="1" max="5"
                                                                    th:id="'agreedScore' + ${target.output.id}"
                                                                    th:onChange="saveScore([[${target.id}]], [[${target.output.id}]])"
                                                                    th:if="${score.reportingDate.id == reportingDate.id}"
@@ -514,7 +470,7 @@
                                                     </div>
 
                                                     <div th:if="${!T(hr.performancemanagement.controllers.scorecard.ScorecardController).isMatchFound(target.output.scores, reportingDate)}">
-                                                        <input type="number" class="validate" step="any" min="1" max="5"
+                                                        <input type="number" class="validate" step="0.1" min="1" max="5"
                                                                th:id="'agreedScore' + ${target.output.id}"
                                                                th:onChange="saveScore([[${target.id}]], [[${target.output.id}]])"
                                                                style="width: 5em" />
@@ -654,7 +610,7 @@
                                             <div class="col-lg-8">
                                                 <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
                                                 <button onclick="location.reload()" class="btn btn-success" type="button">Refresh</button>
-                                                <button class="btn btn-success" type="button" onclick=" return validateFields()">Validate & Submit</button>
+                                                <button class="btn btn-success" id="submitBtn" type="button" onclick="return validateFields()">Validate & Submit</button>
                                             </div>
                                         </div>
                                     </form>
@@ -748,33 +704,6 @@
         });
     }
 
-    // function saveOverallScore(score){
-    //
-    //     let scorecardId = document.getElementById("id").value;
-    //     let userType = "supervisor";
-    //     if(Number(score) < 1 || Number(score) > 5){
-    //         alert("Score must be between 1 and 5 inclusive, please update otherwise it wont be saved");
-    //         const fieldElement = document.getElementById("overallScore");
-    //         fieldElement.value = '';
-    //         fieldElement.classList.add('error');
-    //         return false;
-    //     }
-    //
-    //     $.ajax({
-    //         url : '/scorecards/save-overall-score',
-    //         method: "POST",
-    //         data: {
-    //             scorecardId, userType, score
-    //         },
-    //         success: function (data) {
-    //             console.log(data);
-    //         },
-    //         error : function(data) {
-    //
-    //         }
-    //     });
-    // }
-
 
     let formSubmitted = false;
     function validateFields(){
@@ -782,9 +711,8 @@
         const elements = document.getElementsByClassName('validate');
         let countEmpty = 0;
 
-        for (let i = 0; i < elements.length; i++) {
+        for(let i = 0; i < elements.length; i++) {
             const element = elements[i];
-
             if (element.value.trim() === '') {
                 element.classList.add('error');
                 countEmpty += 1;
@@ -794,6 +722,9 @@
             alert("Please fill in the ("+ countEmpty +") empty fields !!!");
             return false;
         } else {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Submitting <span class="spinner"></span>';
             formSubmitted = true;
             const formElement = document.getElementById('scoresForm');
             formElement.submit();
