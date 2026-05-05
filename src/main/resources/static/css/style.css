@@ -1140,6 +1140,9 @@ body.mini-navbar .navbar-default .nav > li > .nav-second-level li a {
     background-color: #2F4050;
     padding: 10px 10px 10px 10px;
     font-size: 12px;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+    z-index: 2100;
 }
 .canvas-menu.mini-navbar .nav-second-level {
     background: #293846;
@@ -1181,6 +1184,26 @@ body.mini-navbar .navbar-default .nav > li > .nav-second-level li a {
 }
 .navbar-static-side {
     transition: width 0s;
+    background: #2F4050;
+    flex: 0 0 220px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    z-index: 2001;
+    overflow: hidden;
+}
+.navbar-static-side .sidebar-collapse {
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.navbar-static-side .sidebar-collapse::-webkit-scrollbar {
+    width: 6px;
+}
+.navbar-static-side .sidebar-collapse::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 6px;
 }
 .footer {
     transition: margin 0s;
@@ -1269,6 +1292,10 @@ body.fixed-nav.fixed-nav-basic.fixed-sidebar.mini-navbar.body-small .navbar-fixe
 }
 body.mini-navbar .navbar-static-side {
     width: 70px;
+    flex-basis: 70px;
+}
+body.mini-navbar .navbar-static-side .sidebar-collapse {
+    overflow: visible;
 }
 body.mini-navbar .profile-element,
 body.mini-navbar .nav-label,
@@ -4608,6 +4635,7 @@ video {
     position: relative !important;
     flex-shrink: 1;
     width: calc(100% - 220px);
+    min-width: 0;
 }
 @media (min-width: 768px) {
     #page-wrapper {
@@ -9741,21 +9769,46 @@ body.md-skin {
     }
 }
 @media (max-width: 768px) {
+    #wrapper {
+        display: block;
+    }
     #page-wrapper {
         position: inherit;
         margin: 0 0 0 0;
         min-height: 100vh;
         width: 100%;
+        padding: 0 10px;
     }
     .body-small .navbar-static-side {
         display: block;
         z-index: 2001;
         width: 0;
+        flex-basis: 0;
+        height: 100vh;
         overflow: hidden;
+        position: fixed;
+        left: 0;
+        top: 0;
     }
     .body-small.mini-navbar .navbar-static-side {
         display: block;
-        overflow: visible;
+        width: 220px;
+        overflow: hidden;
+    }
+    .body-small.mini-navbar #page-wrapper {
+        width: 100%;
+        margin: 0;
+    }
+    .body-small.mini-navbar .navbar-static-side .sidebar-collapse {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    .body-small.mini-navbar:after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 2000;
     }
     .lock-word {
         display: none;
@@ -9766,6 +9819,63 @@ body.md-skin {
     .navbar-header {
         display: inline;
         float: left;
+    }
+    .navbar-top-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        margin: 0;
+        padding-right: 5px;
+    }
+    .navbar-top-links li a {
+        min-height: 40px;
+        padding: 12px 8px;
+    }
+    .minimalize-styl-2 {
+        margin: 10px 5px 5px 10px;
+    }
+    .page-heading {
+        padding: 0 10px 12px;
+    }
+    .page-heading h2 {
+        font-size: 20px;
+        word-break: break-word;
+    }
+    .wrapper {
+        padding: 0 10px;
+    }
+    .wrapper-content {
+        padding: 15px 0 30px;
+    }
+    .ibox-title,
+    .ibox-content {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .row > .col-3,
+    .row > .col-4,
+    .row > .col-8,
+    .row > .col-9 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    .table-responsive,
+    .dataTables_wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .dataTables_wrapper .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .dataTables_wrapper .col-sm-12 {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .btn,
+    .form-control {
+        max-width: 100%;
     }
     .sidebar-panel {
         z-index: 2;
