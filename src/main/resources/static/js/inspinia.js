@@ -116,9 +116,32 @@ $(document).ready(function () {
     // Minimalize menu
     $('.navbar-minimalize').on('click', function (event) {
         event.preventDefault();
-        $("body").toggleClass("mini-navbar");
+        var body = $("body");
+        body.toggleClass("mini-navbar");
+        if (localStorageSupport() && !body.hasClass('body-small')) {
+            localStorage.setItem("collapse_menu", body.hasClass("mini-navbar") ? "on" : "off");
+        }
         SmoothlyMenu();
 
+    });
+
+    // Close the mobile drawer after choosing a page or tapping outside it
+    $('#side-menu a').on('click', function () {
+        var href = $(this).attr('href');
+        if ($('body').hasClass('body-small') && href && href !== '#') {
+            $('body').removeClass('mini-navbar');
+        }
+    });
+
+    $(document).on('click', function (event) {
+        var body = $('body');
+        if (!body.hasClass('body-small') || !body.hasClass('mini-navbar')) {
+            return;
+        }
+
+        if ($(event.target).closest('.navbar-static-side, .navbar-minimalize').length === 0) {
+            body.removeClass('mini-navbar');
+        }
     });
 
     // Tooltips demo
@@ -271,4 +294,3 @@ function WinMove() {
         })
         .disableSelection();
 }
-
