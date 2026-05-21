@@ -23,6 +23,8 @@
           th:href="@{/css/plugins/select2/select2.min.css}">
     <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet"
           th:href="@{/css/plugins/select2/select2-bootstrap4.min.css}">
+    <link href="../../../static/css/chat.css" rel="stylesheet"
+          th:href="@{/css/chat.css}">
 
 
 </head>
@@ -40,32 +42,54 @@
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom col-8">
-                <form th:action="@{/scorecards/view-scorecards-select-year}" method="post">
+                <form th:action="@{/scorecards/save-scorecard}" method="post" th:object="${scorecard}">
+
                     <div class="row">
-                        <div class="col-sm-12">
-                            <div class="form-group row">
-                                <label class="col-form-label col-lg-4">Reporting Period</label>
-                                <div class="col-lg-8">
-                                    <div class="input-group m-b">
-                                        <select name="reportingPeriodId" class="form-control">
-                                            <option th:each="period :${reportingPeriodsList}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
-                                                1
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
+
+                        <div id="container">
+                            <main>
+                                <ul id="chat">
+                                    <li class="me">
+                                        <div class="entete">
+                                            <h3>10:12AM, Today</h3>
+                                            <h2>Vincent</h2>
+                                        </div>
+                                        <div class="triangle"></div>
+                                        <div class="message">
+                                            OK
+                                        </div>
+                                    </li>
+                                    <li class="you">
+                                        <div class="entete">
+                                            <h2>Vincent</h2>
+                                            <h3>10:12AM, Today</h3>
+                                        </div>
+                                        <div class="triangle"></div>
+                                        <div class="message">
+                                            Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.
+                                        </div>
+                                    </li>
+
+                                </ul>
+                                <footer>
+                                    <textarea placeholder="Type your message"></textarea>
+                                    <a href="#">Send</a>
+                                </footer>
+                            </main>
                         </div>
+
                     </div>
+
+
 
                     <div class="form-group row">
                         <div class="col-lg-4">
 
                         </div>
                         <div class="col-lg-8">
-                                <a th:href="@{/}" class="btn btn-warning">Cancel</a>
+                                <a th:href="@{/scorecards}" class="btn btn-warning">Cancel</a>
 
-                            <button class="btn btn-success" type="submit">Next</button>
+                            <button class="btn btn-success" type="submit">Save</button>
                         </div>
                     </div>
                 </form>

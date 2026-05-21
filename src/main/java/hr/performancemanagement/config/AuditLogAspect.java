@@ -29,7 +29,7 @@ public class AuditLogAspect {
     }
 
     @Pointcut("execution(* hr.performancemanagement.service..*(..)) && " +
-            "(execution(* add*(..)) || execution(* save*(..)) || execution(* update*(..)) || execution(* delete*(..)) || execution(* create*(..)) || execution(* upgrade*(..)))")
+            "(execution(* add*(..)) || execution(* save*(..)) || execution(* update*(..)) || execution(* delete*(..)) || execution(* create*(..)))")
     public void serviceMethods() {
     }
 

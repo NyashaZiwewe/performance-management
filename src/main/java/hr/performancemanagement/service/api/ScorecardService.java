@@ -14,8 +14,6 @@ public interface ScorecardService {
     Double getScoresByReportingDateAndScorecardId(ReportingDate date, Scorecard scorecard);
     int countPassedScorecardsByPeriodId(ReportingPeriod reportingPeriod);
     int countFailedScorecardsByPeriodId(ReportingPeriod reportingPeriod);
-    List<Double> findAverageAllocatedWeightPerStrategicObjective(ReportingPeriod reportingPeriod);
-    List<Double> findAverageWeightedScorePerStrategicObjective(ReportingPeriod reportingPeriod);
     List<Double> findAverageAllocatedWeightPerStrategicObjective();
     List<Double> findAverageWeightedScorePerStrategicObjective();
     Scorecard getScorecardById(long id);

@@ -103,25 +103,6 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
     }
 
     @Override
-    public Account updatePasswordResetToken(Account account, String resetTokenHash) {
-        if (account == null) {
-            throw new IllegalArgumentException("Account cannot be null");
-        }
-        account.setResetPassword(resetTokenHash);
-        return accountRepository.save(account);
-    }
-
-    @Override
-    public Account updatePasswordFromReset(Account account, String encodedPassword) {
-        if (account == null) {
-            throw new IllegalArgumentException("Account cannot be null");
-        }
-        account.setPassword(encodedPassword);
-        account.setResetPassword(null);
-        return accountRepository.save(account);
-    }
-
-    @Override
     public Account findAccountByEmail(String email) {
         return accountRepository.findAccountByEmail(email);
     }
