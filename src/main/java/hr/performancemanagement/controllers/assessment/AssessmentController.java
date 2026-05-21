@@ -1,7 +1,7 @@
 package hr.performancemanagement.controllers.assessment;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.service.*;
+import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;

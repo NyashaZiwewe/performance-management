@@ -1,7 +1,7 @@
 package hr.performancemanagement.controllers.actionplan;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.service.*;
+import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.PMConstants;

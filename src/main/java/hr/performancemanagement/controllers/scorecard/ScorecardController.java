@@ -1,9 +1,9 @@
 package hr.performancemanagement.controllers.scorecard;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.service.*;
-import hr.performancemanagement.service.ScoreService.StandardScorecardScoreService;
-import hr.performancemanagement.service.ScoreService.ValueBasedScoreService;
+import hr.performancemanagement.service.api.*;
+import hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreService;
+import hr.performancemanagement.service.api.ScoreService.ValueBasedScoreService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
@@ -31,6 +31,35 @@ import java.util.List;
 @Controller
 @RequestMapping(value="/scorecards")
 public class ScorecardController {
+
+    private enum ValueBasedCaptureStage {
+        EMPLOYEE(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, Pages.CAPTURE_EMPLOYEE_SCORE, "submit-employee-scores"),
+        MANAGER(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, Pages.CAPTURE_MANAGER_SCORE, "submit-manager-scores"),
+        AGREED(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, Pages.CAPTURE_AGREED_SCORE, "submit-agreed-scores"),
+        MODERATED(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, Pages.CAPTURE_MODERATED_SCORE, "submit-moderated-scores");
+
+        private final String requiredActivity;
+        private final String page;
+        private final String submitUrl;
+
+        ValueBasedCaptureStage(String requiredActivity, String page, String submitUrl) {
+            this.requiredActivity = requiredActivity;
+            this.page = page;
+            this.submitUrl = submitUrl;
+        }
+
+        public String getRequiredActivity() {
+            return requiredActivity;
+        }
+
+        public String getPage() {
+            return page;
+        }
+
+        public String getSubmitUrl() {
+            return submitUrl;
+        }
+    }
 
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
@@ -220,8 +249,6 @@ public class ScorecardController {
         ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
-        String url = "";
-
         double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
         double averageManagerScore = goalService.getAverageManagerScore(id);
         double averageAgreedScore = goalService.getAverageAgreedScore(id);
@@ -235,31 +262,7 @@ public class ScorecardController {
             weightedScore = 0;
         }
 
-        ModelAndView modelAndView;
-
-            if(PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)){
-                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
-            }else if(PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)){
-                if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)){
-                    modelAndView = new ModelAndView(Pages.CAPTURE_EMPLOYEE_SCORE);
-                    url = "submit-employee-scores";
-                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)) {
-                    modelAndView = new ModelAndView(Pages.CAPTURE_MANAGER_SCORE);
-                    url = "submit-manager-scores";
-                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)) {
-                    modelAndView = new ModelAndView(Pages.CAPTURE_AGREED_SCORE);
-                    url = "submit-agreed-scores";
-                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
-                    modelAndView = new ModelAndView(Pages.CAPTURE_MODERATED_SCORE);
-                    url = "submit-moderated-scores";
-                }else {
-                    modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-                    PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
-                }
-            }else{
-                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-                PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
-            }
+        ModelAndView modelAndView = resolveCaptureScoresView(scorecard, scorecardModel, request);
 
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
@@ -278,6 +281,34 @@ public class ScorecardController {
 
         preparePage(modelAndView, request, session);
         return modelAndView;
+    }
+
+    private ModelAndView resolveCaptureScoresView(Scorecard scorecard, String scorecardModel, HttpServletRequest request) {
+        if (PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)) {
+            return new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
+        }
+        if (PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)) {
+            ValueBasedCaptureStage stage = resolveValueBasedCaptureStage(scorecard);
+            if (stage != null) {
+                ModelAndView modelAndView = new ModelAndView(stage.getPage());
+                modelAndView.addObject("url", stage.getSubmitUrl());
+                return modelAndView;
+            }
+            PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
+            return new ModelAndView(Pages.BLANK_PAGE);
+        }
+
+        PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
+        return new ModelAndView(Pages.BLANK_PAGE);
+    }
+
+    private ValueBasedCaptureStage resolveValueBasedCaptureStage(Scorecard scorecard) {
+        for (ValueBasedCaptureStage stage : ValueBasedCaptureStage.values()) {
+            if (commonService.isUserAllowed(stage.getRequiredActivity(), scorecard)) {
+                return stage;
+            }
+        }
+        return null;
     }
 
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
@@ -1017,6 +1048,10 @@ public class ScorecardController {
     public void saveStandardScore( HttpServletResponse response, Long targetId, Double actual, String evidence, String justification) {
 
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+            writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
+            return;
+        }
         Target target = targetService.getTargetById(targetId);
 
         Score score = new Score();
@@ -1026,54 +1061,14 @@ public class ScorecardController {
         score.setJustification(justification);
         score.setActual(actual);
 
-        JSONObject jsonObject = new JSONObject();
-
-            standardScorecardScoreService.saveScore(score);
-            jsonObject.put("alreadyExists", false);
-
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+        standardScorecardScoreService.saveScore(score);
+        writeScoreSaveResponse(response);
 
     }
 
     @RequestMapping(value = "/save-value-based-employee-score", method = RequestMethod.POST)
-    public void saveEmployeeScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double employeeScore, String justification) {
-
-        try {
-
-            Target target = targetService.getTargetById(targetId);
-            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-
-            if(commonService.isOwner(scorecard)){
-                Score score = new Score();
-                score.setTarget(target);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
-                score.setEmployeeScore(employeeScore);
-                score.setJustification(justification);
-                valueBasedScoreService.saveEmployeeScore(score);
-            }
-        }catch (Exception ignored){
-
-        }
-
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("alreadyExists", false);
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+    public void saveEmployeeScore(HttpServletResponse response, Long targetId, Double employeeScore, String justification) {
+        saveValueBasedScore(response, targetId, employeeScore, justification, ValueBasedCaptureStage.EMPLOYEE);
     }
 
     @RequestMapping(value = "/save-value-based-evidence", method = RequestMethod.POST)
@@ -1094,9 +1089,14 @@ public class ScorecardController {
         }
         try {
             if(commonService.isOwner(scorecard)){
+                ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+                if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+                    PortletUtils.addErrorMsg("Scores can only be captured for an open reporting date", request);
+                    return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
+                }
                 Score score = new Score();
                 score.setTarget(target);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
+                score.setReportingDate(reportingDate);
                 score.setEvidence(wrapper.getEvidence());
                 score.setAttachmentName(fileName);
                 valueBasedScoreService.saveEvidence(score);
@@ -1108,92 +1108,96 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-value-based-manager-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveManagerScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double managerScore) {
-
-        try {
-            Target target = targetService.getTargetById(targetId);
-            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-
-            if(commonService.isSupervisor(scorecard.getOwner())){
-                Score score = new Score();
-                score.setTarget(target);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
-                score.setManagerScore(managerScore);
-                valueBasedScoreService.saveManagerScore(score);
-            }
-        }catch (Exception ignored){
-
-        }
-
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("alreadyExists", false);
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+    public void saveManagerScore(HttpServletResponse response, Long targetId, Double managerScore) {
+        saveValueBasedScore(response, targetId, managerScore, null, ValueBasedCaptureStage.MANAGER);
     }
 
     @RequestMapping(value = "/save-value-based-agreed-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveAgreedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double agreedScore) {
-
-        try {
-            Target target = targetService.getTargetById(targetId);
-            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-
-            if(commonService.isSupervisor(scorecard.getOwner())){
-                Score score = new Score();
-                score.setTarget(target);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
-                score.setAgreedScore(agreedScore);
-                valueBasedScoreService.saveAgreedScore(score);
-            }
-        }catch (Exception ignored){
-
-        }
-
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("alreadyExists", false);
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+    public void saveAgreedScore(HttpServletResponse response, Long targetId, Double agreedScore) {
+        saveValueBasedScore(response, targetId, agreedScore, null, ValueBasedCaptureStage.AGREED);
     }
 
     @RequestMapping(value = "/save-value-based-moderated-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveModeratedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double moderatedScore) {
+    public void saveModeratedScore(HttpServletResponse response, Long targetId, Double moderatedScore) {
+        saveValueBasedScore(response, targetId, moderatedScore, null, ValueBasedCaptureStage.MODERATED);
+    }
 
+    private void saveValueBasedScore(HttpServletResponse response, Long targetId, Double scoreValue, String justification, ValueBasedCaptureStage stage) {
         try {
             Target target = targetService.getTargetById(targetId);
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
 
-            if(commonService.isModerator() && PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(scorecard.getApprovalStatus())){
+            if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+                writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
+                return;
+            }
+
+            if(isStageCaptureAllowed(scorecard, stage)){
                 Score score = new Score();
                 score.setTarget(target);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
-                score.setModeratedScore(moderatedScore);
-                valueBasedScoreService.saveModeratedScore(score);
+                score.setReportingDate(reportingDate);
+                score.setJustification(justification);
+                persistScoreByStage(score, scoreValue, stage);
             }
         }catch (Exception ignored){
 
         }
+        writeScoreSaveResponse(response);
+    }
 
+    private boolean isStageCaptureAllowed(Scorecard scorecard, ValueBasedCaptureStage stage) {
+        switch (stage) {
+            case EMPLOYEE:
+                return commonService.isOwner(scorecard);
+            case MANAGER:
+            case AGREED:
+                return commonService.isSupervisor(scorecard.getOwner());
+            case MODERATED:
+                return commonService.isModerator() && PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(scorecard.getApprovalStatus());
+            default:
+                return false;
+        }
+    }
+
+    private void persistScoreByStage(Score score, Double scoreValue, ValueBasedCaptureStage stage) {
+        switch (stage) {
+            case EMPLOYEE:
+                score.setEmployeeScore(scoreValue);
+                valueBasedScoreService.saveEmployeeScore(score);
+                break;
+            case MANAGER:
+                score.setManagerScore(scoreValue);
+                valueBasedScoreService.saveManagerScore(score);
+                break;
+            case AGREED:
+                score.setAgreedScore(scoreValue);
+                valueBasedScoreService.saveAgreedScore(score);
+                break;
+            case MODERATED:
+                score.setModeratedScore(scoreValue);
+                valueBasedScoreService.saveModeratedScore(score);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void writeScoreSaveResponse(HttpServletResponse response) {
+        writeScoreSaveResponse(response, false, null);
+    }
+
+    private void writeScoreSaveResponse(HttpServletResponse response, boolean captureBlocked, String message) {
         JSONObject jsonObject = new JSONObject();
-
         jsonObject.put("alreadyExists", false);
+        jsonObject.put("captureBlocked", captureBlocked);
+        if (message != null && !message.trim().isEmpty()) {
+            jsonObject.put("message", message);
+        }
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
             outputStream.write(jsonString.getBytes());
-
         }catch (IOException e){
             throw  new RuntimeException();
         }

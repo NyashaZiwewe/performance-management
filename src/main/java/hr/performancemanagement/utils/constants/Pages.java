@@ -8,6 +8,8 @@ public class Pages {
     public static final String VIEW_ACCOUNT = "account/viewAccount";
     public static final String ADD_ACCOUNT = "account/addAccount";
     public static final String EDIT_ACCOUNT = "account/editAccount";
+    public static final String VIEW_DIVISIONS = "divisions/viewDivisions";
+    public static final String VIEW_DEPARTMENTS = "departments/viewDepartments";
 
     public static final String VIEW_SCORECARDS = "scorecard/viewScorecards";
     public static final String VIEW_SCORECARD_MODELS = "scorecard-model/viewScorecardModels";
@@ -41,6 +43,12 @@ public class Pages {
     public static final String VIEW_USER_ACTION_PLANS = "action-plan/viewUserActionPlans";
     public static final String VIEW_ACTION_PLAN = "action-plan/viewActionPlan";
     public static final String ADD_ACTION_PLAN = "action-plan/addActionPlan";
+    public static final String VIEW_PROBATION_ASSESSMENTS = "probation-assessment/viewProbationAssessments";
+    public static final String ADD_PROBATION_ASSESSMENT = "probation-assessment/addProbationAssessment";
+    public static final String VIEW_PROBATION_ASSESSMENT = "probation-assessment/viewProbationAssessment";
+    public static final String CONFIG_PROBATION_ASSESSMENT = "probation-assessment/configProbationAssessment";
+    public static final String VIEW_SYSTEM_SETTINGS = "settings/viewSystemSettings";
+    public static final String AUDIT_REPORTS = "audit/viewAuditLogs";
     public static final String VIEW_SCORES_SELECT_YEAR = "assessment/viewScoresSelectYear";
     public static final String VIEW_PERFORMANCE_LEVELS_SELECT_YEAR = "assessment/viewPerformanceLevelsSelectYear";
     public static final String VIEW_INDIVIDUAL_TRENDS_SELECT_EMPLOYEE = "assessment/viewIndividualTrendsSelectEmployee";

@@ -14,8 +14,10 @@ import java.util.List;
 public interface ReportingDateRepository extends JpaRepository<ReportingDate, Long> {
 
     List<ReportingDate> findReportingDatesByReportingPeriod(ReportingPeriod period);
+    List<ReportingDate> findReportingDatesByReportingPeriodAndStatus(ReportingPeriod period, String status);
     ReportingDate findReportingDateById(long id);
     ReportingDate findReportingDateByStatusAndAndReportingPeriod_ClientId(String status, long clientId);
+    long countByReportingPeriod_Id(long reportingPeriodId);
 //    @Query(value = "SELECT ReportingDate FROM ReportingDate rd LEFT JOIN ReportingPeriod rp ON rd.reportingPeriod = rp WHERE rp.clientId=:clientId AND rd.status = :status")
 //    ReportingDate findReportingDateByStatus(@Param("clientId") Long clientId, @Param("status") String status);
 }

@@ -1,15 +1,11 @@
 package hr.performancemanagement.controllers.perspective;
 
-import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Perspective;
-import hr.performancemanagement.entities.ReportingPeriod;
-import hr.performancemanagement.entities.Scorecard;
-import hr.performancemanagement.repository.PerspectiveRepository;
-import hr.performancemanagement.service.PerspectiveService;
+import hr.performancemanagement.service.api.CommonService;
+import hr.performancemanagement.service.api.PerspectiveService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,10 +19,13 @@ import java.util.List;
 @RequestMapping(value = "/perspectives")
 public class PerspectiveController {
 
-    @Autowired
-    PerspectiveRepository perspectiveRepository;
-    @Autowired
-    PerspectiveService perspectiveService;
+    private final PerspectiveService perspectiveService;
+    private final CommonService commonService;
+
+    public PerspectiveController(PerspectiveService perspectiveService, CommonService commonService) {
+        this.perspectiveService = perspectiveService;
+        this.commonService = commonService;
+    }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
 
@@ -40,7 +39,8 @@ public class PerspectiveController {
     public ModelAndView viewPerspectives(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERSPECTIVES);
         modelAndView.addObject("pageTitle", "View Perspectives");
-        List<Perspective> perspectives = perspectiveRepository.findAll();
+        long clientId = commonService.getLoggedUser().getClientId();
+        List<Perspective> perspectives = perspectiveService.listAllPerspectives(clientId);
         modelAndView.addObject("perspectives", perspectives);
         preparePage(modelAndView, request);
         return modelAndView;

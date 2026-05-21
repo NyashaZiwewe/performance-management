@@ -17,6 +17,7 @@
           th:href="@{/css/animate.css}">
     <link href="../../../static/css/style.css" rel="stylesheet"
           th:href="@{/css/style.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
 
     <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet"
           th:href="@{/css/plugins/select2/select2.min.css}">
@@ -27,7 +28,7 @@
 
 </head>
 
-<body>
+<body class="fixed-nav">
 
 <div id="wrapper">
     <div th:replace="fragments/template :: side-menu"></div>
@@ -85,10 +86,14 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">View</a>
+                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">
+                                                <span th:text="'View (' + ${strategicObjectiveCounts[period.id]} + ')'">View (0)</span>
+                                            </a>
                                         </td>
                                         <td>
-                                            <a th:href="@{/reporting-periods/reporting-dates/} + ${period.id}">View</a>
+                                            <a th:href="@{/reporting-periods/reporting-dates/} + ${period.id}">
+                                                <span th:text="'View (' + ${reportingDateCounts[period.id]} + ')'">View (0)</span>
+                                            </a>
                                         </td>
                                         <td>
                                             <a th:href="@{/reporting-periods/edit-reporting-period/} + ${period.id}">

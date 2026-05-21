@@ -13,6 +13,7 @@ import java.util.List;
 public interface StrategicObjectiveRepository extends JpaRepository<StrategicObjective, Long> {
 
     List<StrategicObjective> findStrategicObjectivesByReportingPeriodId(long reportingPeriodId);
+    long countByReportingPeriodId(long reportingPeriodId);
     StrategicObjective findStrategicObjectiveById(long id);
 
     @Query(value = "SELECT DISTINCT(g.strategicObjective) FROM Goal g WHERE g.scorecardId = :scorecardId")

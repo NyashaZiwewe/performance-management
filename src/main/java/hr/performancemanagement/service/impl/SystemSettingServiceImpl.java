@@ -1,0 +1,329 @@
+package hr.performancemanagement.service.impl;
+
+import org.springframework.stereotype.Service;
+import hr.performancemanagement.service.api.*;
+
+import hr.performancemanagement.entities.SystemSetting;
+import hr.performancemanagement.repository.SystemSettingRepository;
+import hr.performancemanagement.utils.wrappers.CredentialSettingsWrapper;
+import hr.performancemanagement.utils.wrappers.SystemSettingsWrapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+
+@Service
+public class SystemSettingServiceImpl implements hr.performancemanagement.service.api.SystemSettingService {
+
+    private static final String COMPANY_NAME = "company.name";
+    private static final String COMPANY_LOGO = "company.logo";
+    private static final String SYSTEM_NAME = "system.name";
+    private static final String HOST_URL = "host.url";
+    private static final String MULTIPART_LOCATION = "multipart.location";
+    private static final String EMAIL_HR = "email.hr";
+    private static final String EMAIL_ADMIN = "email.admin";
+    private static final String BOOTSTRAP_ADMIN_ENABLED = "bootstrap.admin.enabled";
+    private static final String MAIL_FROM_NAME = "mail.from.name";
+    private static final String MAIL_FROM_EMAIL = "mail.from.email";
+    private static final String MAIL_HOST = "mail.host";
+    private static final String MAIL_PORT = "mail.port";
+    private static final String MAIL_USERNAME = "mail.username";
+    private static final String MAIL_PASSWORD = "mail.password";
+
+    @Autowired
+    private SystemSettingRepository repository;
+
+    @Override
+    public String getCompanyName() {
+        return getValue(COMPANY_NAME);
+    }
+
+    @Override
+    public String getCompanyLogo() {
+        return getValue(COMPANY_LOGO);
+    }
+
+    @Override
+    public String getSystemName() {
+        return getValue(SYSTEM_NAME);
+    }
+
+    @Override
+    public String getHostUrl() {
+        return getValue(HOST_URL);
+    }
+
+    @Transactional
+    @Override
+    public void syncHostUrl(String hostUrl) {
+        if (hasText(hostUrl) && !hostUrl.equals(getHostUrl())) {
+            saveValue(HOST_URL, hostUrl);
+        }
+    }
+
+    @Override
+    public String getMultipartLocation() {
+        return getValue(MULTIPART_LOCATION);
+    }
+
+    @Override
+    public String getHREmail() {
+        return getValue(EMAIL_HR);
+    }
+
+    @Override
+    public String getAdminEmail() {
+        return getValue(EMAIL_ADMIN);
+    }
+
+    @Override
+    public boolean isBootstrapAdminEnabled() {
+        return Boolean.parseBoolean(getValue(BOOTSTRAP_ADMIN_ENABLED));
+    }
+
+    @Override
+    public boolean isBootstrapAdminAvailable() {
+        return isBootstrapAdminEnabled();
+    }
+
+    @Override
+    public String getMailFromName() {
+        return getValue(MAIL_FROM_NAME);
+    }
+
+    @Override
+    public String getMailFromEmail() {
+        return getValue(MAIL_FROM_EMAIL);
+    }
+
+    @Override
+    public String getMailHost() {
+        return getValue(MAIL_HOST);
+    }
+
+    @Override
+    public int getMailPort() {
+        String value = getValue(MAIL_PORT);
+        if (value == null || value.trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException exception) {
+            return 0;
+        }
+    }
+
+    @Override
+    public String getMailUsername() {
+        return getValue(MAIL_USERNAME);
+    }
+
+    @Override
+    public String getMailPassword() {
+        return getValue(MAIL_PASSWORD);
+    }
+
+    @Override
+    public boolean isMailConfigured() {
+        return hasText(getMailHost())
+                && getMailPort() > 0
+                && hasText(getMailUsername())
+                && hasText(getMailPassword());
+    }
+
+    @Transactional
+    @Override
+    public CredentialSettingsWrapper getCredentialSettings() {
+        ensureDefaults();
+        CredentialSettingsWrapper wrapper = new CredentialSettingsWrapper();
+        wrapper.setMailFromName(getMailFromName());
+        wrapper.setMailFromEmail(getMailFromEmail());
+        wrapper.setMailHost(getMailHost());
+        wrapper.setMailPort(getMailPort() > 0 ? String.valueOf(getMailPort()) : "");
+        wrapper.setMailUsername(getMailUsername());
+        wrapper.setMailPassword("");
+        wrapper.setMailPasswordConfigured(hasText(getMailPassword()));
+        return wrapper;
+    }
+
+    @Transactional
+    @Override
+    public void saveCredentialSettings(CredentialSettingsWrapper wrapper) {
+        ensureDefaults();
+        saveValue(MAIL_FROM_NAME, wrapper.getMailFromName());
+        saveValue(MAIL_FROM_EMAIL, wrapper.getMailFromEmail());
+        saveValue(MAIL_HOST, wrapper.getMailHost());
+        saveValue(MAIL_PORT, wrapper.getMailPort());
+        saveValue(MAIL_USERNAME, wrapper.getMailUsername());
+        saveMailPassword(wrapper.getMailPassword());
+    }
+
+    @Transactional
+    @Override
+    public SystemSettingsWrapper getSettingsWrapper() {
+        ensureDefaults();
+        SystemSettingsWrapper wrapper = new SystemSettingsWrapper();
+        wrapper.setCompanyName(getCompanyName());
+        wrapper.setCompanyLogo(getCompanyLogo());
+        wrapper.setSystemName(getSystemName());
+        wrapper.setHostUrl(getHostUrl());
+        wrapper.setMultipartLocation(getMultipartLocation());
+        wrapper.setHrEmail(getHREmail());
+        wrapper.setAdminEmail(getAdminEmail());
+        wrapper.setBootstrapAdminEnabled(isBootstrapAdminEnabled());
+        wrapper.setMailFromName(getMailFromName());
+        wrapper.setMailFromEmail(getMailFromEmail());
+        wrapper.setMailHost(getMailHost());
+        wrapper.setMailPort(getMailPort() > 0 ? String.valueOf(getMailPort()) : "");
+        wrapper.setMailUsername(getMailUsername());
+        wrapper.setMailPassword("");
+        wrapper.setMailPasswordConfigured(hasText(getMailPassword()));
+        return wrapper;
+    }
+
+    @Transactional
+    @Override
+    public void saveSettings(SystemSettingsWrapper wrapper) {
+        ensureDefaults();
+        String multipartLocation = hasText(wrapper.getMultipartLocation())
+                ? wrapper.getMultipartLocation()
+                : getMultipartLocation();
+        saveValue(COMPANY_NAME, wrapper.getCompanyName());
+        saveValue(COMPANY_LOGO, wrapper.getCompanyLogo());
+        saveValue(SYSTEM_NAME, wrapper.getSystemName());
+        saveValue(HOST_URL, wrapper.getHostUrl());
+        saveValue(MULTIPART_LOCATION, multipartLocation);
+        saveValue(EMAIL_HR, wrapper.getHrEmail());
+        saveValue(EMAIL_ADMIN, wrapper.getAdminEmail());
+        if (wrapper.getBootstrapAdminEnabled() != null) {
+            saveValue(BOOTSTRAP_ADMIN_ENABLED, String.valueOf(wrapper.getBootstrapAdminEnabled()));
+        }
+        saveValue(MAIL_FROM_NAME, wrapper.getMailFromName());
+        saveValue(MAIL_FROM_EMAIL, wrapper.getMailFromEmail());
+        saveValue(MAIL_HOST, wrapper.getMailHost());
+        saveValue(MAIL_PORT, wrapper.getMailPort());
+        saveValue(MAIL_USERNAME, wrapper.getMailUsername());
+        saveMailPassword(wrapper.getMailPassword());
+    }
+
+    @Transactional
+    @Override
+    public void ensureDefaults() {
+        Map<String, SettingDefinition> defaults = defaults();
+        for (Map.Entry<String, SettingDefinition> entry : defaults.entrySet()) {
+            SystemSetting setting = repository.findSystemSettingBySettingKey(entry.getKey());
+            if (setting == null) {
+                setting = new SystemSetting();
+                setting.setSettingKey(entry.getKey());
+                setting.setSettingValue(entry.getValue().defaultValue);
+                setting.setDescription(entry.getValue().description);
+                repository.save(setting);
+            }
+        }
+    }
+
+    private String getValue(String key) {
+        ensureDefaults();
+        SystemSetting setting = repository.findSystemSettingBySettingKey(key);
+        if (setting == null || setting.getSettingValue() == null || setting.getSettingValue().trim().isEmpty()) {
+            return defaults().get(key).defaultValue;
+        }
+        return setting.getSettingValue().trim();
+    }
+
+    private void saveValue(String key, String value) {
+        SystemSetting setting = repository.findSystemSettingBySettingKey(key);
+        if (setting == null) {
+            setting = new SystemSetting();
+            setting.setSettingKey(key);
+            setting.setDescription(defaults().get(key).description);
+        }
+        setting.setSettingValue(value == null ? "" : value.trim());
+        repository.save(setting);
+    }
+
+    private Map<String, SettingDefinition> defaults() {
+        Map<String, SettingDefinition> settings = new LinkedHashMap<>();
+        settings.put(COMPANY_NAME, new SettingDefinition(
+                "ZimTrade",
+                "Company name displayed in the user interface"
+        ));
+        settings.put(COMPANY_LOGO, new SettingDefinition(
+                "zimlogo.png",
+                "Logo filename under /img used in the sidebar"
+        ));
+        settings.put(SYSTEM_NAME, new SettingDefinition(
+                "Performance Management System",
+                "System name displayed in top navigation"
+        ));
+        settings.put(HOST_URL, new SettingDefinition(
+                "https://pm.tradezimbabwe.com",
+                "Base host URL used for generated links"
+        ));
+        settings.put(MULTIPART_LOCATION, new SettingDefinition(
+                "/pm/pmdocuments/",
+                "Multipart upload location used for storing document uploads"
+        ));
+        settings.put(EMAIL_HR, new SettingDefinition(
+                "sjdhliwayo@zimtrade.co.zw",
+                "HR email used in approval notifications"
+        ));
+        settings.put(EMAIL_ADMIN, new SettingDefinition(
+                "amukwazhe@zimtrade.co.zw",
+                "Administrator email used in system alerts"
+        ));
+        settings.put(BOOTSTRAP_ADMIN_ENABLED, new SettingDefinition(
+                "true",
+                "Enables the hardcoded bootstrap setup login"
+        ));
+        settings.put(MAIL_FROM_NAME, new SettingDefinition(
+                "ZimTrade PM System",
+                "Display name used in outgoing emails"
+        ));
+        settings.put(MAIL_FROM_EMAIL, new SettingDefinition(
+                "zimtradesystems@zimtrade.co.zw",
+                "Email address used as sender in outgoing emails"
+        ));
+        settings.put(MAIL_HOST, new SettingDefinition(
+                "smtp.office365.com",
+                "SMTP host for outgoing mail"
+        ));
+        settings.put(MAIL_PORT, new SettingDefinition(
+                "587",
+                "SMTP port for outgoing mail"
+        ));
+        settings.put(MAIL_USERNAME, new SettingDefinition(
+                "zimtradesystems@zimtrade.co.zw",
+                "SMTP username used to authenticate outgoing mail"
+        ));
+        settings.put(MAIL_PASSWORD, new SettingDefinition(
+                "M0n3v@systems@123",
+                "SMTP password used to authenticate outgoing mail"
+        ));
+        return settings;
+    }
+
+    private void saveMailPassword(String value) {
+        if (!hasText(value)) {
+            return;
+        }
+        saveValue(MAIL_PASSWORD, value);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private static class SettingDefinition {
+        private final String defaultValue;
+        private final String description;
+
+        private SettingDefinition(String defaultValue, String description) {
+            this.defaultValue = defaultValue;
+            this.description = description;
+        }
+    }
+}

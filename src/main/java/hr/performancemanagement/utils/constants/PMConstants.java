@@ -15,6 +15,8 @@ public class PMConstants {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_IN_ACTIVE = "IN_ACTIVE";
+    public static final String REPORTING_DATE_STATUS_OPEN = "OPEN";
+    public static final String REPORTING_DATE_STATUS_CLOSED = "CLOSED";
 
     public static final String APPROVAL_STATUS_NEW = "NEW";
     public static final String APPROVAL_STATUS_PENDING_APPROVAL = "PENDING_APPROVAL";
@@ -42,6 +44,20 @@ public class PMConstants {
 
     public static final String TASK_STATUS_OPEN = "OPEN";
     public static final String TASK_STATUS_COMPLETED = "COMPLETED";
+
+    public static final String PROBATION_STATUS_DRAFT = "DRAFT";
+    public static final String PROBATION_STATUS_PENDING = "PENDING";
+    public static final String PROBATION_STATUS_AUTHORIZED = "AUTHORIZED";
+    public static final String PROBATION_STATUS_REJECTED = "REJECTED";
+
+    public static final String PROBATION_ACTION_SUBMITTED = "SUBMITTED";
+    public static final String PROBATION_ACTION_APPROVED = "APPROVED";
+    public static final String PROBATION_ACTION_REJECTED = "REJECTED";
+
+    public static final String PROBATION_APPROVER_MODE_SUPERVISOR = "SUPERVISOR";
+    public static final String PROBATION_APPROVER_MODE_ACCOUNT_TYPE = "ACCOUNT_TYPE";
+    public static final String PROBATION_APPROVER_MODE_ROLE = "ROLE";
+    public static final String PROBATION_APPROVER_MODE_USER = "USER";
 
 
 

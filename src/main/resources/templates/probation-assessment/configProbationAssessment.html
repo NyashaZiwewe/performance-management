@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Management</title>
+
+    <link href="../../../static/css/bootstrap.min.css" rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    <link href="../../../static/font-awesome/css/font-awesome.css" rel="stylesheet" th:href="@{/font-awesome/css/font-awesome.css}">
+    <link href="../../../static/css/animate.css" rel="stylesheet" th:href="@{/css/animate.css}">
+    <link href="../../../static/css/style.css" rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
+    <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet" th:href="@{/css/plugins/select2/select2.min.css}">
+    <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet" th:href="@{/css/plugins/select2/select2-bootstrap4.min.css}">
+</head>
+<body class="fixed-nav">
+<div id="wrapper">
+    <div th:replace="fragments/template :: side-menu"></div>
+    <div id="page-wrapper" class="gray-bg">
+        <div th:replace="fragments/template :: top-navbar"></div>
+        <div th:replace="fragments/template :: page-heading"></div>
+        <div th:replace="fragments/template :: alerts"></div>
+
+        <div class="wrapper wrapper-content animated fadeInRight ecommerce">
+            <div class="ibox row">
+                <div class="ibox-content border-bottom col-6">
+                    <h4>Dimension Templates</h4>
+                    <form th:action="@{/probation-assessments/save-dimension-template}" method="post" th:object="${dimensionTemplate}">
+                        <div class="form-group">
+                            <label>Code</label>
+                            <input class="form-control" th:field="*{code}">
+                        </div>
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input class="form-control" th:field="*{title}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" th:field="*{description}" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Display Order</label>
+                            <input class="form-control" type="number" th:field="*{displayOrder}" required>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success" type="submit">Save Dimension</button>
+                        </div>
+                    </form>
+
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Code</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="dimension : ${dimensionTemplates}">
+                            <td th:text="${dimension.displayOrder}"></td>
+                            <td th:text="${dimension.code}"></td>
+                            <td th:text="${dimension.title}"></td>
+                            <td th:text="${dimension.status}"></td>
+                            <td>
+                                <form th:action="@{/probation-assessments/delete-dimension-template}" method="post">
+                                    <input type="hidden" name="id" th:value="${dimension.id}">
+                                    <button class="btn btn-xs btn-danger" type="submit">Deactivate</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ibox-content border-bottom col-6">
+                    <h4>Workflow Steps</h4>
+                    <form th:action="@{/probation-assessments/save-workflow-step}" method="post" th:object="${workflowStep}">
+                        <div class="form-group">
+                            <label>Step Name</label>
+                            <input class="form-control" th:field="*{name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Step Order</label>
+                            <input class="form-control" type="number" th:field="*{stepOrder}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Approver Mode</label>
+                            <select class="form-control" id="approverMode" th:field="*{approverMode}" onchange="toggleWorkflowFields()">
+                                <option th:each="mode : ${approverModes}" th:value="${mode}" th:text="${mode}"></option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="accountTypeGroup">
+                            <label>Approver Account Type</label>
+                            <input class="form-control" th:field="*{approverAccountType}">
+                        </div>
+                        <div class="form-group" id="sameDivisionGroup">
+                            <label><input type="checkbox" th:field="*{sameDivisionOnly}"> Same Division Only</label>
+                        </div>
+                        <div class="form-group" id="roleGroup">
+                            <label>Approver Role</label>
+                            <input class="form-control" th:field="*{approverRole}">
+                        </div>
+                        <div class="form-group" id="userGroup">
+                            <label>Specific Approver</label>
+                            <select class="select2_demo_1 form-control" th:field="*{approverAccount}">
+                                <option value="">-- Select --</option>
+                                <option th:each="account : ${accountsList}" th:value="${account.id}" th:text="${account.fullName}"></option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success" type="submit">Save Workflow Step</button>
+                        </div>
+                    </form>
+
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Step</th>
+                            <th>Mode</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="step : ${workflowSteps}">
+                            <td th:text="${step.stepOrder}"></td>
+                            <td th:text="${step.name}"></td>
+                            <td th:text="${step.approverMode}"></td>
+                            <td th:text="${step.status}"></td>
+                            <td>
+                                <form th:action="@{/probation-assessments/delete-workflow-step}" method="post">
+                                    <input type="hidden" name="id" th:value="${step.id}">
+                                    <button class="btn btn-xs btn-danger" type="submit">Deactivate</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="fragments/template :: footer"></div>
+    </div>
+</div>
+
+<script src="../../../static/js/jquery-3.6.0.min.js" th:src="@{/js/jquery-3.6.0.min.js}"></script>
+<script src="../../../static/js/popper.min.js" th:src="@{/js/popper.min.js}"></script>
+<script src="../../../static./js/bootstrap.js" th:src="@{/js/bootstrap.js}"></script>
+<script src="../../../static/js/plugins/metisMenu/jquery.metisMenu.js" th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+<script src="../../../static/js/plugins/select2/select2.full.min.js" th:src="@{/js/plugins/select2/select2.full.min.js}"></script>
+<script src="../../../static/js/inspinia.js" th:src="@{/js/inspinia.js}"></script>
+<script src="../../../static/js/plugins/pace/pace.min.js" th:src="@{/js/plugins/pace/pace.min.js}"></script>
+<script th:inline="javascript">
+    const APPROVER_MODE_ACCOUNT_TYPE = "[[${approverModeAccountType}]]";
+    const APPROVER_MODE_ROLE = "[[${approverModeRole}]]";
+    const APPROVER_MODE_USER = "[[${approverModeUser}]]";
+
+    $(document).ready(function () {
+        $('.select2_demo_1').select2({});
+        toggleWorkflowFields();
+    });
+
+    function toggleWorkflowFields() {
+        let mode = document.getElementById("approverMode").value;
+        document.getElementById("accountTypeGroup").style.display = mode === APPROVER_MODE_ACCOUNT_TYPE ? "block" : "none";
+        document.getElementById("sameDivisionGroup").style.display = mode === APPROVER_MODE_ACCOUNT_TYPE ? "block" : "none";
+        document.getElementById("roleGroup").style.display = mode === APPROVER_MODE_ROLE ? "block" : "none";
+        document.getElementById("userGroup").style.display = mode === APPROVER_MODE_USER ? "block" : "none";
+    }
+</script>
+</body>
+</html>

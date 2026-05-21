@@ -1,40 +1,38 @@
 package hr.performancemanagement.controllers.reportingperiod;
 
-import hr.performancemanagement.entities.Perspective;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.StrategicObjective;
-import hr.performancemanagement.repository.ReportingPeriodRepository;
-import hr.performancemanagement.service.ReportingDateService;
-import hr.performancemanagement.service.ReportingPeriodService;
-import hr.performancemanagement.service.StrategicObjectiveService;
+import hr.performancemanagement.service.api.ReportingDateService;
+import hr.performancemanagement.service.api.ReportingPeriodService;
+import hr.performancemanagement.service.api.StrategicObjectiveService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping(value = "/reporting-periods")
 public class ReportingPeriodController {
 
+    private final ReportingPeriodService reportingPeriodService;
+    private final StrategicObjectiveService strategicObjectiveService;
+    private final ReportingDateService reportingDateService;
 
-    @Autowired
-    ReportingPeriodRepository reportingPeriodRepository;
-    @Autowired
-    ReportingPeriodService reportingPeriodService;
-    @Autowired
-    StrategicObjectiveService strategicObjectiveService;
-    @Autowired
-    ReportingDateService reportingDateService;
+    public ReportingPeriodController(ReportingPeriodService reportingPeriodService, StrategicObjectiveService strategicObjectiveService, ReportingDateService reportingDateService) {
+        this.reportingPeriodService = reportingPeriodService;
+        this.strategicObjectiveService = strategicObjectiveService;
+        this.reportingDateService = reportingDateService;
+    }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
 
@@ -48,8 +46,16 @@ public class ReportingPeriodController {
     public ModelAndView viewReportingPeriods(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_REPORTING_PERIODS);
         modelAndView.addObject("pageTitle", "View ReportingPeriods");
-        List<ReportingPeriod> reportingPeriodsList = reportingPeriodRepository.findAll();
+        List<ReportingPeriod> reportingPeriodsList = reportingPeriodService.listAllReportingPeriods();
+        Map<Long, Long> strategicObjectiveCounts = new HashMap<Long, Long>();
+        Map<Long, Long> reportingDateCounts = new HashMap<Long, Long>();
+        for (ReportingPeriod period : reportingPeriodsList) {
+            strategicObjectiveCounts.put(period.getId(), strategicObjectiveService.countStrategicObjectives(period.getId()));
+            reportingDateCounts.put(period.getId(), reportingDateService.countReportingDates(period.getId()));
+        }
         modelAndView.addObject("reportingPeriodsList", reportingPeriodsList);
+        modelAndView.addObject("strategicObjectiveCounts", strategicObjectiveCounts);
+        modelAndView.addObject("reportingDateCounts", reportingDateCounts);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -101,7 +107,8 @@ public class ReportingPeriodController {
         List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(id);
         modelAndView.addObject("strategicObjectivesList", strategicObjectivesList);
         modelAndView.addObject("reportingPeriod", reportingPeriodService.getReportingPeriodById(id));
-        modelAndView.addObject("strategicObjective", strategicObjectiveService.getStrategicObjectiveById(id));
+        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
+        modelAndView.addObject("strategicObjective", new StrategicObjective());
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -114,6 +121,8 @@ public class ReportingPeriodController {
         List<ReportingDate> reportingDateList = reportingDateService.listAllReportingDates(reportingPeriod);
         modelAndView.addObject("reportingDateList", reportingDateList);
         modelAndView.addObject("reportingPeriod", reportingPeriod);
+        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
+        modelAndView.addObject("reportingDate", new ReportingDate());
 
         preparePage(modelAndView, request);
         return modelAndView;
