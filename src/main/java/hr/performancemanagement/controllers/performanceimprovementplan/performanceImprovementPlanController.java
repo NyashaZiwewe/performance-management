@@ -1,14 +1,12 @@
 package hr.performancemanagement.controllers.performanceimprovementplan;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.PerformanceImprovementPlanRepository;
-import hr.performancemanagement.service.*;
+import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,25 +23,15 @@ import java.util.List;
 @RequestMapping(value = "/performance-improvement-plans")
 public class performanceImprovementPlanController {
 
-    @Autowired
-    private final PerformanceImprovementPlanRepository performanceImprovementPlanRepository;
-    @Autowired
     private final AccountService accountService;
-    @Autowired
     private final PerformanceImprovementPlanService performanceImprovementPlanService;
-    @Autowired
     private final ReportingPeriodService reportingPeriodService;
-    @Autowired
     private final PIPTaskService pipTaskService;
-    @Autowired
     private final PIPIssueService pipIssueService;
-    @Autowired
     private final PIPNoteService pipNoteService;
-    @Autowired
     private final CommonService commonService;
 
-    public performanceImprovementPlanController(PerformanceImprovementPlanRepository performanceImprovementPlanRepository, AccountService accountService, PerformanceImprovementPlanService performanceImprovementPlanService, ReportingPeriodService reportingPeriodService, PIPTaskService pipTaskService, PIPIssueService pipIssueService, PIPNoteService pipNoteService, CommonService commonService) {
-        this.performanceImprovementPlanRepository = performanceImprovementPlanRepository;
+    public performanceImprovementPlanController(AccountService accountService, PerformanceImprovementPlanService performanceImprovementPlanService, ReportingPeriodService reportingPeriodService, PIPTaskService pipTaskService, PIPIssueService pipIssueService, PIPNoteService pipNoteService, CommonService commonService) {
         this.accountService = accountService;
         this.performanceImprovementPlanService = performanceImprovementPlanService;
         this.reportingPeriodService = reportingPeriodService;

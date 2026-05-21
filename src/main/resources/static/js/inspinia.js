@@ -5,23 +5,73 @@
  *
  */
 
+function localStorageSupport() {
+    return (('localStorage' in window) && window['localStorage'] !== null);
+}
+
+function hasSlimScroll() {
+    return typeof $.fn.slimScroll === 'function';
+}
+
+function syncResponsiveMenuState() {
+    var body = $('body');
+    if (window.innerWidth < 769) {
+        body.addClass('body-small mini-navbar');
+        return;
+    }
+
+    body.removeClass('body-small');
+    if (!localStorageSupport()) {
+        return;
+    }
+
+    var collapse = localStorage.getItem("collapse_menu");
+    if (collapse == 'on') {
+        body.addClass('mini-navbar');
+    } else if (collapse == 'off') {
+        body.removeClass('mini-navbar');
+    }
+}
 
 $(document).ready(function () {
 
-    // Fast fix bor position issue with Propper.js
-    // Will be fixed in Bootstrap 4.1 - https://github.com/twbs/bootstrap/pull/24092
-    Popper.Defaults.modifiers.computeStyle.gpuAcceleration = false;
-
-
-    // Add body-small class if window less than 768px
-    if (window.innerWidth < 769) {
-        $('body').addClass('body-small')
-    } else {
-        $('body').removeClass('body-small')
+    function applyTheme(themeMode) {
+        var body = $('body');
+        var themeToggle = $('#light-dark-mode');
+        var root = $(document.documentElement);
+        if (themeMode === 'light') {
+            body.addClass('light-skin');
+        } else {
+            body.removeClass('light-skin');
+        }
+        root.removeClass('theme-light theme-dark').addClass(themeMode === 'light' ? 'theme-light' : 'theme-dark');
+        if (themeToggle.length) {
+            themeToggle.attr('aria-label', themeMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode');
+            themeToggle.find('.mode-light-moon').toggle(themeMode !== 'light');
+            themeToggle.find('.mode-light-sun').toggle(themeMode === 'light');
+        }
     }
 
+    function getThemeMode() {
+        if (localStorageSupport()) {
+            return localStorage.getItem('theme_mode') || 'light';
+        }
+        return 'light';
+    }
+
+    // Fast fix for position issue with Popper.js
+    // Will be fixed in Bootstrap 4.1 - https://github.com/twbs/bootstrap/pull/24092
+    if (window.Popper
+        && Popper.Defaults
+        && Popper.Defaults.modifiers
+        && Popper.Defaults.modifiers.computeStyle) {
+        Popper.Defaults.modifiers.computeStyle.gpuAcceleration = false;
+    }
+
+    syncResponsiveMenuState();
+
     // MetisMenu
-    var sideMenu = $('#side-menu').metisMenu();
+    $('#side-menu').metisMenu();
 
     // Collapse ibox function
     $('.collapse-link').on('click', function (e) {
@@ -66,10 +116,12 @@ $(document).ready(function () {
     });
 
     // Run menu of canvas
-    $('body.canvas-menu .sidebar-collapse').slimScroll({
-        height: '100%',
-        railOpacity: 0.9
-    });
+    if (hasSlimScroll()) {
+        $('body.canvas-menu .sidebar-collapse').slimScroll({
+            height: '100%',
+            railOpacity: 0.9
+        });
+    }
 
     // Open close right sidebar
     $('.right-sidebar-toggle').on('click', function (e) {
@@ -78,11 +130,13 @@ $(document).ready(function () {
     });
 
     // Initialize slimscroll for right sidebar
-    $('.sidebar-container').slimScroll({
-        height: '100%',
-        railOpacity: 0.4,
-        wheelStep: 10
-    });
+    if (hasSlimScroll()) {
+        $('.sidebar-container').slimScroll({
+            height: '100%',
+            railOpacity: 0.4,
+            wheelStep: 10
+        });
+    }
 
     // Open close small chat
     $('.open-small-chat').on('click', function (e) {
@@ -92,10 +146,12 @@ $(document).ready(function () {
     });
 
     // Initialize slimscroll for small chat
-    $('.small-chat-box .content').slimScroll({
-        height: '234px',
-        railOpacity: 0.4
-    });
+    if (hasSlimScroll()) {
+        $('.small-chat-box .content').slimScroll({
+            height: '234px',
+            railOpacity: 0.4
+        });
+    }
 
     // Small todo handler
     $('.check-link').on('click', function () {
@@ -104,13 +160,6 @@ $(document).ready(function () {
         button.toggleClass('fa-check-square').toggleClass('fa-square-o');
         label.toggleClass('todo-completed');
         return false;
-    });
-
-    // Append config box / Only for demo purpose
-    // Uncomment on server mode to enable XHR calls
-    $.get("skin-config2.html", function (data) {
-        if (!$('body').hasClass('no-skin-config'))
-            $('body').append(data);
     });
 
     // Minimalize menu
@@ -122,7 +171,15 @@ $(document).ready(function () {
             localStorage.setItem("collapse_menu", body.hasClass("mini-navbar") ? "on" : "off");
         }
         SmoothlyMenu();
+    });
 
+    // Toggle light/dark mode
+    $('#light-dark-mode').on('click', function () {
+        var nextTheme = getThemeMode() === 'light' ? 'dark' : 'light';
+        if (localStorageSupport()) {
+            localStorage.setItem('theme_mode', nextTheme);
+        }
+        applyTheme(nextTheme);
     });
 
     // Close the mobile drawer after choosing a page or tapping outside it
@@ -150,7 +207,6 @@ $(document).ready(function () {
         container: "body"
     });
 
-
     // Move right sidebar top after scroll
     $(window).scroll(function () {
         if ($(window).scrollTop() > 0 && !$('body').hasClass('fixed-nav')) {
@@ -160,27 +216,26 @@ $(document).ready(function () {
         }
     });
 
-    $("[data-toggle=popover]")
-        .popover();
+    $("[data-toggle=popover]").popover();
 
     // Add slimscroll to element
-    $('.full-height-scroll').slimscroll({
-        height: '100%'
-    })
+    if (hasSlimScroll()) {
+        $('.full-height-scroll').slimscroll({
+            height: '100%'
+        });
+    }
+
+    applyTheme(getThemeMode());
 });
 
 // Minimalize menu when screen is less than 768px
 $(window).bind("resize", function () {
-    if (window.innerWidth  < 769) {
-        $('body').addClass('body-small')
-    } else {
-        $('body').removeClass('body-small')
-    }
+    syncResponsiveMenuState();
 });
 
 // Fixed Sidebar
 $(window).bind("load", function () {
-    if ($("body").hasClass('fixed-sidebar')) {
+    if ($("body").hasClass('fixed-sidebar') && hasSlimScroll()) {
         $('.sidebar-collapse').slimScroll({
             height: '100%',
             railOpacity: 0.9
@@ -188,17 +243,10 @@ $(window).bind("load", function () {
     }
 });
 
-
-// check if browser support HTML5 local storage
-function localStorageSupport() {
-    return (('localStorage' in window) && window['localStorage'] !== null)
-}
-
 // Local Storage functions
 // Set proper body class and plugins based on user configuration
 $(document).ready(function () {
     if (localStorageSupport()) {
-
         var collapse = localStorage.getItem("collapse_menu");
         var fixedsidebar = localStorage.getItem("fixedsidebar");
         var fixednavbar = localStorage.getItem("fixednavbar");
@@ -209,22 +257,19 @@ $(document).ready(function () {
 
         if (fixedsidebar == 'on') {
             body.addClass('fixed-sidebar');
-            $('.sidebar-collapse').slimScroll({
-                height: '100%',
-                railOpacity: 0.9
-            });
+            if (hasSlimScroll()) {
+                $('.sidebar-collapse').slimScroll({
+                    height: '100%',
+                    railOpacity: 0.9
+                });
+            }
         }
 
-        if (collapse == 'on') {
-            if (body.hasClass('fixed-sidebar')) {
-                if (!body.hasClass('body-small')) {
-                    body.addClass('mini-navbar');
-                }
-            } else {
-                if (!body.hasClass('body-small')) {
-                    body.addClass('mini-navbar');
-                }
-
+        if (body.hasClass('body-small')) {
+            body.addClass('mini-navbar');
+        } else if (collapse == 'on') {
+            if (!body.hasClass('body-small')) {
+                body.addClass('mini-navbar');
             }
         }
 
@@ -251,11 +296,12 @@ function animationHover(element, animation) {
             element.addClass('animated ' + animation);
         },
         function () {
-            //wait for animation to finish before removing classes
+            // wait for animation to finish before removing classes
             window.setTimeout(function () {
                 element.removeClass('animated ' + animation);
             }, 2000);
-        });
+        }
+    );
 }
 
 function SmoothlyMenu() {
@@ -277,20 +323,4 @@ function SmoothlyMenu() {
         // Remove all inline style from jquery fadeIn function to reset menu state
         $('#side-menu').removeAttr('style');
     }
-}
-
-// Dragable panels
-function WinMove() {
-    var element = "[class*=col]";
-    var handle = ".ibox-title";
-    var connect = "[class*=col]";
-    $(element).sortable(
-        {
-            handle: handle,
-            connectWith: connect,
-            tolerance: 'pointer',
-            forcePlaceholderSize: true,
-            opacity: 0.8
-        })
-        .disableSelection();
 }

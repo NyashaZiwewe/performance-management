@@ -1,8 +1,8 @@
 package hr.performancemanagement.controllers.scorecardModel;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.service.CommonService;
-import hr.performancemanagement.service.ScorecardModelService;
+import hr.performancemanagement.service.api.CommonService;
+import hr.performancemanagement.service.api.ScorecardModelService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;

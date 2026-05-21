@@ -3,6 +3,7 @@ package hr.performancemanagement.repository;
 import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Department;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -23,5 +24,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     public Account findAccountByEmail(String email);
 
     public Account findAccountByEmailAndPassword(String username,String password);
+
+    @Modifying
+    @Query("update Account a set a.password = :password where a.id = :accountId")
+    void updatePasswordById(long accountId, String password);
 
 }

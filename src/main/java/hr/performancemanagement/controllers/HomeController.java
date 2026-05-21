@@ -1,19 +1,19 @@
 package hr.performancemanagement.controllers;
 import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.ReportingPeriod;
-import hr.performancemanagement.service.*;
+import hr.performancemanagement.entities.StrategicObjective;
+import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.wrappers.ChangePasswordWrapper;
 import hr.performancemanagement.utils.wrappers.LoginWrapper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.WebAttributes;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
-import javax.security.sasl.AuthenticationException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.net.URL;
@@ -21,6 +21,7 @@ import java.text.DateFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -37,7 +38,7 @@ public class HomeController {
     }
 
     @Autowired
-    GoalService goalService;
+    StrategicObjectiveService strategicObjectiveService;
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
     @Autowired
@@ -47,7 +48,7 @@ public class HomeController {
     @Autowired
     CommonService commonService;
     @Autowired
-    Mailservice mailservice;
+    NotificationService notificationService;
 
     public HomeController(ReportingPeriodService reportingPeriodService, ScorecardService scorecardService) {
         this.reportingPeriodService = reportingPeriodService;
@@ -55,57 +56,61 @@ public class HomeController {
     }
 
     @RequestMapping
-    public ModelAndView goToHome(HttpServletRequest request ){
-
+    public ModelAndView goToHome(HttpServletRequest request ) throws ParseException {
         ModelAndView modelAndView =  new ModelAndView("index");
         modelAndView.addObject("pageDomain", "Home");
         modelAndView.addObject("pageName", "Home");
         modelAndView.addObject("pageTitle", "Home");
 
-        PortletUtils.addMessagesToPage(modelAndView, request);
-        return modelAndView;
-    }
-
-
-    @RequestMapping(value = "/dont-show-now")
-    public ModelAndView goToHomeXXX(HttpServletRequest request ) throws ParseException {
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<Goal> GoalsList = goalService.listAllGoals(reportingPeriod.getId());
-        List<Double> averageWeightsList = scorecardService.findAverageAllocatedWeightPerGoal();
-        List<Double> averageScoresList = scorecardService.findAverageWeightedScorePerGoal();
+        if (reportingPeriod == null) {
+            modelAndView.addObject("strategicObjectives", Collections.emptyList());
+            modelAndView.addObject("weightList", Collections.emptyList());
+            modelAndView.addObject("scoresList", Collections.emptyList());
+            modelAndView.addObject("pass", 0);
+            modelAndView.addObject("fail", 0);
+            modelAndView.addObject("monthNames", Collections.emptyList());
+            PortletUtils.addInfoMsg(
+                    "No active reporting period found. Configure one under Reporting Period to populate the dashboard.",
+                    request
+            );
+            PortletUtils.addMessagesToPage(modelAndView, request);
+            return modelAndView;
+        }
+
+        List<StrategicObjective> strategicObjectivesList = Optional
+                .ofNullable(strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId()))
+                .orElse(Collections.emptyList());
+        List<Double> averageWeightsList = Optional
+                .ofNullable(scorecardService.findAverageAllocatedWeightPerStrategicObjective())
+                .orElse(Collections.emptyList());
+        List<Double> averageScoresList = Optional
+                .ofNullable(scorecardService.findAverageWeightedScorePerStrategicObjective())
+                .orElse(Collections.emptyList());
         int pass = scorecardService.countPassedScorecardsByPeriodId(reportingPeriod);
         int fail = scorecardService.countFailedScorecardsByPeriodId(reportingPeriod);
 
-
-        List<String> Goals = new ArrayList<>();
-        for(Goal Goal : GoalsList){
-            Goals.add(Goal.getName());
+        List<String> strategicObjectives = new ArrayList<>();
+        for (StrategicObjective strategicObjective : strategicObjectivesList) {
+            if (strategicObjective != null && strategicObjective.getName() != null) {
+                strategicObjectives.add(strategicObjective.getName());
+            }
         }
 
-        List<Double> averageWeights = new ArrayList<>();
-        for(Double weight : averageWeightsList){
-            averageWeights.add(weight);
-        }
+        List<Double> averageWeights = new ArrayList<>(averageWeightsList);
 
-        List<Double> averageScores = new ArrayList<>();
-        for(Double score : averageScoresList){
-            averageScores.add(score);
-        }
+        List<Double> averageScores = new ArrayList<>(averageScoresList);
 
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
 
-        List<String> monthsList = listMonthsWithinAReportingPeriod(startDate, endDate);
         List<String> monthNames = new ArrayList<>();
-        for(String month : monthsList){
-            monthNames.add(month);
+        if (startDate != null && !startDate.trim().isEmpty() && endDate != null && !endDate.trim().isEmpty()) {
+            List<String> monthsList = listMonthsWithinAReportingPeriod(startDate, endDate);
+            monthNames.addAll(monthsList);
         }
 
-        ModelAndView modelAndView =  new ModelAndView("index");
-        modelAndView.addObject("pageDomain", "Home");
-        modelAndView.addObject("pageName", "Home");
-        modelAndView.addObject("pageTitle", "Home");
-        modelAndView.addObject("Goals", Goals);
+        modelAndView.addObject("strategicObjectives", strategicObjectives);
         modelAndView.addObject("weightList", averageWeights);
         modelAndView.addObject("scoresList", averageScores);
         modelAndView.addObject("pass", pass);
@@ -121,10 +126,11 @@ public class HomeController {
         ModelAndView modelAndView =  new ModelAndView("login");
         HttpSession session = request.getSession(false);
         if (session != null) {
-            AuthenticationException ex = (AuthenticationException) session
-                    .getAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
-            if (ex != null) {
-                PortletUtils.addErrorMsg(ex.getMessage(), request);
+            Object authException = session.getAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
+            if (authException instanceof AuthenticationException) {
+                PortletUtils.addErrorMsg(((AuthenticationException) authException).getMessage(), request);
+            } else if (authException instanceof Exception) {
+                PortletUtils.addErrorMsg(((Exception) authException).getMessage(), request);
             }
         }
         addErrorMessagesToLoginPage(modelAndView, request);
@@ -158,7 +164,7 @@ public class HomeController {
         try {
             Account account = commonService.getLoggedUser();
             String reset = RandomStringUtils.randomAlphanumeric(40);
-            account.setResetPassword(reset);
+            account.setResetPassword(commonService.hashResetToken(reset));
             account = accountService.saveAccount(account);
 
             wrapper.setResetPassword(reset);
@@ -183,13 +189,10 @@ public class HomeController {
           try {
               Account employee = accountService.getAccountToReset(wrapper.getEmail(), wrapper.getResetPassword());
               String oldPassword = wrapper.getOldPassword();
-              if(oldPassword != null){
-                  oldPassword = commonService.encryptPassword(oldPassword);
-              }
 
               if(employee != null){
-                  if(oldPassword != null){
-                      if(!employee.getPassword().equalsIgnoreCase(oldPassword)){
+                  if(oldPassword != null && !oldPassword.trim().isEmpty()){
+                      if(!commonService.matchesPassword(oldPassword, employee.getPassword())){
                           PortletUtils.addErrorMsg("Incorrect Old password", request);
                           return "redirect:/change-password/"+ wrapper.getResetPassword();
                       }
@@ -198,7 +201,8 @@ public class HomeController {
                       PortletUtils.addErrorMsg("Password mismatch. Check new & repeat Password ", request);
                       return "redirect:/change-password/"+ wrapper.getResetPassword();
                   }else {
-                      employee.setPassword(commonService.encryptPassword(wrapper.getNewPassword()));
+                      employee.setPassword(commonService.encodePassword(wrapper.getNewPassword()));
+                      employee.setResetPassword(null);
                       accountService.saveAccount(employee);
                       PortletUtils.addInfoMsg("Password successfully changed. You can login using your new Password ", request);
                       return "redirect:/login";
@@ -227,27 +231,16 @@ public class HomeController {
             Account account = accountService.findAccountByEmail(username);
             String reset = RandomStringUtils.randomAlphanumeric(40);
             if(account != null){
-                account.setResetPassword(reset);
+                account.setResetPassword(commonService.hashResetToken(reset));
                 accountService.saveAccount(account);
                 URL resetLink = new URL(commonService.getCurrentUrl(request).concat("/change-password/"+ reset));
-
-
-                String recipient = username;
-                String subject = "Password Reset,";
-                String template = "Good day, \n\n"
-                        + "Please note that we received a request to reset your account.  "
-                        + "If you didn't initiate this, you can ignore this email, otherwise click the link below to set the new password\n\n"
-                        + "Link: " + resetLink + "\n\n"
-                        + "Best regards,\n"
-                        + "The Performance Champions";
-                try {
-                    mailservice.sendEmail(recipient, subject, template);
-                    PortletUtils.addInfoMsg("Password reset successfully initiated. Login to your email account "+ recipient +" and click the reset link to change your password", request);
+                boolean sent = notificationService.sendPasswordReset(account, resetLink.toString());
+                if (sent) {
+                    PortletUtils.addInfoMsg("Password reset successfully initiated. Login to your email account "+ username +" and click the reset link to change your password", request);
                     return "redirect:/login";
-                }catch (Exception e){
-                    PortletUtils.addErrorMsg("Password reset successfully initiated. Email to "+ recipient + " failed to send. It's likely due to a network issue. Get in touch with the admin", request);
-                    return "redirect:/login/";
                 }
+                PortletUtils.addErrorMsg("Password reset could not be emailed to " + username + ". Ask admin to check email settings and try again.", request);
+                return "redirect:/reset-password";
             }else {
                 PortletUtils.addErrorMsg("Password reset failed. Account not found ", request);
                 return "redirect:/reset-password";

@@ -1,20 +1,19 @@
 package hr.performancemanagement.controllers.scorecard;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.service.*;
-import hr.performancemanagement.service.ScoreService.StandardScorecardScoreService;
-import hr.performancemanagement.service.ScoreService.ValueBasedScoreService;
+import hr.performancemanagement.service.api.*;
+import hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreService;
+import hr.performancemanagement.service.api.ScoreService.ValueBasedScoreService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import hr.performancemanagement.utils.wrappers.EvidenceWrapper;
-import hr.performancemanagement.utils.wrappers.OutputWrapper;
+import hr.performancemanagement.utils.wrappers.GoalWrapper;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.FileCopyUtils;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -27,55 +26,91 @@ import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 @Controller
 @RequestMapping(value="/scorecards")
 public class ScorecardController {
 
+    private enum ValueBasedCaptureStage {
+        EMPLOYEE(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, Pages.CAPTURE_EMPLOYEE_SCORE, "submit-employee-scores"),
+        MANAGER(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, Pages.CAPTURE_MANAGER_SCORE, "submit-manager-scores"),
+        AGREED(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, Pages.CAPTURE_AGREED_SCORE, "submit-agreed-scores"),
+        MODERATED(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, Pages.CAPTURE_MODERATED_SCORE, "submit-moderated-scores");
+
+        private final String requiredActivity;
+        private final String page;
+        private final String submitUrl;
+
+        ValueBasedCaptureStage(String requiredActivity, String page, String submitUrl) {
+            this.requiredActivity = requiredActivity;
+            this.page = page;
+            this.submitUrl = submitUrl;
+        }
+
+        public String getRequiredActivity() {
+            return requiredActivity;
+        }
+
+        public String getPage() {
+            return page;
+        }
+
+        public String getSubmitUrl() {
+            return submitUrl;
+        }
+    }
+
     @Autowired
-    ReportingPeriodService reportingPeriodService;
+    private final ReportingPeriodService reportingPeriodService;
     @Autowired
-    AccountService accountService;
+    private final AccountService accountService;
     @Autowired
-    ScorecardService scorecardService;
+    private final ScorecardService scorecardService;
     @Autowired
-    GearService gearService;
+    private final PerspectiveService perspectiveService;
     @Autowired
-    OutcomeService outcomeService;
+    private final GoalService goalService;
     @Autowired
-    TargetService targetService;
+    private final TargetService targetService;
     @Autowired
-    GoalService goalService;
+    private final StrategicObjectiveService strategicObjectiveService;
     @Autowired
-    CommentService commentService;
+    private final CommentService commentService;
     @Autowired
-    Mailservice mailservice;
+    private final Mailservice mailservice;
     @Autowired
-    ApprovalService approvalService;
+    private final ApprovalService approvalService;
     @Autowired
-    ReportingDateService reportingDateService;
+    private final ReportingDateService reportingDateService;
     @Autowired
-    StandardScorecardScoreService standardScorecardScoreService;
+    private final StandardScorecardScoreService standardScorecardScoreService;
     @Autowired
-    ValueBasedScoreService valueBasedScoreService;
+    private final ValueBasedScoreService valueBasedScoreService;
     @Autowired
-    ScorecardModelService scorecardModelService;
+    private final ScorecardModelService scorecardModelService;
     @Autowired
-    CommonService commonService;
-    @Autowired
-    OutputService outputService;
-    @Autowired
-    OverallScoreService overallScoreService;
+    private final CommonService commonService;
 
     private final Environment environment;
-    @Autowired
-    private EvidenceService evidenceService;
-    @Autowired
-    private OverallCommentService overallCommentService;
 
-    public ScorecardController(Environment environment) {
+
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, Mailservice mailservice, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, Environment environment) {
+        this.reportingPeriodService = reportingPeriodService;
+        this.accountService = accountService;
+        this.scorecardService = scorecardService;
+        this.perspectiveService = perspectiveService;
+        this.goalService = goalService;
+        this.targetService = targetService;
+        this.strategicObjectiveService = strategicObjectiveService;
+        this.commentService = commentService;
+        this.mailservice = mailservice;
+        this.approvalService = approvalService;
+        this.reportingDateService = reportingDateService;
+        this.standardScorecardScoreService = standardScorecardScoreService;
+        this.valueBasedScoreService = valueBasedScoreService;
+        this.scorecardModelService = scorecardModelService;
+        this.commonService = commonService;
         this.environment = environment;
     }
 
@@ -83,56 +118,40 @@ public class ScorecardController {
 
         List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
         List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
-        List<Gear> gears = gearService.listAllGears(commonService.getLoggedUser().getClientId());
+        List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives(commonService.getLoggedUser().getClientId());
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
         modelAndView.addObject("pageDomain", "Performance");
-        modelAndView.addObject("pageName", "Contracts");
+        modelAndView.addObject("pageName", "Scorecards");
         modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
         modelAndView.addObject("accountsList", ACCOUNTS_LIST);
-        modelAndView.addObject("gears", gears);
+        modelAndView.addObject("perspectivesList", PERSPECTIVES_LIST);
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("loggedUser", loggedUser);
         modelAndView.addObject("role", role);
-        addTerminology(modelAndView);
         PortletUtils.addMessagesToPage(modelAndView, request);
 
     }
 
-    @RequestMapping(value = "/view-scorecards/{periodId}")
-    public ModelAndView viewScorecards(HttpServletRequest request, @PathVariable("periodId") long periodId, HttpSession session) {
+    @RequestMapping
+    public ModelAndView viewScorecards(HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARDS);
-        modelAndView.addObject("pageTitle", "View Contracts");
-        ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(periodId);
+        modelAndView.addObject("pageTitle", "View Scorecards");
+        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
+
         modelAndView.addObject("scorecards", scorecards);
         preparePage(modelAndView, request, session);
         return modelAndView;
-    }
-
-    @RequestMapping
-    public ModelAndView viewScorecardsSelectYear(HttpServletRequest request, HttpSession session) {
-        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARDS_SELECT_YEAR);
-        modelAndView.addObject("pageTitle", "Select Reporting Period");
-        List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
-        modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
-        preparePage(modelAndView, request, session);
-        return modelAndView;
-    }
-
-    @RequestMapping(value = "/view-scorecards-select-year", method = RequestMethod.POST)
-    public String goToViewScoreCards(HttpServletRequest request, long reportingPeriodId) {
-
-        return "redirect:/scorecards/view-scorecards/"+ reportingPeriodId;
     }
 
     @RequestMapping(value = "/view-user-scorecards/{id}")
     public ModelAndView viewUserScorecards(@PathVariable("id") Long userId, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_USER_SCORECARDS);
         Account owner = accountService.getAccountById(userId);
-        modelAndView.addObject("pageTitle", "View " + owner.getFullName() + "'s Contracts");
+        modelAndView.addObject("pageTitle", "View " + owner.getFullName() + "'s Scorecards");
         List<Scorecard> scorecards = scorecardService.getScorecardsByOwner(owner);
 
         modelAndView.addObject("scorecards", scorecards);
@@ -144,7 +163,7 @@ public class ScorecardController {
     public ModelAndView addAScorecard(HttpServletRequest request, HttpSession session) {
         ScorecardModel scorecardModel = scorecardModelService.getActiveScorecardModel();
         ModelAndView modelAndView = new ModelAndView(Pages.ADD_SCORECARD);
-        modelAndView.addObject("pageTitle", "New Contract");
+        modelAndView.addObject("pageTitle", "New Scorecard");
         modelAndView.addObject("scorecard", new Scorecard());
         modelAndView.addObject("scorecardModel", scorecardModel);
         preparePage(modelAndView, request, session);
@@ -164,7 +183,6 @@ public class ScorecardController {
             newScorecard.setLockStatus("OPEN");
             newScorecard.setStatus("ACTIVE");
             newScorecard.setApprovalStatus("NEW");
-            newScorecard.setModel("programme");
             scorecardService.addScorecard(newScorecard);
 
             String recipient = newScorecard.getOwner().getEmail();
@@ -173,7 +191,7 @@ public class ScorecardController {
                     + "Please note that your scorecard has been successfully created. "
                     + "You can now login and approve\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
@@ -186,7 +204,7 @@ public class ScorecardController {
                 PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with capturing targets", request);
                 return "redirect:/scorecards/capture-targets/"+ newScorecard.getId();
             }else {
-                PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with creating other contracts", request);
+                PortletUtils.addInfoMsg("Scorecard successfully created. You can proceed with creating other scorecards", request);
                 return "redirect:/scorecards/add-scorecard";
             }
         }
@@ -197,52 +215,22 @@ public class ScorecardController {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String scorecardModel = scorecard.getScorecardModel().getName();
-        List<Gear> gears = gearService.listAllGears(commonService.getLoggedUser().getClientId());
-        List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
-        List<Gear> remainingGears = gearService.listRemainingGears(scorecard);
+        long reportingPeriodId = scorecard.getReportingPeriod().getId();
+        List<Goal> GOALS_LIST = goalService.listAllGoals(id);
+        List<StrategicObjective> STRATEGIC_OBJECTIVES_LIST = strategicObjectiveService.listAllStrategicObjectives(reportingPeriodId);
         ModelAndView modelAndView;
 
         if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS,scorecard)){
 
-            List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
-           try {
-               for(Gear gear: selectedGears){
-                   for(Target target: targetsList){
-                       if(target.getGear() == gear){
-                           List<Target> targets = gear.getTargetsList();
-                           if(targets == null){
-                               targets = new ArrayList<>();
-                           }
-                           targets.add(target);
-                           gear.setTargetsList(targets);
-                       }
-                   }
-               }
-           }catch (Exception e){
-               System.out.println(e.getMessage());
-               PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
-               modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-               preparePage(modelAndView, request, session);
-               return modelAndView;
-           }
-
-            for (Gear gear : selectedGears) {
-                if (gear.getTargetsList() != null) {
-                    gear.getTargetsList().sort(Comparator
-                            .comparing((Target target) -> target.getOutcome().getId())
-                            .thenComparing(target -> target.getOutput().getId()));
-                }
-            }
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
             modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
-            modelAndView.addObject("selectedGears", selectedGears);
-            modelAndView.addObject("remainingGears", remainingGears);
-            modelAndView.addObject("gears", gears);
-            modelAndView.addObject("totalAllocatedWeight", outcomeService.getTotalAllocatedWeight(id));
+            modelAndView.addObject("goalsList", GOALS_LIST);
+            modelAndView.addObject("strategicObjectivesList", STRATEGIC_OBJECTIVES_LIST);
+            modelAndView.addObject("totalAllocatedWeight", goalService.getTotalAllocatedWeight(id));
             modelAndView.addObject("scorecardModel", scorecardModel);
-            modelAndView.addObject("unitsList", targetService.listAllUnits());
-
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
+            modelAndView.addObject("targetsList", targetsList);
 
         } else {
 
@@ -255,87 +243,36 @@ public class ScorecardController {
 
     @RequestMapping("/capture-scores/{id}")
     public ModelAndView captureScores(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
-        ModelAndView modelAndView;
+
         Scorecard scorecard = scorecardService.getScorecardById(id);
         String scorecardModel = scorecard.getScorecardModel().getName();
         ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-        if(reportingDate == null){
-            PortletUtils.addErrorMsg("Please note that there is no active reporting date, please contact the administrator", request);
-            modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-            preparePage(modelAndView, request, session);
-            return modelAndView;
-        }
         List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
-        String url = "";
+        double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
+        double averageManagerScore = goalService.getAverageManagerScore(id);
+        double averageAgreedScore = goalService.getAverageAgreedScore(id);
+        double averageModeratedScore = goalService.getAverageModeratorScore(id);
+        double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
 
-        double totalAllocatedWeight = outcomeService.getTotalAllocatedWeight(id);
-
-        List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
-        List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
-
+        double weightedScore;
         try {
-            for(Gear gear: selectedGears){
-                for(Target target: targetsList){
-                    if(target.getGear() == gear){
-                        List<Target> targets = gear.getTargetsList();
-                        if(targets == null){
-                            targets = new ArrayList<>();
-                        }
-                        targets.add(target);
-                        gear.setTargetsList(targets);
-                    }
-                }
-            }
+            weightedScore = (averageModeratedScore / 5 ) * 100;
         }catch (Exception e){
-            System.out.println(e.getMessage());
-            PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
+            weightedScore = 0;
         }
 
-        for (Gear gear : selectedGears) {
-            if (gear.getTargetsList() != null) {
-                gear.getTargetsList().sort(Comparator
-                        .comparing((Target target) -> target.getOutcome().getId())
-                        .thenComparing(target -> target.getOutput().getId()));
-            }
-        }
+        ModelAndView modelAndView = resolveCaptureScoresView(scorecard, scorecardModel, request);
 
-            if(PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)){
-                modelAndView = new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
-            }else if(PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)){
-                if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)){
-                    modelAndView = new ModelAndView(Pages.CAPTURE_EMPLOYEE_SCORE);
-                    url = "submit-employee-scores";
-                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)) {
-                    modelAndView = new ModelAndView(Pages.CAPTURE_MANAGER_SCORE);
-                    url = "submit-manager-scores";
-                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)) {
-                    modelAndView = new ModelAndView(Pages.CAPTURE_AGREED_SCORE);
-                    url = "submit-agreed-scores";
-                } else if (commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
-                    modelAndView = new ModelAndView(Pages.CAPTURE_MODERATED_SCORE);
-                    url = "submit-moderated-scores";
-                }else {
-                    modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-                    PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
-                }
-            }else{
-                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-                PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
-            }
-            int scoreColumns = getScoreColumns(scorecard, true);
-            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-            List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
-            List<OverallScore> overallScores = overallScoreService.getOverallScoreByScorecard(scorecard);
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
-            modelAndView.addObject("selectedGears", selectedGears);
-            modelAndView.addObject("scoreColumns", scoreColumns);
-            modelAndView.addObject("url", url);
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             modelAndView.addObject("targetsList", targetsList);
-            modelAndView.addObject("overallScore", overallScore);
-            modelAndView.addObject("overallComments", overallComments);
-            modelAndView.addObject("overallScores", overallScores);
+            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
+            modelAndView.addObject("averageManagerScore", averageManagerScore);
+            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
+            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
+            modelAndView.addObject("weightedScore", weightedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("reportingDate", reportingDate);
@@ -346,61 +283,77 @@ public class ScorecardController {
         return modelAndView;
     }
 
-    @RequestMapping(value = "/save-target", method = RequestMethod.POST)
-    public String saveTarget(OutputWrapper wrapper, HttpServletRequest request) {
+    private ModelAndView resolveCaptureScoresView(Scorecard scorecard, String scorecardModel, HttpServletRequest request) {
+        if (PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)) {
+            return new ModelAndView(Pages.CAPTURE_SCORES_STANDARD);
+        }
+        if (PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)) {
+            ValueBasedCaptureStage stage = resolveValueBasedCaptureStage(scorecard);
+            if (stage != null) {
+                ModelAndView modelAndView = new ModelAndView(stage.getPage());
+                modelAndView.addObject("url", stage.getSubmitUrl());
+                return modelAndView;
+            }
+            PortletUtils.addErrorMsg("You are not allowed to capture scores on this scorecard", request);
+            return new ModelAndView(Pages.BLANK_PAGE);
+        }
 
-        long scorecardId = wrapper.getScorecardId();
-        Output output;
+        PortletUtils.addErrorMsg("It shows like the scoring model is not defined. Contact the administrator", request);
+        return new ModelAndView(Pages.BLANK_PAGE);
+    }
+
+    private ValueBasedCaptureStage resolveValueBasedCaptureStage(Scorecard scorecard) {
+        for (ValueBasedCaptureStage stage : ValueBasedCaptureStage.values()) {
+            if (commonService.isUserAllowed(stage.getRequiredActivity(), scorecard)) {
+                return stage;
+            }
+        }
+        return null;
+    }
+
+    @RequestMapping(value = "/save-target", method = RequestMethod.POST)
+    public String saveTarget(GoalWrapper goalWrapper) {
+
+        long scorecardId = goalWrapper.getScorecardId();
+        Goal goal;
         Target target;
 
-        if(wrapper.getOutputId() > 0){
-            output = outputService.getOutputById(wrapper.getOutputId());
-            output.setName(wrapper.getName());
-        }
-        else if(outputService.outputExistsOnScorecard(wrapper.getName(), scorecardService.getScorecardById(scorecardId))){
-            output = outputService.getOutputByName(wrapper.getName());
+        if(goalWrapper.getGoalId() < 1){
+            goal = new Goal();
         }else {
-            output = new Output();
-            output.setName(wrapper.getName());
-            output.setScorecard(scorecardService.getScorecardById(scorecardId));
+            goal = goalService.getGoalById(goalWrapper.getGoalId());
         }
 
-        output.setOutcome(outcomeService.getOutcomeById(wrapper.getOutcomeId()));
-        output.setAllocatedWeight(wrapper.getAllocatedWeight());
+        goal.setScorecardId(goalWrapper.getScorecardId());
+        goal.setPerspective(goalWrapper.getPerspective());
+        goal.setStrategicObjective(goalWrapper.getStrategicObjective());
+        goal.setName(goalWrapper.getGoalName());
+        Goal savedGoal = goalService.saveGoal(goal);
 
-        Output savedOutput = outputService.saveOutput(output);
-
-        if(wrapper.getTargetId() < 1){
+        if(goalWrapper.getTargetId() < 1){
             target = new Target();
         }else{
-            target = targetService.getTargetById(wrapper.getTargetId());
+            target = targetService.getTargetById(goalWrapper.getTargetId());
         }
 
-        target.setOutput(savedOutput);
-        boolean missingData = false;
-        if("".equalsIgnoreCase(wrapper.getMeasure().trim())){
-            missingData = true;
-        }
-        if("".equalsIgnoreCase(wrapper.getUnit().trim())){
-            missingData = true;
-        }
-        if(missingData){
-            PortletUtils.addErrorMsg("There are some missing fields please complete before submitting", request);
-        }else{
-            target.setMeasure(wrapper.getMeasure());
-            target.setUnit(wrapper.getUnit());
-            target.setNormalTarget(wrapper.getNormalTarget());
-            target.setBaseTarget(wrapper.getBaseTarget());
-            target.setStretchTarget(wrapper.getStretchTarget());
-            targetService.saveTarget(target);
-        }
+        target.setGoal(savedGoal);
+        target.setPerspective(savedGoal.getPerspective());
+        target.setStrategicObjective(savedGoal.getStrategicObjective());
+        target.setMeasure(goalWrapper.getMeasure());
+        target.setUnit(goalWrapper.getUnit());
+        target.setAllocatedWeight(goalWrapper.getAllocatedWeight());
+        target.setNormalTarget(goalWrapper.getNormalTarget());
+        target.setBaseTarget(goalWrapper.getBaseTarget());
+        target.setStretchTarget(goalWrapper.getStretchTarget());
+        targetService.saveTarget(target);
+
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
-    @RequestMapping(value = "/save-target-to-existing-output", method = RequestMethod.POST)
+    @RequestMapping(value = "/save-target-to-existing-goal", method = RequestMethod.POST)
     public String saveTargetToExistingGoal(Target target) {
 
-        long scorecardId = target.getOutput().getScorecard().getId();
+        long scorecardId = target.getGoal().getScorecardId();
         targetService.saveTarget(target);
 
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
@@ -410,20 +363,15 @@ public class ScorecardController {
     public void saveComment(HttpServletRequest request, HttpServletResponse response, Long scorecardId, String userType, String comment) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-
-        OverallComment overallComment = new OverallComment();
-        overallComment.setScorecard(scorecard);
-        overallComment.setReportingDate(reportingDate);
 
         if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
-            overallComment.setOwnerComment(comment);
+            scorecard.setOwnerComment(comment);
         } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
-            overallComment.setSupervisorComment(comment);
+            scorecard.setSupervisorComment(comment);
         } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
-            overallComment.setModeratorComment(comment);
+            scorecard.setModeratorComment(comment);
         }
-        overallCommentService.saveOverallComment(overallComment);
+        scorecardService.saveScorecard(scorecard);
 
         if(!PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
             URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
@@ -431,18 +379,17 @@ public class ScorecardController {
             String recipient = scorecard.getOwner().getEmail();
             String subject = "Scorecard Comment,";
             String template = "Good day, \n\n"
-                                + "Please note that"+ commonService.getLoggedUser().getFullName() +" added an overall comment on your contract. "
+                                + "Please note that"+ commonService.getLoggedUser().getFullName() +" added an overall comment on your scorecard. "
                                 + "Message: "+ comment + "\n"
                                 + "You can now login and response or action\n"
                                 + "Link: "+ link + "\n\n"
                                 + "Best regards,\n"
-                                + "The Performance champions";
+                                + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
         }
 
@@ -464,19 +411,19 @@ public class ScorecardController {
     public String deleteTarget(HttpServletRequest request, Target targ) {
 
         Target target = targetService.getTargetById(targ.getId());
-        Output output = outputService.getOutputById(target.getOutput().getId());
-
-        long scorecardId = output.getScorecard().getId();
+        Goal goal = goalService.getGoalById(target.getGoal().getId());
+        boolean hasTargets = targetService.checkIfGoalHasTargets(goal);
+        long scorecardId = goal.getScorecardId();
 
         try {
             targetService.deleteTarget(target);
             PortletUtils.addInfoMsg("Target was successfully deleted", request);
-            if(!targetService.checkIfOutputHasTargets(output)){
-                outputService.deleteOutput(output);
-                PortletUtils.addInfoMsg("Output was successfully deleted", request);
+            if(!hasTargets){
+                goalService.deleteGoal(goal);
+                PortletUtils.addInfoMsg("Goal was successfully deleted", request);
               }
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Output wasn't deleted", request);
+            PortletUtils.addErrorMsg("Target wasn't deleted", request);
         }
 
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
@@ -495,18 +442,17 @@ public class ScorecardController {
 
         String subject = "Scorecard Approval,";
         String template = "Good day, \n\n"
-                + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her contract for your approval. "
+                + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for your approval. "
                 + "You can now login and approve\n"
                 + "Link: "+ currentURL +"\n\n"
                 + "Best regards,\n"
-                + "The Performance champions";
+                + "The ZimTrade Team";
 
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg(e.getMessage(), request);
-            System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
 
         PortletUtils.addInfoMsg("Scorecard successfully submitted for approval. An email was sent to your supervisor", request);
@@ -517,6 +463,7 @@ public class ScorecardController {
     public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+
         scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE);
         scorecardService.saveScorecard(scorecard);
         Account supervisor = scorecard.getOwner().getSupervisor();
@@ -526,19 +473,19 @@ public class ScorecardController {
 
         String subject = "Scorecard Scoring,";
         String template = "Good day, \n\n"
-                        + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her contract for scoring by supervisor. "
+                        + "Please note that "+ scorecard.getOwner().getFullName() +" has submitted his/her scorecard for scoring by supervisor. "
                         + "You can now login and add your scores\n"
                         + "Link: "+ currentURL +"\n\n"
                         + "Best regards,\n"
-                        + "The Performance champions";
+                        + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
 
-        PortletUtils.addInfoMsg("Contract successfully submitted for scoring by supervisor. An email was sent to "+ supervisor.getFullName(), request);
+        PortletUtils.addInfoMsg("Scorecard successfully submitted for scoring by supervisor. An email was sent to "+ supervisor.getFullName(), request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
@@ -556,20 +503,19 @@ public class ScorecardController {
         String recipient = owner.getEmail();
         String subject = "Scorecard Scoring,";
         String template = "Good day, \n\n"
-                + "Please note that "+ supervisor.getFullName() +" has captured scores on your contract. Be prepared for the session to capture agreed scores. "
+                + "Please note that "+ supervisor.getFullName() +" has captured scores on your scorecard. Be prepared for the session to capture agreed scores. "
                 + "You can now login and add your scores\n"
                 + "Link: "+ currentURL + "\n\n"
                 + "Best regards,\n"
-                + "The Performance champions";
+                + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg(e.getMessage(), request);
-            System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
 
-        PortletUtils.addInfoMsg("Contract scores successfully captured. You can now start to capture the agreed scores", request);
+        PortletUtils.addInfoMsg("Scorecard scores successfully captured. You can now start to capture the agreed scores", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
@@ -586,57 +532,55 @@ public class ScorecardController {
             scorecardService.saveScorecard(scorecard);
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String recipient = owner.getEmail();
-            String subject = "Contract Scoring,";
+            String subject = "Scorecard Scoring,";
             String template = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has submitted the agreed scores of your scorecard. HR Moderators will proceed with capturing their input"
                     + "You can now login and see results\n"
                     + "Link: "+ currentURL +"\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
 
             String recipient2 = commonService.getHREmail();
 
-            String subject2 = "Contract Moderation,";
+            String subject2 = "Scorecard Moderation,";
             String template2 = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has submitted their agreed scores with " + owner.getFullName() + ". You can now login and start the moderation process."
                     + "You can now login and see results\n"
                     + "Link: "+ currentURL + "\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
 
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-            PortletUtils.addInfoMsg("Contract successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
+            PortletUtils.addInfoMsg("Scorecard successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
 
         }catch (Exception e){
 
             String recipient = commonService.getAdminEmail();
-            String subject = "Contract Moderation,";
+            String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
                     + "Please note that " + loggedUser.getFullName() + " has failed to submit a moderated scorecard for" + owner.getFullName() + ". "
                     + "Kindly assist\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addErrorMsg("Contract wasn't submitted. An Email was sent to the administrator", request);
+            PortletUtils.addErrorMsg("Scorecard wasn't submitted. An Email was sent to the administrator", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -655,57 +599,53 @@ public class ScorecardController {
 
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String recipient = owner.getEmail();
-            String subject = "Contract Moderation,";
+            String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
-                    + "Please note that " + loggedUser.getFullName() + " has moderated your contract. "
+                    + "Please note that " + loggedUser.getFullName() + " has moderated your scorecard. "
                     + "You can now login and see results\n"
                     + "Link: "+ currentURL + "\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
 
             String recipient2 = supervisor.getEmail();
-            String subject2 = "Contract Moderation,";
+            String subject2 = "Scorecard Moderation,";
             String template2 = "Good day, \n\n"
-                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s contract. "
+                    + "Please note that " + supervisor.getFullName() + " has moderated " + owner.getFullName() + "'s scorecard. "
                     + "You can now login and see results\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
 
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-            PortletUtils.addInfoMsg("Contract successfully moderated by HR.", request);
+            PortletUtils.addInfoMsg("Scorecard successfully moderated by HR. Emails were sent to "+ owner.getFullName()+" and "+ supervisor.getFullName(), request);
 
         }catch (Exception e){
 
             String recipient = commonService.getAdminEmail();
-            String subject = "Contract Moderation,";
+            String subject = "Scorecard Moderation,";
             String template = "Good day, \n\n"
                     + "Please note that " + loggedUser.getFullName() + " has failed to submit a moderated scorecard for" + owner.getFullName() + ". "
                     + "Kindly assist\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg(x.getMessage(), request);
-                System.out.println(x.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addErrorMsg(e.getMessage(), request);
-            System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("Scorecard wasn't submitted. An Email was sent to the administrator", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -733,57 +673,56 @@ public class ScorecardController {
                 e.printStackTrace();
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
-            String subject = "Contract Approval,";
+            String subject = "Scorecard Approval,";
             String template = "Good day "+ owner + ", \n\n"
-                            + "Please note that "+ supervisor +" has approved your contract. "
+                            + "Please note that "+ supervisor +" has approved your scorecard. "
                             + "We are now waiting for HR to approve so that you can proceed with capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The Performance champions";
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
 
             String recipient2 = commonService.getHREmail();
-            String subject2 = "Contract Approval,";
+            String subject2 = "Scorecard Approval,";
             String template2 = "Good day HR, \n\n"
-                            + "Please note that "+ supervisor +" has approved "+owner+"'s contract. "
+                            + "Please note that "+ supervisor +" has approved "+owner+"'s scorecard. "
                             + "You are now eligible to review and approve so that they can proceed with capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The Performance champions";
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Contract successfully approved. An email was sent to HR for further approval and to "+ owner + " as feedback", request);
+
+
+            PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to HR for further approval and to "+ owner + " as feedback", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }catch (Exception e){
 
             String admin = commonService.getAdminEmail();
             String subject  = "Technical failure,";
             String template = "Good day, \n\n"
-                            + "Please note that "+ supervisor +"  failed to approve "+ owner +"'s contract. "
+                            + "Please note that "+ supervisor +"  failed to approve "+ owner +"'s scorecard. "
                             + "With error :. \n\n"
                             + e.getMessage() +"\n\n"
                             + "Best regards,\n"
-                            + "The Performance champions";
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(x.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }
     }
@@ -819,38 +758,36 @@ public class ScorecardController {
                             +".........................................................................................\n"
                             + message + "\n"
                             +".........................................................................................\n\n"
-                            + "Please log in and make recommended changes. Also look for comments and flags on your contract and rectify\n"
+                            + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n"
                             + "Link: "+currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The Performance champions";
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-            PortletUtils.addInfoMsg("Contract successfully rejected. An email was sent to "+ owner + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully rejected. An email was sent to "+ owner + " as feedback", request);
 
         }catch (Exception e){
 
             String admin = commonService.getAdminEmail();
             String subject  = "Technical failure,";
             String template = "Good day, \n\n"
-                    + "Please note that "+ supervisor +"  failed to approve "+ owner +"'s contract. "
+                    + "Please note that "+ supervisor +"  failed to approve "+ owner +"'s scorecard. "
                     + "With error :. \n\n"
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(x.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ id;
@@ -876,63 +813,59 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                e.printStackTrace();
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
-            String subject = "Contract Approval,";
+            String subject = "Scorecard Approval,";
             String template = "Good day "+ supervisor + ", \n\n"
-                            + "Please note that "+ loggedUser.getFullName() +" has approved "+ owner +" contract. "
+                            + "Please note that "+ loggedUser.getFullName() +" has approved "+ owner +" scorecard. "
                             + "The owner is now eligible for capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n"
                             + "Best regards,\n"
-                            + "The Performance champions";
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
 
             String recipient2 = scorecard.getOwner().getEmail();
-            String subject2 = "Contract Approval,";
+            String subject2 = "Scorecard Approval,";
             String template2 = "Good day "+owner+", \n\n"
-                    + "Please note that "+ loggedUser.getFullName() +" has your contract. "
+                    + "Please note that "+ loggedUser.getFullName() +" has your scorecard. "
                     + "You are now eligible to capture scores. \n"
                     + "Link: "+ currentURL +"\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
 
-            PortletUtils.addInfoMsg("Contract successfully approved. An email was sent to "+supervisor+" and to "+ owner + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to "+supervisor+" and to "+ owner + " as feedback", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }catch (Exception e){
 
             String admin = commonService.getAdminEmail();
             String subject  = "Technical failure,";
             String template = "Good day, \n\n"
-                    + "Please note that "+ loggedUser.getFullName() +"  failed to approve "+ owner +"'s contract. "
+                    + "Please note that "+ loggedUser.getFullName() +"  failed to approve "+ owner +"'s scorecard. "
                     + "With error :. \n\n"
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(x.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }
     }
@@ -959,48 +892,45 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+              e.printStackTrace();
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
-            String subject = "Contract Approval,";
+            String subject = "Scorecard Approval,";
             String template = "Good day "+ supervisor + ", \n\n"
                             + "Please note that "+ loggedUser.getFullName() +" has rejected "+ owner+"'s scorecard with the following message \n\n. "
                             +".........................................................................................\n"
                             + message + "\n"
                             +".........................................................................................\n\n"
-                            + "Please log in and make recommended changes. Also look for comments and flags on your contract and rectify\n"
+                            + "Please log in and make recommended changes. Also look for comments and flags on your scorecard and rectify\n"
                             + "Link: "+ currentURL + "\n\n"
                             + "Best regards,\n"
-                            + "The Performance champions";
+                            + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
-                PortletUtils.addErrorMsg(e.getMessage(), request);
-                System.out.println(e.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-            PortletUtils.addInfoMsg("Contract successfully rejected. An email was sent to "+ supervisor + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully rejected. An email was sent to "+ supervisor + " as feedback", request);
 
         }catch (Exception e){
 
             String admin = commonService.getAdminEmail();
             String subject  = "Technical failure,";
             String template = "Good day, \n\n"
-                    + "Please note that "+ loggedUser.getFullName() +"  failed to reject "+ owner +"'s contract. "
+                    + "Please note that "+ loggedUser.getFullName() +"  failed to reject "+ owner +"'s scorecard. "
                     + "With error :. \n\n"
                     + e.getMessage() +"\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
                 mailservice.sendEmail(admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
-                PortletUtils.addErrorMsg(x.getMessage(), request);
-                System.out.println(x.getMessage());
+                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Contract approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ id;
@@ -1012,56 +942,32 @@ public class ScorecardController {
         try {
             Scorecard scorecard = scorecardService.getScorecardById(id);
             String scorecardModel = scorecard.getScorecardModel().getName();
-            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-            double totalAllocatedWeight = outcomeService.getTotalAllocatedWeight(id);
-            List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard);
-            List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
-            List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(scorecard.getReportingPeriod());
+            double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
+            double averageManagerScore = goalService.getAverageManagerScore(id);
+            double averageAgreedScore = goalService.getAverageAgreedScore(id);
+            double averageModeratedScore = goalService.getAverageModeratorScore(id);
+            double totalAllocatedWeight = goalService.getTotalAllocatedWeight(id);
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             double totalWeightedScore = 0.0;
-            try {
-                for(Gear gear: selectedGears){
-                    for(Target target: targetsList){
-                        if(target.getGear() == gear){
-                            List<Target> targets = gear.getTargetsList();
-                            if(targets == null){
-                                targets = new ArrayList<>();
-                            }
-                            targets.add(target);
-                            gear.setTargetsList(targets);
-                        }
-                    }
+            for(Target target: targetsList){
+                if(target.getWeightedScore() !=null){
+                    totalWeightedScore += target.getWeightedScore();
                 }
-            }catch (Exception e){
-                System.out.println(e.getMessage());
-                PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
-                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+
             }
 
-            for (Gear gear : selectedGears) {
-                if (gear.getTargetsList() != null) {
-                    gear.getTargetsList().sort(Comparator
-                            .comparing((Target target) -> target.getOutcome().getId())
-                            .thenComparing(target -> target.getOutput().getId()));
-                }
-            }
-
-            int scoreColumns = getScoreColumns(scorecard, false);
-            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-            List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
-            List<OverallScore> overallScores = overallScoreService.getOverallScoreByScorecard(scorecard);
-            modelAndView.addObject("pageTitle", "View Contract {"+ scorecard.getOwner().getFullName() +"}");
+            modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
-            modelAndView.addObject("selectedGears", selectedGears);
-            modelAndView.addObject("overallScore", overallScore);
-            modelAndView.addObject("overallScores", overallScores);
-            modelAndView.addObject("overallComments", overallComments);
+            modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("comment", new Comment());
-            modelAndView.addObject("reportingDates", reportingDates);
-            modelAndView.addObject("scoreColumns", scoreColumns);
+            modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
+            modelAndView.addObject("averageManagerScore", averageManagerScore);
+            modelAndView.addObject("averageAgreedScore", averageAgreedScore);
+            modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
-            modelAndView.addObject("isSupervisor", commonService.isSupervisor(scorecard.getOwner()));
+            modelAndView.addObject("isSupervisor", commonService.isSupervisor(commonService.getLoggedUser()));
             modelAndView.addObject("canApprove", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard));
             modelAndView.addObject("canCaptureTargets", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard));
             modelAndView.addObject("canCaptureEmployeeScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard));
@@ -1070,7 +976,7 @@ public class ScorecardController {
             modelAndView.addObject("canModerate", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard));
 
         }catch (Exception e){
-            PortletUtils.addErrorMsg("An error occurred: "+e.getMessage(), request);
+            PortletUtils.addErrorMsg("That scorecard cannot be found", request);
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
         }
 
@@ -1083,32 +989,27 @@ public class ScorecardController {
         Account loggedUser = commonService.getLoggedUser();
         comment.setSender(loggedUser);
         commentService.saveComment(comment);
-        Long scorecardId = comment.getTarget().getOutput().getScorecard().getId();
+        Long scorecardId = comment.getTarget().getGoal().getScorecardId();
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
         URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
 
         String recipient = scorecard.getOwner().getEmail();
         String subject = "Scorecard Comment,";
         String template = "Good day, \n\n"
-                + "Please note that"+ loggedUser.getFullName() +" added a comment on your contract. "
-                + "Goal - measure: [" + comment.getTarget().getOutput().getName() +" - "+ comment.getTarget().getMeasure() +"]\n"
+                + "Please note that"+ loggedUser.getFullName() +" added a comment on your scorecard. "
+                + "Goal - measure: [" + comment.getTarget().getGoal().getName() +" - "+ comment.getTarget().getMeasure() +"]\n"
                 + "Message: "+ comment.getName() + "\n"
                 + "You can now login and response or action\n"
                 + "Link: "+ link + "\n\n"
                 + "Best regards,\n"
-                + "The Performance champions";
+                + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
-//            PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
+            PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg(e.getMessage(), request);
-            System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
-        String referer = request.getHeader("Referer");
-        if (referer != null) {
-            return "redirect:" + referer;
-        }
-
+        PortletUtils.addInfoMsg("Comment successfully saved", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }
 
@@ -1116,7 +1017,7 @@ public class ScorecardController {
     public String saveFlag(HttpServletRequest request, Target updatedTarget) throws MalformedURLException {
 
         Target target = targetService.getTargetById(updatedTarget.getId());
-        long scorecardId = target.getOutput().getScorecard().getId();
+        long scorecardId = target.getGoal().getScorecardId();
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
         target.setFlag(updatedTarget.getFlag());
         targetService.saveTarget(target);
@@ -1126,101 +1027,60 @@ public class ScorecardController {
         String recipient = scorecard.getOwner().getEmail();
         String subject = "Scorecard Comment,";
         String template = "Good day, \n\n"
-                + "Please note that"+ fullName +" flagged a goal on your contract. "
-                + "Goal - measure: [" + target.getOutput().getName() +" - "+ target.getMeasure() +"]\n"
+                + "Please note that"+ fullName +" flagged a goal on your scorecard. "
+                + "Goal - measure: [" + target.getGoal().getName() +" - "+ target.getMeasure() +"]\n"
                 + "Message: "+ target.getFlag() + "\n"
                 + "You can now login and response or action\n"
                 + "Link: "+ link + "\n\n"
                 + "Best regards,\n"
-                + "The Performance champions";
+                + "The ZimTrade Team";
         try {
             mailservice.sendEmail(recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
-            PortletUtils.addErrorMsg(e.getMessage(), request);
-            System.out.println(e.getMessage());
+            PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
-        PortletUtils.addInfoMsg("Target successfully flagged and the reason was saved", request);
+        PortletUtils.addInfoMsg("Measure successfully flagged and the reason was saved", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecardId;
     }
 
     @RequestMapping(value = "/save-standard-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveStandardScore( HttpServletResponse response, Long outputId, Double actual, String evidence, String justification) {
+    public void saveStandardScore( HttpServletResponse response, Long targetId, Double actual, String evidence, String justification) {
 
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-        Output output = outputService.getOutputById(outputId);
+        if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+            writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
+            return;
+        }
+        Target target = targetService.getTargetById(targetId);
 
         Score score = new Score();
-        score.setOutput(output);
+        score.setTarget(target);
         score.setReportingDate(reportingDate);
         score.setEvidence(evidence);
         score.setJustification(justification);
         score.setActual(actual);
 
-        JSONObject jsonObject = new JSONObject();
-
-            standardScorecardScoreService.saveScore(score);
-            jsonObject.put("alreadyExists", false);
-
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+        standardScorecardScoreService.saveScore(score);
+        writeScoreSaveResponse(response);
 
     }
 
     @RequestMapping(value = "/save-value-based-employee-score", method = RequestMethod.POST)
-    public void saveEmployeeScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double employeeScore, String justification) {
-        OverallScore overallScore = new OverallScore();
-        try {
-            Target target = targetService.getTargetById(targetId);
-            Output output = target.getOutput();
-//            Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
-            ReportingDate reportingDate = commonService.getActiveReportingDate(request);
-
-//            if(commonService.isOwner(scorecard)){
-                Score score = new Score();
-                score.setOutput(output);
-                score.setReportingDate(reportingDate);
-                score.setEmployeeScore(employeeScore);
-                score.setJustification(justification);
-               overallScore = valueBasedScoreService.saveEmployeeScore(score, target);
-//            }
-        }catch (Exception ignored){
-
-        }
-
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("alreadyExists", false);
-        String formattedValue = String.format("%.2f", overallScore.getEmployeeOverall());
-        jsonObject.put("employeeOverall", formattedValue);
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+    public void saveEmployeeScore(HttpServletResponse response, Long targetId, Double employeeScore, String justification) {
+        saveValueBasedScore(response, targetId, employeeScore, justification, ValueBasedCaptureStage.EMPLOYEE);
     }
 
     @RequestMapping(value = "/save-value-based-evidence", method = RequestMethod.POST)
     public String saveValueBasedEvidence(EvidenceWrapper wrapper, HttpServletRequest request){
 
         Target target = targetService.getTargetById(wrapper.getTargetId());
-        Output output = target.getOutput();
-        Scorecard scorecard = scorecardService.getScorecardById(output.getScorecard().getId());
+        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
 
         MultipartFile file = wrapper.getAttachment();
         String fileName = file.getOriginalFilename();
         try {
-            if(!Objects.equals(fileName, "")){
+            if(fileName != ""){
                 file.transferTo( new File(fileName));
             }
 
@@ -1228,14 +1088,19 @@ public class ScorecardController {
 
         }
         try {
-//            if(commonService.isOwner(scorecard)){
-                Evidence evidence = new Evidence();
-                evidence.setTarget(target);
-                evidence.setReportingDate(commonService.getActiveReportingDate(request));
-                evidence.setEvidence(wrapper.getEvidence());
-                evidence.setAttachmentName(fileName);
-                evidenceService.saveEvidence(evidence);
-//            }
+            if(commonService.isOwner(scorecard)){
+                ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+                if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+                    PortletUtils.addErrorMsg("Scores can only be captured for an open reporting date", request);
+                    return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
+                }
+                Score score = new Score();
+                score.setTarget(target);
+                score.setReportingDate(reportingDate);
+                score.setEvidence(wrapper.getEvidence());
+                score.setAttachmentName(fileName);
+                valueBasedScoreService.saveEvidence(score);
+            }
         }catch (Exception ignored){
 
         }
@@ -1243,98 +1108,96 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-value-based-manager-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveManagerScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double managerScore) {
-         OverallScore overallScore = new OverallScore();
-        try {
-            Target target = targetService.getTargetById(targetId);
-            Output output = target.getOutput();
-//            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
-            ReportingDate reportingDate = commonService.getActiveReportingDate(request);
-
-//            if(commonService.isSupervisor(scorecard.getOwner())){
-                Score score = new Score();
-                score.setOutput(output);
-                score.setReportingDate(reportingDate);
-                score.setManagerScore(managerScore);
-                overallScore = valueBasedScoreService.saveManagerScore(score);
-//            }
-        }catch (Exception ignored){
-
-        }
-
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("alreadyExists", false);
-        String formattedValue = String.format("%.2f", overallScore.getManagerOverall());
-        jsonObject.put("managerOverall", formattedValue);
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+    public void saveManagerScore(HttpServletResponse response, Long targetId, Double managerScore) {
+        saveValueBasedScore(response, targetId, managerScore, null, ValueBasedCaptureStage.MANAGER);
     }
 
     @RequestMapping(value = "/save-value-based-agreed-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveAgreedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double agreedScore) {
-
-        OverallScore overallScore = new OverallScore();
-        try {
-            Target target = targetService.getTargetById(targetId);
-            Output output = target.getOutput();
-            ReportingDate reportingDate = commonService.getActiveReportingDate(request);
-
-                Score score = new Score();
-                score.setOutput(output);
-                score.setReportingDate(reportingDate);
-                score.setAgreedScore(agreedScore);
-                overallScore = valueBasedScoreService.saveAgreedScore(score);
-        }catch (Exception ignored){
-
-        }
-
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("alreadyExists", false);
-        String formattedValue = String.format("%.2f", overallScore.getAgreedOverall());
-        jsonObject.put("agreedOverall", formattedValue);
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+    public void saveAgreedScore(HttpServletResponse response, Long targetId, Double agreedScore) {
+        saveValueBasedScore(response, targetId, agreedScore, null, ValueBasedCaptureStage.AGREED);
     }
 
     @RequestMapping(value = "/save-value-based-moderated-score", method = RequestMethod.POST, consumes = {"*/*"})
-    public void saveModeratedScore(HttpServletRequest request, HttpServletResponse response, Long targetId, Double moderatedScore) {
-        OverallScore overallScore = new OverallScore();
+    public void saveModeratedScore(HttpServletResponse response, Long targetId, Double moderatedScore) {
+        saveValueBasedScore(response, targetId, moderatedScore, null, ValueBasedCaptureStage.MODERATED);
+    }
+
+    private void saveValueBasedScore(HttpServletResponse response, Long targetId, Double scoreValue, String justification, ValueBasedCaptureStage stage) {
         try {
             Target target = targetService.getTargetById(targetId);
-            Output output = target.getOutput();
-            Scorecard scorecard = scorecardService.getScorecardById(target.getOutput().getScorecard().getId());
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
 
-            if(commonService.isModerator() && PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(scorecard.getApprovalStatus())){
+            if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+                writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
+                return;
+            }
+
+            if(isStageCaptureAllowed(scorecard, stage)){
                 Score score = new Score();
-                score.setOutput(output);
-                score.setReportingDate(commonService.getActiveReportingDate(request));
-                score.setModeratedScore(moderatedScore);
-                score = valueBasedScoreService.saveModeratedScore(score);
+                score.setTarget(target);
+                score.setReportingDate(reportingDate);
+                score.setJustification(justification);
+                persistScoreByStage(score, scoreValue, stage);
             }
         }catch (Exception ignored){
 
         }
+        writeScoreSaveResponse(response);
+    }
 
+    private boolean isStageCaptureAllowed(Scorecard scorecard, ValueBasedCaptureStage stage) {
+        switch (stage) {
+            case EMPLOYEE:
+                return commonService.isOwner(scorecard);
+            case MANAGER:
+            case AGREED:
+                return commonService.isSupervisor(scorecard.getOwner());
+            case MODERATED:
+                return commonService.isModerator() && PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(scorecard.getApprovalStatus());
+            default:
+                return false;
+        }
+    }
+
+    private void persistScoreByStage(Score score, Double scoreValue, ValueBasedCaptureStage stage) {
+        switch (stage) {
+            case EMPLOYEE:
+                score.setEmployeeScore(scoreValue);
+                valueBasedScoreService.saveEmployeeScore(score);
+                break;
+            case MANAGER:
+                score.setManagerScore(scoreValue);
+                valueBasedScoreService.saveManagerScore(score);
+                break;
+            case AGREED:
+                score.setAgreedScore(scoreValue);
+                valueBasedScoreService.saveAgreedScore(score);
+                break;
+            case MODERATED:
+                score.setModeratedScore(scoreValue);
+                valueBasedScoreService.saveModeratedScore(score);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void writeScoreSaveResponse(HttpServletResponse response) {
+        writeScoreSaveResponse(response, false, null);
+    }
+
+    private void writeScoreSaveResponse(HttpServletResponse response, boolean captureBlocked, String message) {
         JSONObject jsonObject = new JSONObject();
-
         jsonObject.put("alreadyExists", false);
+        jsonObject.put("captureBlocked", captureBlocked);
+        if (message != null && !message.trim().isEmpty()) {
+            jsonObject.put("message", message);
+        }
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
             outputStream.write(jsonString.getBytes());
-
         }catch (IOException e){
             throw  new RuntimeException();
         }
@@ -1342,14 +1205,14 @@ public class ScorecardController {
 
     @RequestMapping(value = "/fake-save-scorecard", method = RequestMethod.POST)
     public String fakeSaveScorecard(HttpServletRequest request, Scorecard scorecard) {
-        PortletUtils.addInfoMsg("Contract successfully saved for later. You can update it anytime before submitting for approval", request);
+        PortletUtils.addInfoMsg("Scorecard successfully saved for later. You can update it anytime before submitting for approval", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
     @RequestMapping("/clone-scorecard/{id}")
     public ModelAndView cloneScorecard(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD);
-        modelAndView.addObject("pageTitle", "Clone Contract");
+        modelAndView.addObject("pageTitle", "Clone Scorecard");
         Scorecard scorecard = scorecardService.getScorecardById(id);
         modelAndView.addObject("scorecard", scorecard);
         modelAndView.addObject("owner", scorecard.getOwner());
@@ -1360,7 +1223,7 @@ public class ScorecardController {
     @RequestMapping("/clone-scorecard-select-owner")
     public ModelAndView cloneScorecardSelect(HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD_SELECT_OWNER);
-        modelAndView.addObject("pageTitle", "Clone Contract");
+        modelAndView.addObject("pageTitle", "Clone Scorecard");
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -1370,10 +1233,10 @@ public class ScorecardController {
         Account owner = accountService.getAccountById(id);
         try {
             Scorecard scorecard = scorecardService.getActiveEmployeeScorecardByOwner(owner);
-            PortletUtils.addInfoMsg("You have selected "+ owner.getFullName()+ "'s contract", request);
+            PortletUtils.addInfoMsg("You have selected "+ owner.getFullName()+ "'s scorecard", request);
             return "redirect:/scorecards/clone-scorecard/"+ scorecard.getId();
         }catch (Exception e){
-            PortletUtils.addErrorMsg(owner.getFullName()+ " Does not have an active contract. Please try another employee or You may go to view contracts and select the scorecard you want from the archives", request);
+            PortletUtils.addErrorMsg(owner.getFullName()+ " Does not have an active scorecard. Please try another employee or You may go to view scorecards and select the scorecard you want from the archives", request);
             return "redirect:/scorecards/clone-scorecard-select-owner";
         }
 
@@ -1384,7 +1247,7 @@ public class ScorecardController {
     public String copyScorecard(HttpServletRequest request,Scorecard imaginaryScorecard) {
 
         if (scorecardService.countActiveScorecards(imaginaryScorecard.getOwner(), imaginaryScorecard.getReportingPeriod()) >= 1) {
-            PortletUtils.addErrorMsg(imaginaryScorecard.getOwner().getFullName() + " already has an active contract for the selected reporting period (" + imaginaryScorecard.getReportingPeriod().getStartDate() + " - " + imaginaryScorecard.getReportingPeriod().getEndDate() + ")", request);
+            PortletUtils.addErrorMsg(imaginaryScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + imaginaryScorecard.getReportingPeriod().getStartDate() + " - " + imaginaryScorecard.getReportingPeriod().getEndDate() + ")", request);
             return "redirect:/scorecards/clone-scorecard/"+ imaginaryScorecard.getId();
         } else {
 
@@ -1398,28 +1261,30 @@ public class ScorecardController {
             newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
             newScorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_NEW);
             newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
-            newScorecard.setModel(scorecard.getModel());
 
-            newScorecard = scorecardService.saveScorecard(newScorecard);
+            scorecardService.saveScorecard(newScorecard);
             long id = newScorecard.getId();
-            List<Output> outputs = outputService.listAllOutputs(scorecard);
+            List<Goal> goalList = goalService.listAllGoals(scorecard.getId());
 
-            for (Output output : outputs) {
-                Output newOutput = new Output();
+            for (Goal goal : goalList) {
+                Goal newGoal = new Goal();
 
-                newOutput.setScorecard(newScorecard);
-                newOutput.setOutcome(output.getOutcome());
-                newOutput.setAllocatedWeight(output.getAllocatedWeight());
-                newOutput.setName(output.getName());
+                newGoal.setScorecardId(id);
+                newGoal.setPerspective(goal.getPerspective());
+                newGoal.setStrategicObjective(goal.getStrategicObjective());
+                newGoal.setName(goal.getName());
 
-                Output savedOut = outputService.saveOutput(newOutput);
+                Goal savedGoal = goalService.saveGoal(newGoal);
 
-                List<Target> targetList = targetService.getAllTargetsByOutput(output);
+                List<Target> targetList = targetService.getAllTargetsByGoal(goal);
                 for(Target target: targetList){
                     Target newTarget = new Target();
-                    newTarget.setOutput(savedOut);
+                    newTarget.setGoal(savedGoal);
+                    newTarget.setPerspective(target.getPerspective());
+                    newTarget.setStrategicObjective(target.getStrategicObjective());
                     newTarget.setMeasure(target.getMeasure());
                     newTarget.setUnit(target.getUnit());
+                    newTarget.setAllocatedWeight(target.getAllocatedWeight());
                     newTarget.setNormalTarget(target.getNormalTarget());
                     newTarget.setBaseTarget(target.getBaseTarget());
                     newTarget.setStretchTarget(target.getStretchTarget());
@@ -1429,14 +1294,14 @@ public class ScorecardController {
 
             }
             String recipient = imaginaryScorecard.getOwner().getEmail();
-            String subject = "Contract Creation,";
+            String subject = "Scorecard Creation,";
             String template = "Good day, \n\n"
-                    + "We are pleased to notify you that your contract has been cloned and is already populated with targets. "
+                    + "We are pleased to notify you that your scorecard has been cloned and is already populated with targets. "
                     + "You can now login and modify targets to match your performance goals\n\n"
                     + "Best regards,\n"
-                    + "The Performance champions";
+                    + "The ZimTrade Team";
             try {
-//                mailservice.sendEmail(recipient, subject, template);
+                mailservice.sendEmail(recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -1507,197 +1372,4 @@ public class ScorecardController {
         }
     }
 
-    @RequestMapping(value = "/select-gear", method = RequestMethod.POST)
-    public String selectGear(HttpServletRequest request, long gearId, long scorecardId) {
-
-        Gear gear = gearService.getGearById(gearId);
-        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
-        if(gear.getGoals().isEmpty()){
-            PortletUtils.addErrorMsg("Not added. The records are not well cascaded. Contact the admin who can put all pre requisites.", request);
-        }
-        for(Goal goal : gear.getGoals()){
-            if(goal.getOutcomes().isEmpty() && "gear".equalsIgnoreCase(gear.getCategory())){
-                PortletUtils.addErrorMsg("Not added. The records are not well cascaded. Contact the admin who can add outcomes to all goals under this gear.", request);
-            }else if(goal.getPillars().isEmpty() && "programme".equalsIgnoreCase(gear.getCategory())){
-                PortletUtils.addErrorMsg("Not added. The records are not well cascaded. Contact the admin who can add pillars and strategic goals under this programme.", request);
-            }
-            if("programme".equalsIgnoreCase(gear.getCategory())){
-                for(Pillar pillar: goal.getPillars()){
-                    for(Outcome outcome : pillar.getOutcomes()){
-                        Output output = new Output();
-                        output.setOutcome(outcome);
-                        output.setScorecard(scorecard);
-                        output = outputService.saveOutput(output);
-                    }
-                }
-            }else if("gear".equalsIgnoreCase(gear.getCategory())){
-                for(Outcome outcome: goal.getOutcomes()){
-                    Output output = new Output();
-                    output.setOutcome(outcome);
-                    output.setScorecard(scorecard);
-                    output = outputService.saveOutput(output);
-                }
-            }else {
-                PortletUtils.addErrorMsg("Unknown category for this metric. contact the admin", request);
-            }
-
-        }
-
-        return "redirect:/scorecards/capture-targets/"+ scorecardId;
-    }
-
-
-    @RequestMapping(value = "/save-output-target", method = RequestMethod.POST)
-    public String saveOutputTarget(OutputWrapper wrapper) {
-
-              Output output = new Output();
-              output.setScorecard(scorecardService.getScorecardById(wrapper.getScorecardId()));
-              output.setName(wrapper.getName());
-              output.setOutcome(outcomeService.getOutcomeById(wrapper.getOutcomeId()));
-              output.setAllocatedWeight(wrapper.getAllocatedWeight());
-              output = outputService.saveOutput(output);
-
-              Target target = new Target();
-              target.setMeasure(wrapper.getMeasure());
-              target.setNormalTarget(wrapper.getNormalTarget());
-              target.setBaseTarget(wrapper.getBaseTarget());
-              target.setOutput(output);
-              target.setUnit(wrapper.getUnit());
-              target = targetService.saveTarget(target);
-
-        return "redirect:/scorecards/capture-targets/"+ wrapper.getScorecardId();
-    }
-
-    private int getScoreColumns(Scorecard scorecard, boolean isCapturing){
-
-        int columns = 0;
-        String status = scorecard.getApprovalStatus();
-        switch (status){
-            case "SCORED_BY_EMPLOYEE":
-                columns = 1;
-                break;
-            case "SCORED_BY_SUPERVISOR":
-                columns = 2;
-                break;
-            case "AGREED_BY_TWO":
-                columns = 3;
-                break;
-            case "MODERATED_BY_HR":
-            case "CLOSED":
-                columns = 4;
-                break;
-            default:
-                break;
-        }
-        if(isCapturing){
-            columns += 1;
-        }
-       return columns;
-    }
-
-    @RequestMapping(value = "/save-overall-score", method = RequestMethod.POST)
-    public void saveOverallScore(HttpServletRequest request, HttpServletResponse response, Long scorecardId, String userType, Double score) throws MalformedURLException {
-
-        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-
-        OverallScore overallScore =  overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-        if(overallScore == null){
-            overallScore = new OverallScore();
-            overallScore.setReportingDate(reportingDate);
-            overallScore.setScorecard(scorecard);
-        }
-
-        if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
-            overallScore.setModeratedOverall(score);
-        }
-
-        overallScore = overallScoreService.saveOverallScore(overallScore);
-
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("alreadyExists", false);
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
-    }
-
-    @RequestMapping(value = "/update-evidence", method = RequestMethod.POST)
-    public String updateEvidence() {
-
-        List<Scorecard> scorecards = scorecardService.listAllScorecards(1);
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-
-        for(Scorecard scorecard: scorecards){
-            List<Output> outputs = outputService.listAllOutputs(scorecard);
-            for(Output output: outputs){
-                for(Target target: output.getTargets()){
-                    Evidence evidence = new Evidence();
-                    evidence.setJustification(target.getCurrentJustification());
-                    evidence.setAttachmentName(target.getCurrentAttachmentName());
-                    evidence.setReportingDate(reportingDate);
-                    evidence.setEvidence(target.getCurrentEvidence());
-                    evidence.setTarget(target);
-
-                    if(evidence.getEvidence() == null && evidence.getJustification() == null && evidence.getAttachmentName() == null){
-
-                    }else {
-                        evidenceService.saveEvidence(evidence);
-                    }
-                }
-            }
-        }
-
-        return "redirect:/";
-    }
-
-    public static boolean isMatchFound(List<Score> scores, ReportingDate reportingDate) {
-        for (Score score : scores) {
-            if (score.getReportingDate().getId() == reportingDate.getId()) {
-                return true;
-            }
-        }
-        return false;
-    }
-    public static boolean isCommentFound(List<OverallComment> comments, ReportingDate reportingDate) {
-        for (OverallComment comment : comments) {
-            if (comment.getReportingDate().getId() == reportingDate.getId()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public ModelAndView addTerminology(ModelAndView modelAndView) {
-        if(modelAndView.getModel().containsKey("scorecard")){
-            String stage1, stage2,stage3,stage4, model;
-            Scorecard scorecard = (Scorecard) modelAndView.getModel().get("scorecard");
-            if("programme".equalsIgnoreCase(scorecard.getModel())){
-                stage1 = "Programme";
-                stage2 = "Outcome";
-                stage3 = "Pillar";
-                stage4 = "Strategic goal";
-                model = "programme";
-            }else {
-                stage1 = "Gear";
-                stage2 = "Goal";
-                stage3 = "goal";
-                stage4 = "Outcome";
-                model = "gear";
-            }
-            modelAndView.addObject("stage1", stage1);
-            modelAndView.addObject("stage2", stage2);
-            modelAndView.addObject("stage3", stage3);
-            modelAndView.addObject("stage4", stage4);
-            modelAndView.addObject("model", model);
-        };
-
-        return modelAndView;
-    }
 }

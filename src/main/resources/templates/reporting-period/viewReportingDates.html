@@ -17,6 +17,7 @@
         th:href="@{/css/animate.css}">
   <link href="../../../static/css/style.css" rel="stylesheet"
         th:href="@{/css/style.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
 
   <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet"
         th:href="@{/css/plugins/select2/select2.min.css}">
@@ -27,7 +28,7 @@
 
 </head>
 
-<body>
+<body class="fixed-nav">
 
 <div id="wrapper">
   <div th:replace="fragments/template :: side-menu"></div>
@@ -46,6 +47,12 @@
             <div class="ibox-title">
               <h4>Reporting Period : <span th:text="${reportingPeriod.startDate} + ' - ' + ${reportingPeriod.endDate}" class="text-success"></span></h4>
               <div class="ibox-tools">
+                <a class="btn btn-default btn-sm" th:href="@{/reporting-periods}">
+                  <i class="fa fa-arrow-left"></i> Reporting Periods
+                </a>
+                <a class="btn btn-default btn-sm" th:href="@{/reporting-periods/strategic-goals/} + ${reportingPeriod.id}">
+                  <i class="fa fa-bullseye"></i> Strategic Objectives
+                </a>
                 <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addModal">Add New Reporting Date</button>
               </div>
             </div>
@@ -63,11 +70,16 @@
                     <tbody>
                     <tr th:each="reportingDate, stat :${reportingDateList}">
                       <td th:text="${reportingDate.endDate}"></td>
-                      <td th:text="${reportingDate.status}"></td>
                       <td>
-                        <a data-toggle="modal" th:data-target="'#deleteModal'+ ${reportingDate.id}">
-                          <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                        </a>
+                        <span class="label label-primary"
+                              th:if="${reportingDate.status != null and (reportingDate.status.equalsIgnoreCase('OPEN') or reportingDate.status.equalsIgnoreCase('ACTIVE'))}"
+                              th:text="${reportingDate.status}">OPEN</span>
+                        <span class="label label-default"
+                              th:if="${reportingDate.status == null or (!reportingDate.status.equalsIgnoreCase('OPEN') and !reportingDate.status.equalsIgnoreCase('ACTIVE'))}"
+                              th:text="${reportingDate.status != null ? reportingDate.status : 'CLOSED'}">CLOSED</span>
+                      </td>
+                      <td>
+                        <button class="btn btn-danger btn-sm" type="button" data-toggle="modal" data-target="#exampleModal">Delete</button>
                         <button class="btn btn-success btn-sm" data-toggle="modal" th:data-target="'#modal'+ ${stat.index}">
                           Edit
                         </button>
@@ -76,7 +88,7 @@
                           <div class="modal-dialog" role="document">
                             <div class="modal-content">
                               <div class="modal-header">
-                                <h5 class="modal-title">Edit Reporting Date</h5>
+                                <h5 class="modal-title">Add Reporting Date</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                   <span aria-hidden="true">&times;</span>
                                 </button>
@@ -84,12 +96,13 @@
                               <form method="post" th:object="${reportingDate}" th:action="@{/reporting-periods/save-reporting-date}">
                                 <div class="modal-body">
                                   <div class="row">
+                                    <input type="hidden" name="id" th:value="${reportingDate.id}">
                                     <div class="col-12">
                                       <div class="form-group row">
                                         <label class="col-form-label col-4">Reporting Date</label>
                                         <div class="col-8">
                                           <div class="input-group m-b">
-                                            <input type="text" name="endDate" id="endDate" class="form-control" th:value="${reportingDate.endDate}">
+                                            <input type="date" name="endDate" class="form-control" th:value="${reportingDate.endDate}">
                                           </div>
                                         </div>
                                       </div>
@@ -99,13 +112,12 @@
                                         <label class="col-form-label col-4">Reporting Period</label>
                                         <div class="col-8">
                                           <div class="input-group m-b">
-                                            <select name="reportingPeriod" class="form-control">
+                                            <select name="reportingPeriod.id" class="form-control">
                                             <option th:value="${reportingDate.reportingPeriod?.id}" th:text="${reportingDate.reportingPeriod?.startDate} +' - '+ ${reportingDate.reportingPeriod?.endDate}" selected></option>
                                             <option th:each="period :${reportingPeriodsList}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
                                               1
                                             </option>
                                             </select>
-                                            <input type="hidden" th:value="${reportingDate.id}" name="id" id="id">
                                           </div>
                                         </div>
                                       </div>
@@ -115,9 +127,9 @@
                                         <label class="col-form-label col-4">Status</label>
                                         <div class="col-8">
                                           <div class="input-group m-b">
-                                            <select name="status" id="status" class="form-control">
-                                              <option value="IN_ACTIVE">IN ACTIVE</option>
-                                              <option value="ACTIVE">ACTIVE</option>
+                                            <select name="status" class="form-control">
+                                              <option value="OPEN" th:selected="${reportingDate.status != null and (reportingDate.status.equalsIgnoreCase('OPEN') or reportingDate.status.equalsIgnoreCase('ACTIVE'))}">OPEN</option>
+                                              <option value="CLOSED" th:selected="${reportingDate.status == null or reportingDate.status.equalsIgnoreCase('CLOSED') or reportingDate.status.equalsIgnoreCase('IN_ACTIVE')}">CLOSED</option>
                                             </select>
                                           </div>
                                         </div>
@@ -134,35 +146,6 @@
                           </div>
                         </div>
 
-                        <div class="modal fade" th:id="'deleteModal'+ ${reportingDate.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                          <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                              <div class="modal-header">
-                                <h5 class="modal-title">Delete Reporting Date</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                  <span aria-hidden="true">&times;</span>
-                                </button>
-                              </div>
-                              <form method="post" th:action="@{/reporting-periods/delete-reporting-date}">
-                                <div class="modal-body">
-                                  <div class="row">
-                                    <div class="col-12">
-                                      <h5 class="text-danger"> Are you sure you want to delete this record?</h5>
-                                    </div>
-                                    <div class="col-12">
-                                      <h3 th:text="${reportingDate.endDate}"></h3>
-                                    </div>
-                                    <input type="hidden" th:value="${reportingDate.id}" name="id">
-                                  </div>
-                                </div>
-                                <div class="modal-footer">
-                                  <button type="button" class="btn btn-waring" data-dismiss="modal">Cancel</button>
-                                  <button type="submit" class="btn btn-danger">Yes Delete</button>
-                                </div>
-                              </form>
-                            </div>
-                          </div>
-                        </div>
 
                       </td>
                     </tr>
@@ -209,8 +192,21 @@
                 <label class="col-form-label col-4">Reporting Period</label>
                 <div class="col-8">
                   <div class="input-group m-b">
-                    <select name="reportingPeriod" class="form-control">
+                    <select name="reportingPeriod.id" class="form-control">
                       <option th:value="${reportingPeriod.id}" th:text="${reportingPeriod.startDate} +' - '+${reportingPeriod.endDate}" selected></option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-group row">
+                <label class="col-form-label col-4">Status</label>
+                <div class="col-8">
+                  <div class="input-group m-b">
+                    <select name="status" class="form-control">
+                      <option value="OPEN">OPEN</option>
+                      <option value="CLOSED" selected>CLOSED</option>
                     </select>
                   </div>
                 </div>

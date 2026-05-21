@@ -17,6 +17,7 @@
           th:href="@{/css/animate.css}">
     <link href="../../../static/css/style.css" rel="stylesheet"
           th:href="@{/css/style.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
     <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet"
           th:href="@{/css/plugins/select2/select2.min.css}">
     <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet"
@@ -25,7 +26,7 @@
 
 </head>
 
-<body>
+<body class="fixed-nav">
 
 <div id="wrapper">
     <div th:replace="fragments/template :: side-menu"></div>
@@ -38,6 +39,9 @@
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom col-8">
+                <div class="alert alert-warning" th:if="${accountWarnings != null and !accountWarnings.isEmpty()}">
+                    <div th:each="warning : ${accountWarnings}" th:text="${warning}">Warning</div>
+                </div>
                 <form th:action="@{/accounts/update-account}" method="post" th:object="${account}">
                     <div class="row">
                         <div class="col-sm-12">
@@ -66,11 +70,11 @@
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Supervisor</label>
+                                <label class="col-form-label col-lg-4">Supervisor</label>
                                 <div class="col-lg-8">
-                                    <select class=" select2_demo_1 form-control " required
+                                    <select class=" select2_demo_1 form-control "
                                             th:field="*{supervisor}">
-                                        <option selected th:value="${account.supervisor?.id}" th:text="${account.supervisor?.fullName}"></option>
+                                        <option value="" th:text="${hasSupervisors ? '--Optional Supervisor--' : '--No Supervisors Available Yet--'}"></option>
                                         <option th:each="account :${accountsList}" th:value="${account.id}"
                                                 th:text="${account.fullName}">Option 1
                                         </option>
@@ -81,11 +85,11 @@
 
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Department</label>
+                                <label class="col-form-label col-lg-4">Department</label>
                                 <div class="col-lg-8">
-                                    <select class="select2_demo_1 form-control" name="department" required
+                                    <select class="select2_demo_1 form-control" name="department" th:required="${hasDepartments}"
                                             th:field="*{department}">
-                                        <option selected th:value="${account.department?.id}" th:text="${account.department?.name}"></option>
+                                        <option value="" th:text="${hasDepartments ? '--Select Department--' : '--No Departments Configured--'}"></option>
                                         <option th:each="department :${departmentsList}" th:value="${department.id}" th:text="${department.name}">Option
                                             1
                                         </option>
@@ -122,10 +126,10 @@
                         </div>
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Division</label>
+                                <label class="col-form-label col-lg-4">Division</label>
                                 <div class="col-lg-8">
-                                    <select class="select2_demo_1 form-control" required th:field="*{division}">
-                                        <option selected th:value="${account.division?.id}" th:text="${account.division?.name}"></option>
+                                    <select class="select2_demo_1 form-control" th:required="${hasDivisions}" th:field="*{division}">
+                                        <option value="" th:text="${hasDivisions ? '--Select Division--' : '--No Divisions Configured--'}"></option>
                                         <option th:each="division :${divisionsList}" th:value="${division.id}" th:text="${division.name}">Option
                                             1
                                         </option>

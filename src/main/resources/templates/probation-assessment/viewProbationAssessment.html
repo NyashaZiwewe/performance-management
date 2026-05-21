@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Management</title>
+
+    <link href="../../../static/css/bootstrap.min.css" rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    <link href="../../../static/font-awesome/css/font-awesome.css" rel="stylesheet" th:href="@{/font-awesome/css/font-awesome.css}">
+    <link href="../../../static/css/animate.css" rel="stylesheet" th:href="@{/css/animate.css}">
+    <link href="../../../static/css/style.css" rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
+</head>
+<body class="fixed-nav">
+<div id="wrapper">
+    <div th:replace="fragments/template :: side-menu"></div>
+    <div id="page-wrapper" class="gray-bg">
+        <div th:replace="fragments/template :: top-navbar"></div>
+        <div th:replace="fragments/template :: page-heading"></div>
+        <div th:replace="fragments/template :: alerts"></div>
+
+        <div class="wrapper wrapper-content animated fadeInRight ecommerce">
+            <div class="ibox row">
+                <div class="ibox-content border-bottom col-12">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <h3 th:text="${assessment.employee?.fullName}"></h3>
+                            <p>
+                                <strong>Performance Period:</strong>
+                                <span th:text="${assessment.performancePeriod}"></span>
+                                |
+                                <strong>Start:</strong>
+                                <span th:text="${assessment.startDate}"></span>
+                                |
+                                <strong>End:</strong>
+                                <span th:text="${assessment.endDate}"></span>
+                            </p>
+                        </div>
+                        <div class="col-lg-4 text-right">
+                            <span class="badge badge-info" th:text="${assessment.status}"></span>
+                            <br>
+                            <small th:if="${assessment.currentStepName != null}">
+                                Current Step: <strong th:text="${assessment.currentStepName}"></strong>
+                            </small>
+                        </div>
+                    </div>
+
+                    <form th:action="@{/probation-assessments/update-assessment}" method="post" th:if="${isOwner}">
+                        <input type="hidden" name="id" th:value="${assessment.id}">
+                        <input type="hidden" name="employee" th:value="${assessment.employee?.id}">
+                        <input type="hidden" name="status" th:value="${assessment.status}">
+                        <input type="hidden" name="performancePeriod" th:value="${assessment.performancePeriod}">
+                        <input type="hidden" name="startDate" th:value="${assessment.startDate}">
+                        <input type="hidden" name="endDate" th:value="${assessment.endDate}">
+                        <input type="hidden" name="supervisorComment" th:value="${assessment.supervisorComment}">
+                        <div class="form-group">
+                            <label>General Observations</label>
+                            <textarea class="form-control" name="generalObservations" rows="3" th:text="${assessment.generalObservations}"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Employee Comments</label>
+                            <textarea class="form-control" name="employeeComment" rows="3" th:text="${assessment.employeeComment}"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success btn-sm" type="submit">Save Section</button>
+                        </div>
+                    </form>
+
+                    <form th:action="@{/probation-assessments/update-assessment}" method="post" th:if="${isSupervisor}">
+                        <input type="hidden" name="id" th:value="${assessment.id}">
+                        <input type="hidden" name="employee" th:value="${assessment.employee?.id}">
+                        <input type="hidden" name="status" th:value="${assessment.status}">
+                        <input type="hidden" name="performancePeriod" th:value="${assessment.performancePeriod}">
+                        <input type="hidden" name="startDate" th:value="${assessment.startDate}">
+                        <input type="hidden" name="endDate" th:value="${assessment.endDate}">
+                        <input type="hidden" name="generalObservations" th:value="${assessment.generalObservations}">
+                        <input type="hidden" name="employeeComment" th:value="${assessment.employeeComment}">
+                        <div class="form-group">
+                            <label>Supervisor Comments</label>
+                            <textarea class="form-control" name="supervisorComment" rows="3" th:text="${assessment.supervisorComment}"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success btn-sm" type="submit">Save Supervisor Comment</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="ibox-content border-bottom col-12">
+                    <h4>Personal Dimensions</h4>
+                    <table class="table table-bordered">
+                        <thead>
+                        <tr>
+                            <th style="width: 25%">Dimension</th>
+                            <th style="width: 30%">Standard/Description</th>
+                            <th style="width: 40%">Comments</th>
+                            <th style="width: 5%"></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="dimension : ${dimensionResponses}">
+                            <td>
+                                <strong th:text="${dimension.dimensionTemplate.code}"></strong><br>
+                                <span th:text="${dimension.dimensionTemplate.title}"></span>
+                            </td>
+                            <td th:text="${dimension.dimensionTemplate.description}"></td>
+                            <td>
+                                <form th:action="@{/probation-assessments/save-dimension-response}" method="post">
+                                    <input type="hidden" name="assessmentId" th:value="${assessment.id}">
+                                    <input type="hidden" name="dimensionTemplateId" th:value="${dimension.dimensionTemplate.id}">
+                                    <label class="text-muted small">Strengths</label>
+                                    <textarea class="form-control" name="strengths" rows="3" th:text="${dimension.strengths}" th:readonly="${!isOwner && !isSupervisor}"></textarea>
+                                    <label class="text-muted small mt-1">Areas for Improvement</label>
+                                    <textarea class="form-control mt-1" name="areasForImprovement" rows="3" th:text="${dimension.areasForImprovement}" th:readonly="${!isOwner && !isSupervisor}"></textarea>
+                            </td>
+                            <td>
+                                    <button class="btn btn-xs btn-success mt-1" type="submit" th:if="${isOwner || isSupervisor}">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(dimensionResponses)}">
+                            <td colspan="4">No dimension templates configured. Configure them first.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ibox-content border-bottom col-12">
+                    <h4>Probation Contract KPIs</h4>
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                        <tr>
+                            <th>KPI</th>
+                            <th>Target</th>
+                            <th>Progress %</th>
+                            <th>Progress Comment</th>
+                            <th>Incumbent Comment</th>
+                            <th>Supervisor Comment</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="kpi : ${kpis}">
+                            <form th:action="@{/probation-assessments/update-kpi}" method="post">
+                                <td>
+                                    <input type="hidden" name="assessmentId" th:value="${assessment.id}">
+                                    <input type="hidden" name="id" th:value="${kpi.id}">
+                                    <input type="text" class="form-control" name="name" th:value="${kpi.name}" th:readonly="${!isOwner && !isSupervisor}">
+                                </td>
+                                <td><input type="text" class="form-control" name="target" th:value="${kpi.target}" th:readonly="${!isOwner && !isSupervisor}"></td>
+                                <td><input type="number" step="any" min="0" max="100" class="form-control" name="progressPercent" th:value="${kpi.progressPercent}" th:readonly="${!isOwner && !isSupervisor}"></td>
+                                <td><input type="text" class="form-control" name="progressComment" th:value="${kpi.progressComment}" th:readonly="${!isOwner && !isSupervisor}"></td>
+                                <td><input type="text" class="form-control" name="incumbentComment" th:value="${kpi.incumbentComment}" th:readonly="${!isOwner && !isSupervisor}"></td>
+                                <td><input type="text" class="form-control" name="supervisorComment" th:value="${kpi.supervisorComment}" th:readonly="${!isOwner && !isSupervisor}"></td>
+                                <td>
+                                    <button class="btn btn-xs btn-success" type="submit" th:if="${isOwner || isSupervisor}">Save</button>
+                                    <button class="btn btn-xs btn-danger" type="submit" formaction="/probation-assessments/delete-kpi" formmethod="post" name="kpiId" th:value="${kpi.id}" th:if="${isOwner || isSupervisor}">Delete</button>
+                                </td>
+                            </form>
+                        </tr>
+                        <tr th:if="${isOwner || isSupervisor}">
+                            <form th:action="@{/probation-assessments/add-kpi}" method="post">
+                                <td>
+                                    <input type="hidden" name="assessmentId" th:value="${assessment.id}">
+                                    <input type="text" class="form-control" name="name" required>
+                                </td>
+                                <td><input type="text" class="form-control" name="target"></td>
+                                <td><input type="number" step="any" min="0" max="100" class="form-control" name="progressPercent"></td>
+                                <td><input type="text" class="form-control" name="progressComment"></td>
+                                <td><input type="text" class="form-control" name="incumbentComment"></td>
+                                <td><input type="text" class="form-control" name="supervisorComment"></td>
+                                <td><button class="btn btn-xs btn-primary" type="submit">Add KPI</button></td>
+                            </form>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(kpis)}">
+                            <td colspan="7">No KPI rows yet.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="ibox-content border-bottom col-12">
+                    <h4>Evaluation Submission</h4>
+                    <p th:if="${!workflowConfigured}" class="text-danger">No active workflow is configured. Configure and activate workflow steps first.</p>
+
+                    <div class="row">
+                        <div class="col-lg-6" th:if="${canSubmit}">
+                            <form th:action="@{/probation-assessments/submit-assessment}" method="post">
+                                <input type="hidden" name="id" th:value="${assessment.id}">
+                                <div class="form-group">
+                                    <label>Submission Notes</label>
+                                    <textarea class="form-control" name="remarks" rows="2"></textarea>
+                                </div>
+                                <button class="btn btn-success" type="submit">Submit to Workflow</button>
+                            </form>
+                        </div>
+                        <div class="col-lg-6" th:if="${canApprove}">
+                            <form th:action="@{/probation-assessments/approve-assessment}" method="post" style="margin-bottom: 6px;">
+                                <input type="hidden" name="id" th:value="${assessment.id}">
+                                <div class="form-group">
+                                    <label>Approval Remarks</label>
+                                    <textarea class="form-control" name="remarks" rows="2"></textarea>
+                                </div>
+                                <button class="btn btn-primary" type="submit">Approve This Step</button>
+                            </form>
+
+                            <form th:action="@{/probation-assessments/reject-assessment}" method="post">
+                                <input type="hidden" name="id" th:value="${assessment.id}">
+                                <div class="form-group">
+                                    <label>Rejection Remarks</label>
+                                    <textarea class="form-control" name="remarks" rows="2" required></textarea>
+                                </div>
+                                <button class="btn btn-danger" type="submit">Reject and Return</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ibox-content border-bottom col-12">
+                    <h4>Approval Trail</h4>
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Step</th>
+                            <th>Action</th>
+                            <th>By</th>
+                            <th>Remarks</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${approvalHistory}">
+                            <td th:text="${item.date}"></td>
+                            <td th:text="${item.workflowStepName}"></td>
+                            <td th:text="${item.action}"></td>
+                            <td th:text="${item.actor?.fullName}"></td>
+                            <td th:text="${item.remarks}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(approvalHistory)}">
+                            <td colspan="5">No actions recorded yet.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="fragments/template :: footer"></div>
+    </div>
+</div>
+
+<script src="../../../static/js/jquery-3.6.0.min.js" th:src="@{/js/jquery-3.6.0.min.js}"></script>
+<script src="../../../static/js/popper.min.js" th:src="@{/js/popper.min.js}"></script>
+<script src="../../../static./js/bootstrap.js" th:src="@{/js/bootstrap.js}"></script>
+<script src="../../../static/js/plugins/metisMenu/jquery.metisMenu.js" th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+<script src="../../../static/js/inspinia.js" th:src="@{/js/inspinia.js}"></script>
+<script src="../../../static/js/plugins/pace/pace.min.js" th:src="@{/js/plugins/pace/pace.min.js}"></script>
+</body>
+</html>

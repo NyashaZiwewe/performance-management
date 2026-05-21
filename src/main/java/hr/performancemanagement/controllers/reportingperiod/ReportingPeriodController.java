@@ -1,16 +1,14 @@
 package hr.performancemanagement.controllers.reportingperiod;
-import hr.performancemanagement.entities.Goal;
+
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
-import hr.performancemanagement.repository.ReportingPeriodRepository;
-import hr.performancemanagement.service.ReportingDateService;
-import hr.performancemanagement.service.ReportingPeriodService;
-import hr.performancemanagement.service.GoalService;
+import hr.performancemanagement.entities.StrategicObjective;
+import hr.performancemanagement.service.api.ReportingDateService;
+import hr.performancemanagement.service.api.ReportingPeriodService;
+import hr.performancemanagement.service.api.StrategicObjectiveService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
-import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,21 +16,23 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping(value = "/reporting-periods")
 public class ReportingPeriodController {
 
+    private final ReportingPeriodService reportingPeriodService;
+    private final StrategicObjectiveService strategicObjectiveService;
+    private final ReportingDateService reportingDateService;
 
-    @Autowired
-    ReportingPeriodRepository reportingPeriodRepository;
-    @Autowired
-    ReportingPeriodService reportingPeriodService;
-    @Autowired
-    GoalService goalService;
-    @Autowired
-    ReportingDateService reportingDateService;
+    public ReportingPeriodController(ReportingPeriodService reportingPeriodService, StrategicObjectiveService strategicObjectiveService, ReportingDateService reportingDateService) {
+        this.reportingPeriodService = reportingPeriodService;
+        this.strategicObjectiveService = strategicObjectiveService;
+        this.reportingDateService = reportingDateService;
+    }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
 
@@ -46,8 +46,16 @@ public class ReportingPeriodController {
     public ModelAndView viewReportingPeriods(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_REPORTING_PERIODS);
         modelAndView.addObject("pageTitle", "View ReportingPeriods");
-        List<ReportingPeriod> reportingPeriodsList = reportingPeriodRepository.findAll();
+        List<ReportingPeriod> reportingPeriodsList = reportingPeriodService.listAllReportingPeriods();
+        Map<Long, Long> strategicObjectiveCounts = new HashMap<Long, Long>();
+        Map<Long, Long> reportingDateCounts = new HashMap<Long, Long>();
+        for (ReportingPeriod period : reportingPeriodsList) {
+            strategicObjectiveCounts.put(period.getId(), strategicObjectiveService.countStrategicObjectives(period.getId()));
+            reportingDateCounts.put(period.getId(), reportingDateService.countReportingDates(period.getId()));
+        }
         modelAndView.addObject("reportingPeriodsList", reportingPeriodsList);
+        modelAndView.addObject("strategicObjectiveCounts", strategicObjectiveCounts);
+        modelAndView.addObject("reportingDateCounts", reportingDateCounts);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -92,25 +100,15 @@ public class ReportingPeriodController {
         return "redirect:/reporting-periods";
     }
 
-    @RequestMapping(value = "/delete-reporting-period", method = RequestMethod.POST)
-    public String deleteReportingPeriod(HttpServletRequest request, long id) {
-        try {
-            reportingPeriodService.deleteReportingPeriod(id);
-            PortletUtils.addInfoMsg("Reporting period successfully deleted.", request);
-        }catch (Exception e){
-            PortletUtils.addErrorMsg("Failed because "+ e.getMessage(), request);
-        }
-        return "redirect:/reporting-periods";
-    }
-
     @RequestMapping("/strategic-goals/{id}")
-    public ModelAndView viewGoals(@PathVariable("id") long id, HttpServletRequest request) {
+    public ModelAndView viewStrategicObjectives(@PathVariable("id") long id, HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_STRATEGIC_OBJECTIVES);
         modelAndView.addObject("pageTitle", "View Strategic Objectives");
-        List<Goal> GoalsList = goalService.listAllGoals(id);
-        modelAndView.addObject("goalsList", GoalsList);
+        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(id);
+        modelAndView.addObject("strategicObjectivesList", strategicObjectivesList);
         modelAndView.addObject("reportingPeriod", reportingPeriodService.getReportingPeriodById(id));
-        modelAndView.addObject("goal", goalService.getGoalById(id));
+        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
+        modelAndView.addObject("strategicObjective", new StrategicObjective());
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -123,36 +121,31 @@ public class ReportingPeriodController {
         List<ReportingDate> reportingDateList = reportingDateService.listAllReportingDates(reportingPeriod);
         modelAndView.addObject("reportingDateList", reportingDateList);
         modelAndView.addObject("reportingPeriod", reportingPeriod);
+        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
+        modelAndView.addObject("reportingDate", new ReportingDate());
 
         preparePage(modelAndView, request);
         return modelAndView;
     }
-//    @RequestMapping(value = "/add-strategic-objective", method = RequestMethod.POST)
-//    public String addStrategicObjective(HttpServletRequest request, Goal goal) {
-//       try{
-//          Goal goal1 = goalService.addGoal(goal, request);
-//           PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
-//       }catch (Exception e){
-//
-//       }
-//        return "redirect:/reporting-periods/strategic-goals/" + goal.getReportingPeriod().getId();
-//    }
-//
-//    @RequestMapping(value = "/save-strategic-objective", method = RequestMethod.POST)
-//    public String saveStrategicObjective( HttpServletRequest request, Goal goal) {
-//
-//        try{
-//            Goal goal1 = goalService.addGoal(goal, request);
-//            PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
-//        }catch (Exception e){
-//
-//        }
-//        return "redirect:/reporting-periods/strategic-goals/" + goal.getReportingPeriod().getId();
-//    }
+    @RequestMapping(value = "/add-strategic-objective", method = RequestMethod.POST)
+    public String addStrategicObjective(HttpServletRequest request, StrategicObjective newStrategicObjective) {
+
+        strategicObjectiveService.addStrategicObjective(newStrategicObjective);
+        PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
+        return "redirect:/reporting-periods/strategic-goals/" + newStrategicObjective.getReportingPeriod().getId();
+    }
+
+    @RequestMapping(value = "/save-strategic-objective", method = RequestMethod.POST)
+    public String saveStrategicObjective( HttpServletRequest request, StrategicObjective strategicObjective) {
+
+        strategicObjectiveService.saveStrategicObjective(strategicObjective);
+        PortletUtils.addInfoMsg("Strategic goal successfully updated.", request);
+        return "redirect:/reporting-periods/strategic-goals/" + strategicObjective.getReportingPeriod().getId();
+    }
 
     @RequestMapping(value = "/add-reporting-date", method = RequestMethod.POST)
     public String addReportingDate(HttpServletRequest request, ReportingDate newReportingDate) {
-        newReportingDate.setStatus(PMConstants.STATUS_IN_ACTIVE);
+
         reportingDateService.saveReportingDate(newReportingDate);
         PortletUtils.addInfoMsg("Reporting Date successfully added.", request);
         return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
@@ -164,17 +157,6 @@ public class ReportingPeriodController {
         reportingDateService.saveReportingDate(newReportingDate);
         PortletUtils.addInfoMsg("Reporting Date successfully updated.", request);
         return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
-    }
-
-    @RequestMapping(value = "/delete-reporting-date", method = RequestMethod.POST)
-    public String deleteReportingDate( HttpServletRequest request, long id) {
-        try {
-            reportingDateService.deleteReportingDate(id);
-            PortletUtils.addInfoMsg("Reporting Date successfully deleted.", request);
-        }catch (Exception e){
-            PortletUtils.addErrorMsg("Failed because "+ e.getMessage(), request);
-        }
-        return "redirect:/reporting-periods";
     }
 
 }

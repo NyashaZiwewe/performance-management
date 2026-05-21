@@ -2,7 +2,6 @@ package hr.performancemanagement.repository;
 
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.ReportingDate;
-import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.entities.Target;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,13 +14,10 @@ import java.util.List;
 public interface ReportingDateRepository extends JpaRepository<ReportingDate, Long> {
 
     List<ReportingDate> findReportingDatesByReportingPeriod(ReportingPeriod period);
+    List<ReportingDate> findReportingDatesByReportingPeriodAndStatus(ReportingPeriod period, String status);
     ReportingDate findReportingDateById(long id);
-    @Query(value = "SELECT rd FROM ReportingDate rd WHERE rd.status =:status AND rd.reportingPeriod.status =:rStatus AND rd.reportingPeriod.clientId =:clientId ")
-    ReportingDate findActiveReportingDate(@Param("status") String status, @Param("rStatus") String rStatus, @Param("clientId") long clientId);
-
-    @Query(value = "SELECT rd FROM ReportingDate rd WHERE rd.reportingPeriod = :reportingPeriod AND rd.id = (SELECT MAX(rd2.id) FROM ReportingDate rd2 WHERE rd2.reportingPeriod = :reportingPeriod)")
-    ReportingDate findLastReportingDateByScorecard(@Param("reportingPeriod") ReportingPeriod reportingPeriod);
-    @Query(value = "SELECT s FROM Scorecard s WHERE s.reportingPeriod = :reportingPeriod")
-    List<Scorecard> findScorecardsByReportingPeriod(@Param("reportingPeriod") ReportingPeriod reportingPeriod);
-
+    ReportingDate findReportingDateByStatusAndAndReportingPeriod_ClientId(String status, long clientId);
+    long countByReportingPeriod_Id(long reportingPeriodId);
+//    @Query(value = "SELECT ReportingDate FROM ReportingDate rd LEFT JOIN ReportingPeriod rp ON rd.reportingPeriod = rp WHERE rp.clientId=:clientId AND rd.status = :status")
+//    ReportingDate findReportingDateByStatus(@Param("clientId") Long clientId, @Param("status") String status);
 }

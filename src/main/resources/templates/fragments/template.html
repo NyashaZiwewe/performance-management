@@ -8,6 +8,17 @@
 
     <title>Performance Management</title>
 
+    <script>
+        (function () {
+            try {
+                var themeMode = window.localStorage ? (window.localStorage.getItem('theme_mode') || 'light') : 'light';
+                document.documentElement.classList.add(themeMode === 'light' ? 'theme-light' : 'theme-dark');
+            } catch (e) {
+                document.documentElement.classList.add('theme-light');
+            }
+        })();
+    </script>
+
     <link href="../../static/css/bootstrap.min.css" rel="stylesheet"
           th:href="@{/css/bootstrap.min.css}">
     <link href="../../static/font-awesome/css/font-awesome.css" rel="stylesheet"
@@ -17,6 +28,8 @@
           th:href="@{/css/animate.css}">
     <link href="../../static/css/style.css" rel="stylesheet"
           th:href="@{/css/style.css}">
+    <link href="../../static/css/custom.css" rel="stylesheet"
+          th:href="@{/css/custom.css}">
 
     <link href="../../static/css/plugins/iCheck/custom.css" rel="stylesheet"
           th:href="@{/css/plugins/iCheck/custom.css}">
@@ -29,76 +42,97 @@
 </head>
 
 <body>
+<script>
+    (function () {
+        try {
+            if (window.localStorage && window.localStorage.getItem('theme_mode') === 'light') {
+                document.body.classList.add('light-skin');
+            }
+        } catch (e) {
+            // Ignore localStorage access issues.
+        }
+    })();
+</script>
 
 <div id="wrapper">
     <nav class="navbar-default navbar-static-side" role="navigation" th:fragment="side-menu">
         <div class="sidebar-collapse">
             <ul class="nav metismenu" id="side-menu">
                 <li class="nav-header">
-                    <div class="logo-element">
-                        PMS
-                    </div>
                     <div class="dropdown profile-element">
-                        <img alt="image" class="rounded-0" src="../../static/img/zimlogo.png"
-                             th:src="@{/img/zimlogo.png}" style="height: 6em; width: 100%"/>
+                        <div class="sidebar-brand-shell">
+                            <div class="sidebar-brand-frame">
+                                <img alt="image" class="sidebar-brand-logo" src="../../static/img/zimlogo.png"
+                                     th:src="@{'/img/' + ${companyLogo}}"/>
+                            </div>
+                        </div>
                         <a data-toggle="dropdown" class="dropdown-toggle" href="#">
-                            <span class="block font-bold" sec:authentication="name" th:text="${session.name}"> User1</span>
-                            <span class=" text-xs block" sec:authentication="authorities" th:text="${session.position}">Position</span>
-                            <span class=" text-xs block" th:text="${session.role}">Role</span>
+                            <span class="block font-bold"
+                                  th:text="${session.loggedUser != null ? session.loggedUser.fullName : #authentication.name}">User1</span>
+                            <span class="text-xs block"
+                                  th:text="${session.loggedUser != null ? session.loggedUser.position : ''}">Position</span>
+                            <span class="text-xs block"
+                                  th:text="${session.loggedUser != null ? session.loggedUser.role : ''}">Role</span>
                         </a>
                     </div>
                 </li>
-                <li class="active" >
+                <li>
                     <a th:href="@{/}"><i class="fa fa-tachometer"></i><span class="nav-label">Dashboard</span></a>
                 </li>
+                <li class="sidebar-divider" aria-hidden="true"><hr></li>
                 <li>
-                    <a href="#"><i class="fa fa-book"></i><span class="nav-label">Scorecards</span><span
+                    <a href="#"><i class="fa fa-balance-scale"></i><span class="nav-label">Scorecards</span><span
                             class="fa arrow"></span></a>
-                    <ul class="nav nav-second-level">
+                    <ul class="nav nav-second-level collapse" aria-expanded="false">
                         <li class="nav-item">
-                            <a th:href="@{/scorecards}">View Scorecards</a>
+                            <a th:href="@{/scorecards}"><i class="fa fa-list-alt"></i> View Scorecards</a>
                         </li>
                         <li class="nav-item">
-                            <a th:href="@{/scorecards/add-scorecard}">Create Scorecard</a>
+                            <a th:href="@{/scorecards/add-scorecard}"><i class="fa fa-plus-square-o"></i> Create Scorecard</a>
                         </li>
                         <li class="nav-item">
-                            <a th:href="@{/scorecards/clone-scorecard-select-owner}">Clone Scorecard</a>
+                            <a th:href="@{/scorecards/clone-scorecard-select-owner}"><i class="fa fa-clone"></i> Clone Scorecard</a>
                         </li>
 <!--                        <li class="nav-item">-->
 <!--                            <a th:href="@{/scorecards/capture-scores}">Capture Scores</a>-->
 <!--                        </li>-->
                     </ul>
                 </li>
+                <li class="sidebar-divider" aria-hidden="true"><hr></li>
                 <li>
-                    <a href="#"><i class="fa fa-book"></i><span class="nav-label">Performance Review</span><span
+                    <a href="#"><i class="fa fa-line-chart"></i><span class="nav-label">Performance Review</span><span
                             class="fa arrow"></span></a>
-                    <ul class="nav nav-second-level">
+                    <ul class="nav nav-second-level collapse" aria-expanded="false">
 <!--                        <li class="nav-item">-->
 <!--                            <a th:href="@{/performance-review/moderate-scores-select-year}">Moderate Scores</a>-->
 <!--                        </li>-->
                         <li class="nav-item">
-                            <a th:href="@{/performance-review/view-scores-select-year}">View Scores</a>
+                            <a th:href="@{/performance-review/view-scores-select-year}"><i class="fa fa-bar-chart"></i> View Scores</a>
                         </li>
                         <li class="nav-item">
-                            <a th:href="@{/performance-review/view-performance-levels-select-year}">Performance Levels</a>
+                            <a th:href="@{/performance-review/view-performance-levels-select-year}"><i class="fa fa-signal"></i> Performance Levels</a>
                         </li>
                         <li class="nav-item">
-                            <a th:href="@{/performance-review/view-individual-trends-select-year}">Individual Trends</a>
+                            <a th:href="@{/performance-review/view-individual-trends-select-year}"><i class="fa fa-area-chart"></i> Individual Trends</a>
                         </li>
                     </ul>
                 </li>
+                <li class="sidebar-divider" aria-hidden="true"><hr></li>
                 <li>
-                    <a href="#"><i class="fa fa-book"></i><span class="nav-label">Activities</span><span
+                    <a href="#"><i class="fa fa-tasks"></i><span class="nav-label">Activities</span><span
                             class="fa arrow"></span></a>
-                    <ul class="nav nav-second-level">
+                    <ul class="nav nav-second-level collapse" aria-expanded="false">
                         <li class="nav-item">
-                            <a th:href="@{/action-plans}">Action Plans</a>
+                            <a th:href="@{/action-plans}"><i class="fa fa-check-square-o"></i> Action Plans</a>
                         </li>
 <!--                        <li class="nav-item">-->
 <!--                            <a th:href="@{/action-plans/view-action-plans-2}">Action Plans2</a>-->
 <!--                        </li>-->
                         <li class="nav-item">
-                            <a th:href="@{/performance-improvement-plans}">Performance Improvements Plans</a>
+                            <a th:href="@{/performance-improvement-plans}"><i class="fa fa-wrench"></i> Performance Improvements Plans</a>
+                        </li>
+                        <li class="nav-item">
+                            <a th:href="@{/probation-assessments}"><i class="fa fa-user-plus"></i> Probation Assessments</a>
                         </li>
 <!--                        <li class="nav-item">-->
 <!--                            <a th:href="@{/performance-improvement-plans/view-performance-improvement-plans-2}">Performance Improvements Plans2</a>-->
@@ -106,21 +140,34 @@
 
                     </ul>
                 </li>
+                <li class="sidebar-divider" aria-hidden="true"><hr></li>
                 <li>
-                    <a href="#"><i class="fa fa-gears"></i><span class="nav-label">Administration</span><span
+                    <a href="#"><i class="fa fa-cogs"></i><span class="nav-label">Administration</span><span
                             class="fa arrow"></span></a>
-                    <ul class="nav nav-second-level">
+                    <ul class="nav nav-second-level collapse" aria-expanded="false">
                         <li class="nav-item">
-                            <a href="#" th:href="@{/accounts}">Accounts</a>
+                            <a href="#" th:href="@{/accounts}"><i class="fa fa-users"></i> Accounts</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" th:href="@{/perspectives}">Perspectives</a>
+                            <a href="#" th:href="@{/departments}"><i class="fa fa-sitemap"></i> Departments</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" th:href="@{/reporting-periods}">Reporting Periods</a>
+                            <a href="#" th:href="@{/divisions}"><i class="fa fa-building"></i> Divisions</a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" th:href="@{/scorecard-models}">Scorecard Models</a>
+                            <a href="#" th:href="@{/perspectives}"><i class="fa fa-compass"></i> Perspectives</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" th:href="@{/reporting-periods}"><i class="fa fa-calendar"></i> Reporting Periods</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" th:href="@{/scorecard-models}"><i class="fa fa-th-large"></i> Scorecard Models</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" th:href="@{/system-settings}"><i class="fa fa-sliders"></i> System Settings</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" th:href="@{/audit-logs}"><i class="fa fa-history"></i> Audit Logs</a>
                         </li>
 <!--                        <li class="nav-item">-->
 <!--                            <a href="#" th:href="@{/lock-settings}">Lock Settings</a>-->
@@ -130,10 +177,270 @@
 
             </ul>
         </div>
+        <script>
+            (function () {
+                var legacyStorageKey = 'sidebarExpandedMenus';
+                var userScope = 'anonymous';
+                try {
+                    userScope = '[[${session.loggedUser != null ? session.loggedUser.id : "anonymous"}]]';
+                } catch (e) {
+                    userScope = 'anonymous';
+                }
+                var storageKey = legacyStorageKey + '_' + userScope;
+
+                function readExpandedKeys() {
+                    try {
+                        return JSON.parse(window.localStorage.getItem(storageKey) || '[]');
+                    } catch (e) {
+                        return [];
+                    }
+                }
+
+                function writeExpandedKeys(keys) {
+                    try {
+                        window.localStorage.setItem(storageKey, JSON.stringify(Array.from(new Set(keys))));
+                    } catch (e) {
+                        // Ignore storage errors.
+                    }
+                }
+
+                function directChildMenu(item) {
+                    for (var i = 0; i < item.children.length; i++) {
+                        if (item.children[i].tagName === 'UL') {
+                            return item.children[i];
+                        }
+                    }
+                    return null;
+                }
+
+                function isMiniNavbar() {
+                    return document.body && document.body.classList.contains('mini-navbar') &&
+                        !document.body.classList.contains('body-small');
+                }
+
+                function directChildLink(item) {
+                    for (var i = 0; i < item.children.length; i++) {
+                        if (item.children[i].tagName === 'A') {
+                            return item.children[i];
+                        }
+                    }
+                    return null;
+                }
+
+                function labelForItem(link, index) {
+                    var label = link ? link.textContent.replace(/\s+/g, ' ').trim() : '';
+                    return label ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'menu-' + index;
+                }
+
+                function resetMenuState(sideMenu, listItems) {
+                    for (var i = 0; i < listItems.length; i++) {
+                        var item = listItems[i];
+                        if (item.dataset.menuKey) {
+                            item.classList.remove('active');
+                        }
+                        var childMenu = directChildMenu(item);
+                        if (childMenu) {
+                            childMenu.classList.remove('in');
+                            childMenu.style.display = '';
+                        }
+                    }
+                }
+
+                function applyMenuState(sideMenu, listItems, keys, currentPath) {
+                    resetMenuState(sideMenu, listItems);
+
+                    var keySet = new Set(keys || []);
+                    var links = sideMenu.getElementsByTagName('a');
+                    for (var i = 0; i < links.length; i++) {
+                        var link = links[i];
+                        var href = link.getAttribute('href');
+                        if (!href || href === '#' || href.indexOf('javascript:') === 0) {
+                            continue;
+                        }
+                        var parsedPath = href;
+                        try {
+                            parsedPath = new URL(href, window.location.origin).pathname;
+                        } catch (e) {
+                            parsedPath = href;
+                        }
+                        if (parsedPath === currentPath) {
+                            var current = link.parentElement;
+                            while (current && current.id !== 'side-menu') {
+                                if (current.tagName === 'LI') {
+                                    current.classList.add('active');
+                                }
+                                current = current.parentElement;
+                            }
+                            break;
+                        }
+                    }
+
+                    if (isMiniNavbar()) {
+                        for (var miniIndex = 0; miniIndex < listItems.length; miniIndex++) {
+                            var miniItem = listItems[miniIndex];
+                            var miniChildMenu = directChildMenu(miniItem);
+                            if (!miniChildMenu) {
+                                continue;
+                            }
+                            miniItem.classList.remove('active');
+                            miniChildMenu.classList.remove('in');
+                            miniChildMenu.classList.remove('show');
+                            miniChildMenu.style.display = '';
+                            miniChildMenu.style.height = '';
+                            miniChildMenu.setAttribute('aria-expanded', 'false');
+                            var miniLink = directChildLink(miniItem);
+                            if (miniLink) {
+                                miniLink.setAttribute('aria-expanded', 'false');
+                            }
+                        }
+                        return;
+                    }
+
+                    for (var j = 0; j < listItems.length; j++) {
+                        var savedItem = listItems[j];
+                        if (savedItem.dataset.menuKey && keySet.has(savedItem.dataset.menuKey)) {
+                            savedItem.classList.add('active');
+                            var savedChildMenu = directChildMenu(savedItem);
+                            if (savedChildMenu) {
+                                savedChildMenu.classList.add('in');
+                                savedChildMenu.style.display = 'block';
+                            }
+                        }
+                    }
+                }
+
+                document.addEventListener('DOMContentLoaded', function () {
+                    var sideMenu = document.getElementById('side-menu');
+                    if (!sideMenu) {
+                        return;
+                    }
+
+                    try {
+                        window.localStorage.removeItem(legacyStorageKey);
+                    } catch (e) {
+                        // Ignore storage errors.
+                    }
+
+                    var listItems = sideMenu.getElementsByTagName('li');
+                    for (var i = 0; i < listItems.length; i++) {
+                        var item = listItems[i];
+                        if (directChildMenu(item)) {
+                            item.dataset.menuKey = labelForItem(directChildLink(item), i);
+                        }
+                    }
+
+                    var currentPath = window.location.pathname;
+                    applyMenuState(sideMenu, listItems, readExpandedKeys(), currentPath);
+
+                    function captureExpandedKeys() {
+                        var activeItems = sideMenu.querySelectorAll('li.active');
+                        var keys = [];
+                        for (var i = 0; i < activeItems.length; i++) {
+                            var activeChildMenu = directChildMenu(activeItems[i]);
+                            if (activeItems[i].dataset.menuKey && activeChildMenu && activeChildMenu.classList.contains('in')) {
+                                keys.push(activeItems[i].dataset.menuKey);
+                            }
+                        }
+                        writeExpandedKeys(keys);
+                    }
+
+                    sideMenu.addEventListener('click', function (event) {
+                        if (!isMiniNavbar()) {
+                            return;
+                        }
+
+                        var link = event.target.closest('a');
+                        if (!link) {
+                            return;
+                        }
+
+                        var parentItem = link.parentElement;
+                        if (!parentItem || parentItem.tagName !== 'LI') {
+                            return;
+                        }
+
+                        var childMenu = directChildMenu(parentItem);
+                        if (!childMenu) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        var shouldOpen = !childMenu.classList.contains('in');
+
+                        var siblings = parentItem.parentElement ? parentItem.parentElement.children : [];
+                        for (var s = 0; s < siblings.length; s++) {
+                            var sibling = siblings[s];
+                            if (!sibling || sibling === parentItem) {
+                                continue;
+                            }
+                            sibling.classList.remove('active');
+                            var siblingChildMenu = directChildMenu(sibling);
+                            if (siblingChildMenu) {
+                                siblingChildMenu.classList.remove('in');
+                                siblingChildMenu.style.display = '';
+                                siblingChildMenu.style.height = '';
+                                siblingChildMenu.setAttribute('aria-expanded', 'false');
+                            }
+                            var siblingLink = directChildLink(sibling);
+                            if (siblingLink) {
+                                siblingLink.setAttribute('aria-expanded', 'false');
+                            }
+                        }
+
+                        if (shouldOpen) {
+                            parentItem.classList.add('active');
+                            childMenu.classList.add('in');
+                            childMenu.style.display = 'block';
+                            childMenu.style.height = '';
+                            childMenu.setAttribute('aria-expanded', 'true');
+                            link.setAttribute('aria-expanded', 'true');
+                        } else {
+                            parentItem.classList.remove('active');
+                            childMenu.classList.remove('in');
+                            childMenu.style.display = '';
+                            childMenu.style.height = '';
+                            childMenu.setAttribute('aria-expanded', 'false');
+                            link.setAttribute('aria-expanded', 'false');
+                        }
+
+                        captureExpandedKeys();
+                    });
+
+                    $(sideMenu).on('shown.metisMenu', function (event) {
+                        if (isMiniNavbar()) {
+                            return;
+                        }
+                        var expandedMenu = event.target;
+                        if (!expandedMenu || expandedMenu.tagName !== 'UL') {
+                            return;
+                        }
+                        expandedMenu.style.display = 'block';
+                        expandedMenu.style.height = '';
+                        captureExpandedKeys();
+                    });
+
+                    $(sideMenu).on('hidden.metisMenu', function (event) {
+                        var collapsedMenu = event.target;
+                        if (!collapsedMenu || collapsedMenu.tagName !== 'UL') {
+                            return;
+                        }
+                        collapsedMenu.classList.remove('in');
+                        collapsedMenu.style.display = '';
+                        collapsedMenu.style.height = '';
+                        captureExpandedKeys();
+                    });
+
+                    var observer = new MutationObserver(function () {
+                        applyMenuState(sideMenu, listItems, readExpandedKeys(), currentPath);
+                    });
+                    observer.observe(document.body, {attributes: true, attributeFilter: ['class']});
+                });
+            })();
+        </script>
     </nav>
 
     <div id="page-wrapper">
-        <div class="row border-bottom" th:fragment="top-navbar">
+        <div class="row border-bottom app-top-navbar" th:fragment="top-navbar">
             <nav class="navbar navbar-static-top" role="navigation" style="margin-bottom: 0">
                 <div class="navbar-header">
                     <a class="navbar-minimalize minimalize-styl-2 btn btn-success " href="#"><i class="fa fa-bars"></i>
@@ -141,7 +448,79 @@
                 </div>
                 <ul class="nav navbar-top-links navbar-right">
                     <li>
-                        <span class="m-r-sm text-muted welcome-message">Welcome to PMS<strong></strong></span>
+                        <span class="m-r-sm welcome-message" th:text="${systemName}">Performance Management System</span>
+                    </li>
+                    <li class="dropdown notification-dropdown">
+                        <a class="dropdown-toggle topbar-link notification-toggle" data-toggle="dropdown" href="#" aria-expanded="false" aria-label="Pending notifications">
+                            <i class="fa fa-bell-o"></i>
+                            <span class="notification-badge" th:if="${pendingNotificationCount > 0}" th:text="${pendingNotificationCount}">0</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-right notification-menu animated fadeInDown">
+                            <li class="notification-menu-header">
+                                <span>Pending Actions</span>
+                                <span class="notification-menu-count" th:text="${pendingNotificationCount}">0</span>
+                            </li>
+                            <li th:if="${pendingNotificationCount == 0}" class="notification-empty">
+                                No pending approvals or score submissions.
+                            </li>
+                            <li th:each="notification : ${pendingNotificationPreview}" class="notification-item">
+                                <a th:href="${notification.link}">
+                                    <div class="notification-item-icon" th:classappend="${' notification-item-icon-' + notification.accentClass}">
+                                        <i th:class="${notification.iconClass}"></i>
+                                    </div>
+                                    <div class="notification-item-body">
+                                        <div class="notification-item-title" th:text="${notification.title}">Notification title</div>
+                                        <div class="notification-item-description" th:text="${notification.description}">Notification description</div>
+                                        <div class="notification-item-date"
+                                             th:text="${notification.date != null ? #dates.format(notification.date, 'dd MMM yyyy HH:mm') : ''}">
+                                            01 Jan 2026 00:00
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li th:if="${pendingNotificationCount > 6}" class="notification-overflow">
+                                <span th:text="${'Showing 6 of ' + pendingNotificationCount + ' pending items'}">Showing 6 of 6 pending items</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown notification-dropdown">
+                        <a class="dropdown-toggle topbar-link notification-toggle" data-toggle="dropdown" href="#" aria-expanded="false" aria-label="Email notifications">
+                            <i class="fa fa-envelope-o"></i>
+                            <span class="notification-badge notification-badge-info" th:if="${emailNotificationCount > 0}" th:text="${emailNotificationCount}">0</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-right notification-menu animated fadeInDown">
+                            <li class="notification-menu-header">
+                                <span>Email Notifications</span>
+                                <span class="notification-menu-count" th:text="${emailNotificationCount}">0</span>
+                            </li>
+                            <li th:if="${emailNotificationCount == 0}" class="notification-empty">
+                                No email notifications yet.
+                            </li>
+                            <li th:each="notification : ${emailNotificationPreview}" class="notification-item">
+                                <a th:href="${notification.link}">
+                                    <div class="notification-item-icon notification-item-icon-info">
+                                        <i class="fa fa-envelope-o"></i>
+                                    </div>
+                                    <div class="notification-item-body">
+                                        <div class="notification-item-title" th:text="${notification.title}">Email notification</div>
+                                        <div class="notification-item-description" th:text="${notification.description}">Email preview</div>
+                                        <div class="notification-item-date"
+                                             th:text="${notification.date != null ? #dates.format(notification.date, 'dd MMM yyyy HH:mm') : ''}">
+                                            01 Jan 2026 00:00
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                            <li th:if="${emailNotificationCount > 6}" class="notification-overflow">
+                                <span th:text="${'Showing 6 of ' + emailNotificationCount + ' email items'}">Showing 6 of 6 email items</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li>
+                        <button class="topbar-link btn btn-default" id="light-dark-mode" type="button" aria-label="Toggle light and dark mode">
+                            <i class="fa fa-moon-o mode-light-moon"></i>
+                            <i class="fa fa-sun-o mode-light-sun"></i>
+                        </button>
                     </li>
                     <li>
                         <a href="/change-password">Change Password</a>
@@ -155,7 +534,7 @@
 
             </nav>
         </div>
-        <div class="row wrapper border-bottom white-bg page-heading" th:fragment="page-heading">
+        <div class="row wrapper border-bottom white-bg page-heading app-page-heading" th:fragment="page-heading">
             <div class="col-lg-12">
                 <h2 th:text="${pageName}">{Page Name}</h2>
                 <hr>
@@ -196,7 +575,7 @@
         </div>
         <div class="footer" th:fragment="footer">
             <div>
-                <strong>Copyright</strong> ZimTrade &copy;
+                <strong>Copyright</strong> <span th:text="${companyName}">ZimTrade</span> &copy;
             </div>
         </div>
 
