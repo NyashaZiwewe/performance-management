@@ -11,12 +11,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -66,12 +68,21 @@ public class performanceImprovementPlanController {
 //    }
 
     @RequestMapping
-    public ModelAndView viewPerformanceImprovementPlans2(HttpServletRequest request) {
+    public ModelAndView viewPerformanceImprovementPlans2(@RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
+                                                         HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_IMPROVEMENT_PLANS2);
         modelAndView.addObject("pageTitle", "View All");
         Account loggedUser = commonService.getLoggedUser();
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<PerformanceImprovementPlan> plansList = performanceImprovementPlanService.listAllPerformanceImprovementPlans(reportingPeriod);
+        if (reportingPeriodId != null) {
+            ReportingPeriod selectedPeriod = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
+            if (selectedPeriod != null && loggedUser != null && selectedPeriod.getClientId() == loggedUser.getClientId()) {
+                reportingPeriod = selectedPeriod;
+            }
+        }
+        List<PerformanceImprovementPlan> plansList = reportingPeriod == null
+                ? Collections.emptyList()
+                : performanceImprovementPlanService.listAllPerformanceImprovementPlans(reportingPeriod);
         for(PerformanceImprovementPlan plan : plansList){
             String initials = commonService.getInitials(plan.getEmployee().getFullName());
             plan.getEmployee().setInitials(initials);
@@ -79,6 +90,7 @@ public class performanceImprovementPlanController {
         modelAndView.addObject("plansList", plansList);
         modelAndView.addObject("performanceImprovementPlan", new PerformanceImprovementPlan());
         modelAndView.addObject("loggedUser", loggedUser);
+        modelAndView.addObject("selectedReportingPeriodId", reportingPeriod != null ? reportingPeriod.getId() : null);
         preparePage(modelAndView, request);
         return modelAndView;
     }

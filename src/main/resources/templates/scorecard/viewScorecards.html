@@ -45,12 +45,58 @@
                 <div class="col-lg-12 ">
                     <div class="ibox ">
                         <div class="ibox-title">
-                            <h5>Search Results</h5>
+                            <h5>Scorecards</h5>
                             <div class="ibox-tools">
-                                <a th:href="@{/scorecards/add-scorecard}"><button class="btn btn-success btn-sm">Add New Scorecard</button></a>
+                                <a th:href="@{/scorecards/add-scorecard}" class="btn btn-success btn-sm">Add New Scorecard</a>
                             </div>
                         </div>
                         <div class="ibox-content">
+                            <form th:action="@{/scorecards}" method="get" class="m-b-md">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="reportingPeriodId">Reporting Period</label>
+                                            <select id="reportingPeriodId" name="reportingPeriodId" class="select2_demo_1 form-control">
+                                                <option th:each="period : ${reportingPeriodsList}"
+                                                        th:value="${period.id}"
+                                                        th:text="${period.startDate + ' - ' + period.endDate}"
+                                                        th:selected="${selectedReportingPeriodId != null and selectedReportingPeriodId == period.id}">
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="ownerName">Owner Name</label>
+                                            <input id="ownerName" name="ownerName" type="text" class="form-control"
+                                                   th:value="${ownerName}" placeholder="Search by owner name">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="approvalStatus">Approval Status</label>
+                                            <select id="approvalStatus" name="approvalStatus" class="select2_demo_1 form-control">
+                                                <option value="" th:selected="${approvalStatus == null or approvalStatus == ''}">All</option>
+                                                <option value="NEW" th:selected="${approvalStatus == 'NEW'}">NEW</option>
+                                                <option value="PENDING_APPROVAL" th:selected="${approvalStatus == 'PENDING_APPROVAL'}">PENDING_APPROVAL</option>
+                                                <option value="APPROVED_BY_SUPERVISOR" th:selected="${approvalStatus == 'APPROVED_BY_SUPERVISOR'}">APPROVED_BY_SUPERVISOR</option>
+                                                <option value="REJECTED_BY_SUPERVISOR" th:selected="${approvalStatus == 'REJECTED_BY_SUPERVISOR'}">REJECTED_BY_SUPERVISOR</option>
+                                                <option value="APPROVED_BY_HR" th:selected="${approvalStatus == 'APPROVED_BY_HR'}">APPROVED_BY_HR</option>
+                                                <option value="REJECTED_BY_HR" th:selected="${approvalStatus == 'REJECTED_BY_HR'}">REJECTED_BY_HR</option>
+                                                <option value="SCORED_BY_EMPLOYEE" th:selected="${approvalStatus == 'SCORED_BY_EMPLOYEE'}">SCORED_BY_EMPLOYEE</option>
+                                                <option value="SCORED_BY_SUPERVISOR" th:selected="${approvalStatus == 'SCORED_BY_SUPERVISOR'}">SCORED_BY_SUPERVISOR</option>
+                                                <option value="AGREED_BY_TWO" th:selected="${approvalStatus == 'AGREED_BY_TWO'}">AGREED_BY_TWO</option>
+                                                <option value="MODERATED_BY_HR" th:selected="${approvalStatus == 'MODERATED_BY_HR'}">MODERATED_BY_HR</option>
+                                                <option value="CLOSED" th:selected="${approvalStatus == 'CLOSED'}">CLOSED</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-primary btn-sm">Apply Search</button>
+                                    <a th:href="@{/scorecards}" class="btn btn-white btn-sm">Reset</a>
+                                </div>
+                            </form>
                             <fieldset class="p2">
                                 <legend class="w-auto">Scorecards Information</legend>
                                 <div class="table-responsive" th:fragement="administration">
@@ -65,7 +111,7 @@
                                         <th>Approval Status</th>
                                         <th>Last Updated</th>
                                         <th>Date Created</th>
-                                        <th></th>
+                                        <th>Actions</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -105,33 +151,32 @@
                                         </td>
                                         <td th:text="${scorecard.lastUpdate}"></td>
                                         <td th:text="${scorecard.date}"></td>
-                                        <td>
-                                            <span th:if="${scorecard.status == 'ACTIVE'}">
-                                                <a th:if="${loggedUserId == scorecard.owner.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                 <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'AGREED_BY_TWO'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <span th:if="${(loggedUserId == scorecard.owner.id || loggedUser.special == 'HAS_SPECIAL_RIGHTS') && scorecard.lockStatus == 'OPEN'}">
-                                                    <a th:if="${scorecard.approvalStatus == 'NEW' || scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-targets/} + ${scorecard.id}">
-                                                    <button class="btn btn-success btn-sm">Edit Targets</button>
-                                                </a>
-                                                </span>
+                                        <td th:with="
+                                                isOwner=${loggedUserId == scorecard.owner.id},
+                                                isSupervisor=${scorecard.owner != null and scorecard.owner.supervisor != null and loggedUserId == scorecard.owner.supervisor.id},
+                                                isModerator=${role == 'MODERATOR'},
+                                                canCaptureScores=${scorecard.status == 'ACTIVE' and (
+                                                    (isOwner and scorecard.approvalStatus == 'APPROVED_BY_HR') or
+                                                    (isSupervisor and (scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE' or scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR')) or
+                                                    (isModerator and scorecard.approvalStatus == 'AGREED_BY_TWO')
+                                                )},
+                                                canEditTargets=${scorecard.status == 'ACTIVE' and (isOwner or loggedUser.special == 'HAS_SPECIAL_RIGHTS')
+                                                    and scorecard.lockStatus == 'OPEN'
+                                                    and (scorecard.approvalStatus == 'NEW' or scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR')}
+                                            ">
+                                            <span class="d-inline-block m-b-xs">
+                                                <a th:if="${canCaptureScores}"
+                                                   th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}"
+                                                   class="btn btn-success btn-sm m-r-xs">Capture Scores</a>
+                                                <a th:if="${canEditTargets}"
+                                                   th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}"
+                                                   class="btn btn-success btn-sm m-r-xs">Edit Targets</a>
                                             </span>
-                                            <a th:href="@{/scorecards/clone-scorecard/} + ${scorecard.id}">
-                                                <button class="btn btn-success btn-sm" type="button">Clone Scorecard</button>
-                                            </a>
-                                            <a th:href="@{/scorecards/view-scorecard/} + ${scorecard.id}">
-                                                <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
-                                            </a>
-                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${scorecard.id}" class="btn btn-success btn-sm" type="button">View Report</a>
+                                            <a th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}"
+                                               class="btn btn-success btn-sm m-r-xs m-b-xs">Clone Scorecard</a>
+                                            <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}"
+                                               class="btn btn-primary btn-sm m-r-xs m-b-xs">View Scorecard</a>
+                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
                                         </td>
                                     </tr>
 
@@ -184,25 +229,25 @@
             buttons: [
                 { extend: 'copy'},
                 {extend: 'csv',
-                    title: 'System Users',
+                    title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
                 {extend: 'excel',
-                    title: 'System Users',
+                    title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
                 {extend: 'pdf',
-                    title: 'System Users',
+                    title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
 
                 {extend: 'print',
-                    title: 'System Users',
+                    title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

@@ -139,9 +139,18 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     public List<Double> findAverageAllocatedWeightPerStrategicObjective(){
 
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        return findAverageAllocatedWeightPerStrategicObjective(reportingPeriod);
+    }
+
+    @Override
+    public List<Double> findAverageAllocatedWeightPerStrategicObjective(ReportingPeriod reportingPeriod) {
+        List<Double> averageWeights = new ArrayList<>();
+        if (reportingPeriod == null) {
+            return averageWeights;
+        }
+
         List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
 
-        List<Double> averageWeights = new ArrayList<>();
         for(StrategicObjective strategicObjective : strategicObjectivesList){
 
             averageWeights.add(scoreCardRepository.findAverageAllocatedWeightPerStrategicObjective(strategicObjective));
@@ -154,9 +163,18 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     public List<Double> findAverageWeightedScorePerStrategicObjective(){
 
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        return findAverageWeightedScorePerStrategicObjective(reportingPeriod);
+    }
+
+    @Override
+    public List<Double> findAverageWeightedScorePerStrategicObjective(ReportingPeriod reportingPeriod) {
+        List<Double> averageWeightedScores = new ArrayList<>();
+        if (reportingPeriod == null) {
+            return averageWeightedScores;
+        }
+
         List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId());
 
-        List<Double> averageWeightedScores = new ArrayList<>();
         for(StrategicObjective strategicObjective : strategicObjectivesList){
 
             double averageScore = scoreCardRepository.findAverageWeightedScorePerStrategicObjective(strategicObjective);
@@ -172,6 +190,9 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     public Scorecard getScorecardById(long id){
 
         Scorecard scorecard = scoreCardRepository.findScorecardById(id);
+        if (scorecard == null) {
+            return null;
+        }
         scorecard.setEmployeeScore(scoreCardRepository.findAverageEmployeeScore(scorecard.getId()));
         scorecard.setManagerScore(scoreCardRepository.findAverageManagerScore(scorecard.getId()));
         scorecard.setAgreedScore(scoreCardRepository.findAverageAgreedScore(scorecard.getId()));

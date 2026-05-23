@@ -104,28 +104,28 @@
                                         <td th:text="${scorecard.date}"></td>
                                         <td>
                                             <span th:if="${scorecard.status == 'ACTIVE'}">
-                                                <a th:if="${loggedUserId == scorecard.owner.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
+                                                <a th:if="${loggedUserId == scorecard.owner.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
-                                                 <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
+                                                 <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
-                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/} + ${scorecard.id}">
+                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
                                                 <span th:if="${loggedUserId == scorecard.owner.id && scorecard.lockStatus == 'OPEN'}">
-                                                    <a th:if="${scorecard.approvalStatus == 'NEW' || scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-targets/} + ${scorecard.id}">
+                                                    <a th:if="${scorecard.approvalStatus == 'NEW' || scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
                                                     <button class="btn btn-success btn-sm">Edit Targets</button>
                                                 </a>
                                                 </span>
                                             </span>
-                                            <a th:href="@{/scorecards/clone-scorecard/} + ${scorecard.id}">
+                                            <a th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}">
                                                 <button class="btn btn-success btn-sm" type="button">Clone Scorecard</button>
                                             </a>
-                                            <a th:href="@{/scorecards/view-scorecard/} + ${scorecard.id}">
+                                            <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}">
                                                 <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
                                             </a>
-                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${scorecard.id}" class="btn btn-success btn-sm" type="button">View Report</a>
+                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
                                         </td>
                                     </tr>
 
