@@ -10,6 +10,7 @@ import java.util.List;
 
 @Repository
 public interface GoalRepository extends JpaRepository<Goal, Long> {
+    List<Goal> findGoalsByGear_ClientId(long clientId);
     List<Goal> findGoalsByPerspectiveId(long perspectiveId);
     Goal findGoalById(long id);
     List<Goal> findGoalsByScorecardIdOrderByPerspective(long scorecardId);

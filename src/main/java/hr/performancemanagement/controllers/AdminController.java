@@ -3,7 +3,7 @@ package hr.performancemanagement.controllers;
 import hr.performancemanagement.entities.Output;
 import hr.performancemanagement.entities.Target;
 import hr.performancemanagement.service.OutputService;
-import hr.performancemanagement.service.TargetService;
+import hr.performancemanagement.service.api.TargetService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;

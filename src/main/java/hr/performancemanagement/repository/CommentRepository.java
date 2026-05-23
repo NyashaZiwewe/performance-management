@@ -11,10 +11,16 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
-    @Query(value = "SELECT '*' FROM Comment WHERE target = :target ORDER BY id")
+    @Query("SELECT c FROM Comment c WHERE c.target = :target ORDER BY c.id")
     List<Comment> findCommentsByTarget(Target target);
 
-    @Query(value = "SELECT count(Comment) FROM Comment WHERE target = :target")
+    @Query("SELECT count(c) FROM Comment c WHERE c.target = :target")
     int countCommentsByTarget(@Param("target") Target target);
+
+    @Query("SELECT c FROM Comment c WHERE c.target.goal.id = :goalId ORDER BY c.id")
+    List<Comment> findCommentsByGoalId(@Param("goalId") long goalId);
+
+    @Query("SELECT count(c) FROM Comment c WHERE c.target.goal.id = :goalId")
+    int countCommentsByGoalId(@Param("goalId") long goalId);
 
 }

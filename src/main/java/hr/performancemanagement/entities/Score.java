@@ -20,26 +20,34 @@ public class Score implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "output_id")
     private Output output;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_id")
+    private Target target;
+
     @ManyToOne
     @JoinColumn(name = "reporting_date_id")
     private ReportingDate reportingDate;
+
     private double actual;
     private double employeeScore;
     private double managerScore;
     private double agreedScore;
     private double moderatedScore;
     private double weightedScore;
-    @Transient
+
     private String evidence;
-    @Transient
     private String attachmentName;
+
     @Transient
     private MultipartFile attachment;
-    @Transient
+
     private String justification;
+
     @CreationTimestamp
     private Date date;
 

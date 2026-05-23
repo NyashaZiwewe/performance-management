@@ -62,12 +62,21 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
 
     @Override
     public boolean checkIfGoalHasTargets(Goal goal){
-        int count = targetRepository.countTargetsByGoal(goal);
-        if(count < 1){
-            return false;
-        }else {
-            return true;
+        return targetRepository.countTargetsByGoal(goal) > 0;
+    }
+
+    @Override
+    public boolean checkIfOutputHasTargets(Output output) {
+        return targetRepository.countTargetsByOutput(output) > 0;
+    }
+
+    @Transactional
+    @Override
+    public void deleteTargets(List<Target> targets) {
+        if (targets == null || targets.isEmpty()) {
+            return;
         }
+        targetRepository.deleteAll(targets);
     }
 
 //    public boolean  updateWeightedTargetScore(Target target){

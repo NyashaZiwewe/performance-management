@@ -40,6 +40,9 @@ public class Scorecard {
     private double weightedScore;
     @Column(columnDefinition = "varchar(50) default 'NEW'")
     private String approvalStatus;
+    private String ownerComment;
+    private String supervisorComment;
+    private String moderatorComment;
     @UpdateTimestamp
     private Date lastUpdate;
     @CreationTimestamp

@@ -5,6 +5,7 @@ import com.theokanning.openai.completion.chat.ChatCompletionResult;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
@@ -14,10 +15,10 @@ public class OpenAIService {
 
     private final WebClient webClient;
 
-    @Value("${openai.api.key}")
+    @Value("${openai.api.key:}")
     private String apiKey;
 
-    @Value("${openai.api.url}")
+    @Value("${openai.api.url:https://api.openai.com/v1/chat/completions}")
     private String apiUrl;
 
     public OpenAIService(WebClient.Builder builder) {
@@ -28,6 +29,9 @@ public class OpenAIService {
     private final Map<String, List<ChatMessage>> sessions = new HashMap<>();
 
     public String getChatCompletion(String userId, String userMessage) {
+        if (!StringUtils.hasText(apiKey)) {
+            throw new IllegalStateException("OpenAI API key is not configured (openai.api.key).");
+        }
 
         // Retrieve or create chat history for the user
         List<ChatMessage> history = sessions.computeIfAbsent(userId, k -> new ArrayList<>());

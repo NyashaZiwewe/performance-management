@@ -21,26 +21,60 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     int countScorecardsByOwnerAndReportingPeriod(Account owner, ReportingPeriod reportingPeriod);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(s.employeeScore), 0) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.employeeScore), 0) FROM Score s " +
+            "LEFT JOIN Target t ON s.target = t " +
+            "LEFT JOIN Goal g ON t.goal = g " +
+            "LEFT JOIN Output o ON s.output = o " +
+            "WHERE g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId")
     Double findAverageEmployeeScore(@Param("scorecardId") long scorecardId);
+
     @Nullable
-    @Query("SELECT coalesce(AVG(s.managerScore),0) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.managerScore),0) FROM Score s " +
+            "LEFT JOIN Target t ON s.target = t " +
+            "LEFT JOIN Goal g ON t.goal = g " +
+            "LEFT JOIN Output o ON s.output = o " +
+            "WHERE g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId")
     Double findAverageManagerScore(@Param("scorecardId") long scorecardId);
+
     @Nullable
-    @Query("SELECT coalesce(AVG(s.agreedScore), 0) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.agreedScore), 0) FROM Score s " +
+            "LEFT JOIN Target t ON s.target = t " +
+            "LEFT JOIN Goal g ON t.goal = g " +
+            "LEFT JOIN Output o ON s.output = o " +
+            "WHERE g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId")
     Double findAverageAgreedScore(@Param("scorecardId") long scorecardId);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(s.moderatedScore), 0) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.moderatedScore), 0) FROM Score s " +
+            "LEFT JOIN Target t ON s.target = t " +
+            "LEFT JOIN Goal g ON t.goal = g " +
+            "LEFT JOIN Output o ON s.output = o " +
+            "WHERE g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId")
     Double findAverageModeratedScore(@Param("scorecardId") long scorecardId);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Output o ON s.output = o WHERE o.scorecard.id = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s " +
+            "LEFT JOIN Target t ON s.target = t " +
+            "LEFT JOIN Goal g ON t.goal = g " +
+            "LEFT JOIN Output o ON s.output = o " +
+            "WHERE g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId")
     Double findAverageWeightedScore(@Param("scorecardId") long scorecardId);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Output o ON s.output = o WHERE s.reportingDate = :date AND o.scorecard.id = :scorecardId")
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s " +
+            "LEFT JOIN Target t ON s.target = t " +
+            "LEFT JOIN Goal g ON t.goal = g " +
+            "LEFT JOIN Output o ON s.output = o " +
+            "WHERE s.reportingDate = :date AND (g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId)")
     Double findAverageWeightedScoreByReportingDate(@Param("date") ReportingDate date, @Param("scorecardId") long scorecardId);
+
+    @Nullable
+    @Query("SELECT coalesce(AVG(t.allocatedWeight), 0) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
+    Double findAverageAllocatedWeightPerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
+
+    @Nullable
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
+    Double findAverageWeightedScorePerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
 
     @Nullable
     @Query("SELECT coalesce(AVG(o.allocatedWeight), 0) FROM Output o WHERE o.outcome.goal = :goal")

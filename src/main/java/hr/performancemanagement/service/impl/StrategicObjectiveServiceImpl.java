@@ -9,6 +9,7 @@ import hr.performancemanagement.entities.StrategicObjective;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
 import hr.performancemanagement.repository.StrategicObjectiveRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,5 +61,11 @@ public class StrategicObjectiveServiceImpl implements hr.performancemanagement.s
     public StrategicObjective saveStrategicObjective(StrategicObjective strategicObjective){
         StrategicObjective savedStrategicObjective = strategicObjectiveRepository.save(strategicObjective);
         return savedStrategicObjective;
+    }
+
+    @Transactional
+    @Override
+    public void deleteStrategicObjective(StrategicObjective strategicObjective) {
+        strategicObjectiveRepository.delete(strategicObjective);
     }
 }

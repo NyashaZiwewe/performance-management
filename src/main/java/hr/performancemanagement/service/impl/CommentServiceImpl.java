@@ -4,16 +4,11 @@ import org.springframework.stereotype.Service;
 import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.Comment;
-import hr.performancemanagement.entities.Note;
-import hr.performancemanagement.entities.SortByCommentId;
 import hr.performancemanagement.repository.CommentRepository;
-import hr.performancemanagement.repository.NoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 
@@ -25,15 +20,14 @@ public class CommentServiceImpl implements hr.performancemanagement.service.api.
     @Override
     public List<Comment> getCommentsByGoalId(long goalId){
         List<Comment> commentList = new ArrayList<>();
-        commentRepository.findCommentsByGoal_Id(goalId).forEach(comment -> commentList.add(comment));
+        commentRepository.findCommentsByGoalId(goalId).forEach(commentList::add);
         return commentList;
     }
 
     @Override
     public int countCommentsByGoalId(long goalId){
         try {
-            int count = commentRepository.countCommentsByGoal_Id(goalId);
-            return count;
+            return commentRepository.countCommentsByGoalId(goalId);
         }catch (Exception e){
             return 0;
         }

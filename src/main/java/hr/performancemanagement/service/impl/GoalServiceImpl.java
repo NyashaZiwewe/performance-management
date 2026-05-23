@@ -84,7 +84,7 @@ public class GoalServiceImpl implements hr.performancemanagement.service.api.Goa
     @Override
     public double getAverageAgreedScore(long scorecardId){
         try {
-            double total = goalRepository.averageModeratedScore(scorecardId);
+            double total = goalRepository.averageAgreedScore(scorecardId);
             return total;
         }catch (Exception e){
             return 0.0;

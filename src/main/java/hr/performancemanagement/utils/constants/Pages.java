@@ -29,6 +29,9 @@ public class Pages {
     public static final String ADD_GEAR = "gears/addGear";
     public static final String EDIT_GEAR = "gears/editGear";
     public static final String VIEW_GEAR = "gears/viewGear";
+    public static final String VIEW_PERSPECTIVES = "perspective/viewPerspectives";
+    public static final String ADD_PERSPECTIVE = "perspective/addPerspective";
+    public static final String EDIT_PERSPECTIVE = "perspective/editPerspective";
 
     public static final String VIEW_REPORTING_PERIODS = "reporting-period/viewReportingPeriods";
     public static final String ADD_REPORTING_PERIOD = "reporting-period/addReportingPeriod";

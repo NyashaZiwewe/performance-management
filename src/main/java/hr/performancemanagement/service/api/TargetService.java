@@ -11,6 +11,8 @@ public interface TargetService {
     List<Target> getAllTargetsByGoal(Goal goal);
     Target getTargetById(long id);
     boolean checkIfGoalHasTargets(Goal goal);
+    boolean checkIfOutputHasTargets(Output output);
+    void deleteTargets(List<Target> targets);
     //    public boolean  updateWeightedTargetScore(Target target);
     //    public boolean  updateActualTargetScore(Target target);
     //    public boolean  updateManagerTargetScore(Target target);

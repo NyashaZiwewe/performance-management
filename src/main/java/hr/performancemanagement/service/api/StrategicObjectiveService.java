@@ -15,4 +15,5 @@ public interface StrategicObjectiveService {
     List<StrategicObjective> listStrategicObjectivesByScorecard(long scorecardId);
     void addStrategicObjective(StrategicObjective strategicObjective);
     StrategicObjective saveStrategicObjective(StrategicObjective strategicObjective);
+    void deleteStrategicObjective(StrategicObjective strategicObjective);
 }

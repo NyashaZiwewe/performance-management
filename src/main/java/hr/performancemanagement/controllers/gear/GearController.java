@@ -1,7 +1,10 @@
 package hr.performancemanagement.controllers.gear;
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.GearRepository;
-import hr.performancemanagement.service.*;
+import hr.performancemanagement.service.GearService;
+import hr.performancemanagement.service.OutcomeService;
+import hr.performancemanagement.service.PillarService;
+import hr.performancemanagement.service.api.CommonService;
+import hr.performancemanagement.service.api.GoalService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
@@ -104,10 +107,10 @@ public class GearController {
     @RequestMapping(value = "/add-goal", method = RequestMethod.POST)
     public String addGoal(HttpServletRequest request, Goal newGoal) {
         try {
-            Goal goal = goalService.addGoal(newGoal, request);
+            goalService.saveGoal(newGoal);
             PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
-        }catch (Exception e){
-
+        } catch (Exception e) {
+            PortletUtils.addErrorMsg("Failed to add strategic goal.", request);
         }
 
         return "redirect:/gears/view-gear/" + newGoal.getGear().getId();
@@ -126,8 +129,13 @@ public class GearController {
     @RequestMapping(value = "/delete-goal", method = RequestMethod.POST)
     public String deleteGoal( HttpServletRequest request, long goalId, long gearId) {
 
-        goalService.deleteGoal(goalId);
-        PortletUtils.addInfoMsg("Record successfully deleted.", request);
+        Goal goal = goalService.getGoalById(goalId);
+        if (goal != null) {
+            goalService.deleteGoal(goal);
+            PortletUtils.addInfoMsg("Record successfully deleted.", request);
+        } else {
+            PortletUtils.addErrorMsg("Goal not found.", request);
+        }
         return "redirect:/gears/view-gear/" + gearId;
     }
 

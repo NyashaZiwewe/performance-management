@@ -21,7 +21,7 @@ public class OverallScoreService {
     public OverallScore getOverallScoreByScorecardAndReportingDate(Scorecard scorecard, ReportingDate reportingDate){
         OverallScore overallScore;
         if(reportingDate == null){
-            reportingDate = dateRepository.findLastReportingDateByScorecard(scorecard.getReportingPeriod());
+            reportingDate = dateRepository.findTopByReportingPeriodOrderByEndDateDesc(scorecard.getReportingPeriod());
         }
         overallScore = repository.findOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
         if(overallScore == null){

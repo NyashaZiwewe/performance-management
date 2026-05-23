@@ -1,4 +1,5 @@
 package hr.performancemanagement.repository;
+import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.Output;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.Score;
@@ -12,6 +13,8 @@ import java.util.List;
 
 @Repository
 public interface TargetRepository extends JpaRepository<Target, Long> {
+    List<Target> findTargetsByGoalId(long goalId);
+    int countTargetsByGoal(Goal goal);
     List<Target> findTargetsByOutput(Output output);
     Target findTargetById(long id);
     int countTargetsByOutput(Output output);

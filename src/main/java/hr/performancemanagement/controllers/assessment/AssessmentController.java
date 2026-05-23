@@ -1,6 +1,11 @@
 package hr.performancemanagement.controllers.assessment;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.service.OutcomeService;
+import hr.performancemanagement.service.OutputService;
+import hr.performancemanagement.service.OverallCommentService;
+import hr.performancemanagement.service.OverallScoreService;
+import hr.performancemanagement.service.PdfGeneratorService;
 import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Pages;
@@ -301,7 +306,7 @@ public class AssessmentController {
         String role = loggedUser.getRole();
 
         double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
-        List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard);
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard.getId());
         double totalWeightedScore = 0.0;
 //        for(Target target: targetsList){
 //            totalWeightedScore += target.getWeightedScore();

@@ -19,35 +19,65 @@ public class Target {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+
     @ManyToOne
     @JoinColumn(name = "output_id")
     private Output output;
+
     @Transient
     @ManyToOne
     @JoinColumn(name = "outcome_id")
     private Outcome outcome;
-    @Transient
+
     @ManyToOne
     @JoinColumn(name = "goal_id")
     private Goal goal;
+
     @Transient
     @ManyToOne
     @JoinColumn(name = "gear_id")
     private Gear gear;
+
+    @Transient
+    @ManyToOne
+    @JoinColumn(name = "perspective_id")
+    private Perspective perspective;
+
+    @Transient
+    @ManyToOne
+    @JoinColumn(name = "strategic_objective_id")
+    private StrategicObjective strategicObjective;
+
     private String measure;
     private String unit;
+    private Double allocatedWeight;
     private Double normalTarget;
     private Double baseTarget;
     private Double stretchTarget;
     private Double actual;
+    private Double employeeScore;
+    private Double managerScore;
+    private Double agreedScore;
+    private Double moderatedScore;
+    private Double weightedScore;
+    private Double currentActual;
+    private Double currentEmployeeScore;
+    private Double currentManagerScore;
+    private Double currentAgreedScore;
+    private Double currentModeratedScore;
+    private Double currentWeightedScore;
     private String currentEvidence;
     private String currentAttachmentName;
     private String currentJustification;
+
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Evidence> evidence;
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Comment> comments;
+    @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Score> scores;
     private String flag;
+
     @CreationTimestamp
     private Date date;
 
