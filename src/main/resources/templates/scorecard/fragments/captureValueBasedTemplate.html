@@ -76,12 +76,10 @@
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        <tr th:each="target, stat : ${targetsList}"  th:with="newPerspective=${(stat.index == 0) || (targetsList[stat.index - 1].perspective.name != target.perspective.name)},
-                                                                                                 newStrategicObjective=${newPerspective || (stat.index == 0) || (targetsList[stat.index - 1].strategicObjective != target.strategicObjective)},
-                                                                                                 newGoal=${newStrategicObjective || (targetsList[stat.index - 1].goal != target.goal)}">
-                                            <td th:if="${newPerspective}" th:text="${target.perspective?.name}" th:rowspan="${targetsList.?[perspective.name == #root.target.perspective.name].size()}"></td>
-                                            <td th:if="${newStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${targetsList.?[strategicObjective == #root.target.strategicObjective].size()}"></td>
-                                            <td th:if="${newGoal}" th:text="${target.goal.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>
+                                        <tr th:each="row, stat : ${targetRows}" th:with="target=${row.target}">
+                                            <td th:if="${row.showPerspective}" th:text="${target.perspective?.name}" th:rowspan="${row.perspectiveRowspan}"></td>
+                                            <td th:if="${row.showStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${row.strategicObjectiveRowspan}"></td>
+                                            <td th:if="${row.showGoal}" th:text="${target.goal.name}" th:rowspan="${row.goalRowspan}"></td>
                                             <td>
                                                 <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.measure}"></a>
                                             </td>
@@ -228,12 +226,10 @@
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            <tr th:each="target, stat : ${targetsList}"  th:with="newPerspective=${(stat.index == 0) || (targetsList[stat.index - 1].perspective.name != target.perspective.name)},
-                                                                                             newStrategicObjective=${newPerspective || (stat.index == 0) || (targetsList[stat.index - 1].strategicObjective != target.strategicObjective)},
-                                                                                             newGoal=${newStrategicObjective || (targetsList[stat.index - 1].goal != target.goal)}">
-                                                <td th:if="${newPerspective}" th:text="${target.perspective?.name}" th:rowspan="${targetsList.?[perspective.name == #root.target.perspective.name].size()}"></td>
-                                                <td th:if="${newStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${targetsList.?[strategicObjective == #root.target.strategicObjective].size()}"></td>
-                                                <td th:if="${newGoal}" th:text="${target.goal.name}" th:rowspan="${targetsList.?[goal == #root.target.goal].size()}"></td>
+                                            <tr th:each="row, stat : ${targetRows}" th:with="target=${row.target}">
+                                                <td th:if="${row.showPerspective}" th:text="${target.perspective?.name}" th:rowspan="${row.perspectiveRowspan}"></td>
+                                                <td th:if="${row.showStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${row.strategicObjectiveRowspan}"></td>
+                                                <td th:if="${row.showGoal}" th:text="${target.goal.name}" th:rowspan="${row.goalRowspan}"></td>
                                                 <td th:text="${target.measure}"></td>
                                                 <td th:text="${target.unit}"></td>
                                                 <td th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}"></td>

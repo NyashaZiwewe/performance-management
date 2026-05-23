@@ -9,6 +9,7 @@ import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import hr.performancemanagement.utils.wrappers.EvidenceWrapper;
 import hr.performancemanagement.utils.wrappers.GoalWrapper;
+import hr.performancemanagement.utils.wrappers.TargetCaptureRow;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
@@ -17,6 +18,7 @@ import org.springframework.util.FileCopyUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -26,6 +28,8 @@ import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -136,15 +140,70 @@ public class ScorecardController {
     }
 
     @RequestMapping
-    public ModelAndView viewScorecards(HttpServletRequest request, HttpSession session) {
+    public ModelAndView viewScorecards(@RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
+                                       @RequestParam(value = "ownerName", required = false) String ownerName,
+                                       @RequestParam(value = "approvalStatus", required = false) String approvalStatus,
+                                       HttpServletRequest request,
+                                       HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARDS);
         modelAndView.addObject("pageTitle", "View Scorecards");
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
+        if (reportingPeriodId != null) {
+            ReportingPeriod selectedPeriod = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
+            Account loggedUser = commonService.getLoggedUser();
+            if (selectedPeriod != null && loggedUser != null && selectedPeriod.getClientId() == loggedUser.getClientId()) {
+                reportingPeriod = selectedPeriod;
+            }
+        }
+        List<Scorecard> scorecards = reportingPeriod == null
+                ? Collections.emptyList()
+                : scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
+        scorecards = filterScorecards(scorecards, ownerName, approvalStatus);
 
         modelAndView.addObject("scorecards", scorecards);
+        modelAndView.addObject("selectedReportingPeriodId", reportingPeriod != null ? reportingPeriod.getId() : null);
+        modelAndView.addObject("ownerName", ownerName == null ? "" : ownerName.trim());
+        modelAndView.addObject("approvalStatus", approvalStatus == null ? "" : approvalStatus.trim());
         preparePage(modelAndView, request, session);
         return modelAndView;
+    }
+
+    private List<Scorecard> filterScorecards(List<Scorecard> scorecards, String ownerName, String approvalStatus) {
+        if (scorecards == null || scorecards.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String ownerFilter = ownerName == null ? "" : ownerName.trim().toLowerCase();
+        String approvalFilter = approvalStatus == null ? "" : approvalStatus.trim();
+
+        if (ownerFilter.isEmpty() && approvalFilter.isEmpty()) {
+            return scorecards;
+        }
+
+        List<Scorecard> filteredScorecards = new ArrayList<Scorecard>();
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null) {
+                continue;
+            }
+
+            boolean ownerMatches = ownerFilter.isEmpty();
+            if (!ownerMatches) {
+                String fullName = scorecard.getOwner() != null ? scorecard.getOwner().getFullName() : "";
+                ownerMatches = fullName != null && fullName.toLowerCase().contains(ownerFilter);
+            }
+
+            boolean approvalMatches = approvalFilter.isEmpty();
+            if (!approvalMatches) {
+                String status = scorecard.getApprovalStatus();
+                approvalMatches = status != null && status.equalsIgnoreCase(approvalFilter);
+            }
+
+            if (ownerMatches && approvalMatches) {
+                filteredScorecards.add(scorecard);
+            }
+        }
+
+        return filteredScorecards;
     }
 
     @RequestMapping(value = "/view-user-scorecards/{id}")
@@ -193,7 +252,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -231,6 +290,7 @@ public class ScorecardController {
             modelAndView.addObject("scorecardModel", scorecardModel);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             modelAndView.addObject("targetsList", targetsList);
+            modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
 
         } else {
 
@@ -239,6 +299,91 @@ public class ScorecardController {
         }
         preparePage(modelAndView, request, session);
         return modelAndView;
+    }
+
+    private List<TargetCaptureRow> buildTargetCaptureRows(List<Target> targetsList) {
+        List<TargetCaptureRow> rows = new ArrayList<TargetCaptureRow>();
+        if (targetsList == null || targetsList.isEmpty()) {
+            return rows;
+        }
+
+        for (Target target : targetsList) {
+            rows.add(new TargetCaptureRow(target));
+        }
+
+        applyPerspectiveRowspans(targetsList, rows);
+        applyStrategicObjectiveRowspans(targetsList, rows);
+        applyGoalRowspans(targetsList, rows);
+        return rows;
+    }
+
+    private void applyPerspectiveRowspans(List<Target> targetsList, List<TargetCaptureRow> rows) {
+        int index = 0;
+        while (index < targetsList.size()) {
+            long currentPerspectiveId = perspectiveId(targetsList.get(index));
+            int end = index + 1;
+            while (end < targetsList.size() && perspectiveId(targetsList.get(end)) == currentPerspectiveId) {
+                end++;
+            }
+            TargetCaptureRow row = rows.get(index);
+            row.setShowPerspective(true);
+            row.setPerspectiveRowspan(end - index);
+            index = end;
+        }
+    }
+
+    private void applyStrategicObjectiveRowspans(List<Target> targetsList, List<TargetCaptureRow> rows) {
+        int index = 0;
+        while (index < targetsList.size()) {
+            long currentPerspectiveId = perspectiveId(targetsList.get(index));
+            long currentStrategicObjectiveId = strategicObjectiveId(targetsList.get(index));
+            int end = index + 1;
+            while (end < targetsList.size()
+                    && perspectiveId(targetsList.get(end)) == currentPerspectiveId
+                    && strategicObjectiveId(targetsList.get(end)) == currentStrategicObjectiveId) {
+                end++;
+            }
+            TargetCaptureRow row = rows.get(index);
+            row.setShowStrategicObjective(true);
+            row.setStrategicObjectiveRowspan(end - index);
+            index = end;
+        }
+    }
+
+    private void applyGoalRowspans(List<Target> targetsList, List<TargetCaptureRow> rows) {
+        int index = 0;
+        while (index < targetsList.size()) {
+            long currentGoalId = goalId(targetsList.get(index));
+            int end = index + 1;
+            while (end < targetsList.size() && goalId(targetsList.get(end)) == currentGoalId) {
+                end++;
+            }
+            TargetCaptureRow row = rows.get(index);
+            row.setShowGoal(true);
+            row.setGoalRowspan(end - index);
+            index = end;
+        }
+    }
+
+    private long perspectiveId(Target target) {
+        if (target == null || target.getPerspective() == null) {
+            return -1;
+        }
+        return target.getPerspective().getId();
+    }
+
+    private long strategicObjectiveId(Target target) {
+        if (target == null || target.getStrategicObjective() == null) {
+            return -1;
+        }
+        return target.getStrategicObjective().getId();
+    }
+
+    private long goalId(Target target) {
+        if (target == null || target.getGoal() == null) {
+            return -1;
+        }
+        return target.getGoal().getId();
     }
 
     @RequestMapping("/capture-scores/{id}")
@@ -268,6 +413,7 @@ public class ScorecardController {
             modelAndView.addObject("scorecard", scorecard);
             List<Target> targetsList = targetService.getAllTargetsByScorecard(id);
             modelAndView.addObject("targetsList", targetsList);
+            modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
             modelAndView.addObject("averageAgreedScore", averageAgreedScore);
@@ -386,7 +532,7 @@ public class ScorecardController {
                                 + "Best regards,\n"
                                 + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -449,7 +595,7 @@ public class ScorecardController {
                 + "The ZimTrade Team";
 
         try {
-            mailservice.sendEmail(recipient, subject, template);
+            sendScorecardEmail(request, recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -479,7 +625,7 @@ public class ScorecardController {
                         + "Best regards,\n"
                         + "The ZimTrade Team";
         try {
-            mailservice.sendEmail(recipient, subject, template);
+            sendScorecardEmail(request, recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -509,7 +655,7 @@ public class ScorecardController {
                 + "Best regards,\n"
                 + "The ZimTrade Team";
         try {
-            mailservice.sendEmail(recipient, subject, template);
+            sendScorecardEmail(request, recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -551,13 +697,13 @@ public class ScorecardController {
                     + "The ZimTrade Team";
 
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
             try {
-                mailservice.sendEmail(recipient2, subject2, template2);
+                sendScorecardEmail(request, recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -575,7 +721,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -616,13 +762,13 @@ public class ScorecardController {
                     + "The ZimTrade Team";
 
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
             try {
-                mailservice.sendEmail(recipient2, subject2, template2);
+                sendScorecardEmail(request, recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -640,7 +786,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -681,7 +827,7 @@ public class ScorecardController {
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -697,7 +843,7 @@ public class ScorecardController {
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient2, subject2, template2);
+                sendScorecardEmail(request, recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -717,7 +863,7 @@ public class ScorecardController {
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(admin, subject, template);
+                sendScorecardEmail(request, admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -763,7 +909,7 @@ public class ScorecardController {
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -782,7 +928,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -824,7 +970,7 @@ public class ScorecardController {
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -840,7 +986,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient2, subject2, template2);
+                sendScorecardEmail(request, recipient2, subject2, template2);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient2, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -860,7 +1006,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(admin, subject, template);
+                sendScorecardEmail(request, admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -906,7 +1052,7 @@ public class ScorecardController {
                             + "Best regards,\n"
                             + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -925,7 +1071,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(admin, subject, template);
+                sendScorecardEmail(request, admin, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -940,8 +1086,24 @@ public class ScorecardController {
     public ModelAndView viewScorecard(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARD);
         try {
+            if (id <= 0) {
+                PortletUtils.addErrorMsg("Invalid scorecard reference.", request);
+                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+                preparePage(modelAndView, request, session);
+                return modelAndView;
+            }
+
             Scorecard scorecard = scorecardService.getScorecardById(id);
-            String scorecardModel = scorecard.getScorecardModel().getName();
+            if (scorecard == null) {
+                PortletUtils.addErrorMsg("Scorecard #" + id + " cannot be found.", request);
+                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+                preparePage(modelAndView, request, session);
+                return modelAndView;
+            }
+
+            String scorecardModel = scorecard.getScorecardModel() != null
+                    ? scorecard.getScorecardModel().getName()
+                    : PMConstants.STANDARD_SCORECARD;
             double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
             double averageManagerScore = goalService.getAverageManagerScore(id);
             double averageAgreedScore = goalService.getAverageAgreedScore(id);
@@ -960,6 +1122,7 @@ public class ScorecardController {
             modelAndView.addObject("scorecard", scorecard);
             modelAndView.addObject("scorecardModel", scorecardModel);
             modelAndView.addObject("targetsList", targetsList);
+            modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
             modelAndView.addObject("comment", new Comment());
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
@@ -976,7 +1139,7 @@ public class ScorecardController {
             modelAndView.addObject("canModerate", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard));
 
         }catch (Exception e){
-            PortletUtils.addErrorMsg("That scorecard cannot be found", request);
+            PortletUtils.addErrorMsg("The scorecard could not be opened. Please check scorecard setup and try again.", request);
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
         }
 
@@ -1004,7 +1167,7 @@ public class ScorecardController {
                 + "Best regards,\n"
                 + "The ZimTrade Team";
         try {
-            mailservice.sendEmail(recipient, subject, template);
+            sendScorecardEmail(request, recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -1035,7 +1198,7 @@ public class ScorecardController {
                 + "Best regards,\n"
                 + "The ZimTrade Team";
         try {
-            mailservice.sendEmail(recipient, subject, template);
+            sendScorecardEmail(request, recipient, subject, template);
             PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
         }catch (Exception e){
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
@@ -1203,6 +1366,71 @@ public class ScorecardController {
         }
     }
 
+    private void sendScorecardEmail(HttpServletRequest request, String recipient, String subject, String body) throws UnsupportedEncodingException, MalformedURLException {
+        String normalizedSubject = normalizeScorecardEmailSubject(subject);
+        String normalizedBody = normalizeScorecardEmailBody(body);
+
+        String platformUrl = normalizeBaseUrl(commonService.getCurrentUrl(request));
+        if (!platformUrl.isEmpty() && (!hasHttpLink(normalizedBody) || !normalizedBody.contains("Open Platform: "))) {
+            normalizedBody = appendParagraph(normalizedBody, "Open Platform: " + platformUrl);
+        }
+
+        mailservice.sendEmail(recipient, normalizedSubject, normalizedBody);
+    }
+
+    private String normalizeScorecardEmailSubject(String subject) {
+        String cleaned = subject == null ? "" : subject.trim();
+        while (cleaned.endsWith(",")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1).trim();
+        }
+        if (cleaned.isEmpty()) {
+            return "Scorecard Activity";
+        }
+        if ("Technical failure".equalsIgnoreCase(cleaned)) {
+            return "Scorecard Activity - Technical Failure";
+        }
+        String lower = cleaned.toLowerCase();
+        if (lower.startsWith("scorecard ") && !lower.startsWith("scorecard activity")) {
+            return "Scorecard Activity - " + cleaned.substring("scorecard ".length()).trim();
+        }
+        return cleaned;
+    }
+
+    private String normalizeScorecardEmailBody(String body) {
+        String normalized = body == null ? "" : body.trim();
+        normalized = normalized.replace(" login ", " log in ");
+        normalized = normalized.replace("Login ", "Log in ");
+        normalized = normalized.replace("response or action", "respond or take action");
+        normalized = normalized.replace("You can now login", "You can now log in");
+        return normalized;
+    }
+
+    private String appendParagraph(String body, String line) {
+        if (line == null || line.trim().isEmpty()) {
+            return body;
+        }
+        String normalizedBody = body == null ? "" : body.trim();
+        if (normalizedBody.isEmpty()) {
+            return line;
+        }
+        return normalizedBody + "\n\n" + line;
+    }
+
+    private boolean hasHttpLink(String content) {
+        return content != null && (content.contains("http://") || content.contains("https://"));
+    }
+
+    private String normalizeBaseUrl(String url) {
+        if (url == null) {
+            return "";
+        }
+        String normalized = url.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
     @RequestMapping(value = "/fake-save-scorecard", method = RequestMethod.POST)
     public String fakeSaveScorecard(HttpServletRequest request, Scorecard scorecard) {
         PortletUtils.addInfoMsg("Scorecard successfully saved for later. You can update it anytime before submitting for approval", request);
@@ -1301,7 +1529,7 @@ public class ScorecardController {
                     + "Best regards,\n"
                     + "The ZimTrade Team";
             try {
-                mailservice.sendEmail(recipient, subject, template);
+                sendScorecardEmail(request, recipient, subject, template);
                 PortletUtils.addInfoMsg("An email alert successfully sent to "+ recipient, request);
             }catch (Exception e){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);

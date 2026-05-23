@@ -18,6 +18,8 @@ public interface AccountService {
     Account getAccountToReset(String email, String reset);
     void addAccount(Account account);
     Account saveAccount(Account account);
+    Account updatePasswordResetToken(Account account, String resetTokenHash);
+    Account updatePasswordFromReset(Account account, String encodedPassword);
     Account findAccountByEmail(String email);
     void deleteAccount(Account account);
     void upgradePassword(long accountId, String encodedPassword);

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
@@ -19,6 +20,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -78,12 +80,21 @@ public class ActionPlanController {
 //        return modelAndView;
 //    }
     @RequestMapping()
-    public ModelAndView viewActionPlans2(HttpServletRequest request) {
+    public ModelAndView viewActionPlans2(@RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
+                                         HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_ACTION_PLANS2);
         modelAndView.addObject("pageTitle", "View All");
         Account loggedUser = commonService.getLoggedUser();
         ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        List<ActionPlan> plansList = actionPlanService.listAllActionPlans(reportingPeriod);
+        if (reportingPeriodId != null) {
+            ReportingPeriod selectedPeriod = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
+            if (selectedPeriod != null && loggedUser != null && selectedPeriod.getClientId() == loggedUser.getClientId()) {
+                reportingPeriod = selectedPeriod;
+            }
+        }
+        List<ActionPlan> plansList = reportingPeriod == null
+                ? Collections.emptyList()
+                : actionPlanService.listAllActionPlans(reportingPeriod);
         for(ActionPlan plan : plansList){
             String initials = commonService.getInitials(plan.getManager().getFullName());
             plan.getManager().setInitials(initials);
@@ -91,6 +102,7 @@ public class ActionPlanController {
         modelAndView.addObject("plansList", plansList);
         modelAndView.addObject("actionPlan", new ActionPlan());
         modelAndView.addObject("loggedUser", loggedUser);
+        modelAndView.addObject("selectedReportingPeriodId", reportingPeriod != null ? reportingPeriod.getId() : null);
         preparePage(modelAndView, request);
         return modelAndView;
     }

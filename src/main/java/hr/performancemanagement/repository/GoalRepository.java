@@ -10,12 +10,23 @@ import java.util.List;
 
 @Repository
 public interface GoalRepository extends JpaRepository<Goal, Long> {
-
-    List<Goal> findGoalsByGear_ClientId(long clientId);
+    List<Goal> findGoalsByPerspectiveId(long perspectiveId);
     Goal findGoalById(long id);
+    List<Goal> findGoalsByScorecardIdOrderByPerspective(long scorecardId);
+    List<Goal> findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(long scorecardId);
 
-    @Query(value = "SELECT DISTINCT(oc.goal) FROM Output o LEFT JOIN Outcome oc ON o.outcome = oc WHERE o.scorecard.id = :scorecardId")
-    List<Goal> goalsByScorecard(@Param("scorecardId") long scorecardId);
-    @Query(value = "SELECT coalesce(AVG(o.weightedScore), 0) FROM Output o WHERE o.outcome.goal = :goal")
-    Double weightedScoreByScorecardAndGoal(@Param("goal") Goal goal);
+    @Query("SELECT COALESCE(SUM(t.allocatedWeight), 0.0) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    double sumAllocatedWeight(@Param("scorecardId") long scorecardId);
+
+    @Query("SELECT COALESCE(AVG(s.employeeScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    double averageEmployeeScore(@Param("scorecardId") long scorecardId);
+
+    @Query("SELECT COALESCE(AVG(s.managerScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    double averageManagerScore(@Param("scorecardId") long scorecardId);
+
+    @Query("SELECT COALESCE(AVG(s.agreedScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    double averageAgreedScore(@Param("scorecardId") long scorecardId);
+
+    @Query("SELECT COALESCE(AVG(s.moderatedScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    double averageModeratedScore(@Param("scorecardId") long scorecardId);
 }

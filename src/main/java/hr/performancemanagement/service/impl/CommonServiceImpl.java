@@ -79,8 +79,15 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
     @Override
     public boolean isUserAllowed(String activity, Scorecard scorecard){
 
+        if (scorecard == null) {
+            return false;
+        }
+
         boolean isUserAllowed = false;
         Account loggedUser = getLoggedUser();
+        if (loggedUser == null) {
+            return false;
+        }
         String approval_status = scorecard.getApprovalStatus();
         Account owner = scorecard.getOwner();
 
@@ -149,7 +156,8 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
 
     @Override
     public boolean isSupervisor(Account employee){
-        if(getLoggedUser().getId() == employee.getSupervisor().getId()){
+        Account loggedUser = getLoggedUser();
+        if(loggedUser != null && employee != null && employee.getSupervisor() != null && loggedUser.getId() == employee.getSupervisor().getId()){
             return true;
         }else{
             return false;
@@ -158,7 +166,8 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
 
     @Override
     public boolean isOwner(Scorecard scorecard){
-        if(getLoggedUser().getId() == scorecard.getOwner().getId()){
+        Account loggedUser = getLoggedUser();
+        if(loggedUser != null && scorecard != null && scorecard.getOwner() != null && loggedUser.getId() == scorecard.getOwner().getId()){
             return true;
         }else{
             return false;

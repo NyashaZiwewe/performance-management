@@ -1026,7 +1026,8 @@ ul.nav-second-level {
 .nav.nav-second-level > li.active {
     border: none;
 }
-.nav.nav-second-level.collapse[style] {
+.nav.nav-second-level.collapse.in[style],
+.nav.nav-third-level.collapse.in[style] {
     height: auto !important;
 }
 .nav-header a {
