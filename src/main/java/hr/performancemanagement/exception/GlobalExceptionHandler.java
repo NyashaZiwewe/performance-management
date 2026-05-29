@@ -85,7 +85,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             DataIntegrityViolationException.class,
-            org.hibernate.exception.ConstraintViolationException.class
+            org.hibernate.exception.ConstraintViolationException.class,
+            javax.validation.ConstraintViolationException.class
     })
     public ResponseEntity<CommonResponse<Object>> handleDataIntegrity(Exception exception) {
         return buildResponse(HttpStatus.BAD_REQUEST, PortletUtils.sanitiseUserErrorMessage(exception.getMessage()));

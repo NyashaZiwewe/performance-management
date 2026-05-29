@@ -42,7 +42,6 @@ public class Account {
     private String email;
 
     @JsonIgnore
-    @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
@@ -75,7 +74,10 @@ public class Account {
     private String position;
 
     @NotBlank(message = "Account type is required")
-    @Pattern(regexp = "EMPLOYEE|MANAGER|EXECUTIVE", message = "Invalid account type")
+    @Pattern(
+            regexp = "EMPLOYEE|SUPERVISOR|DEPARTMENT_MANAGER|DIVISIONAL_DIRECTOR|ACTING_CEO|CEO",
+            message = "Invalid account type"
+    )
     private String accountType;
 
     @ManyToOne
@@ -87,7 +89,7 @@ public class Account {
     private String accounts;
 
     @NotBlank(message = "Status is required")
-    @Pattern(regexp = "ACTIVE|INACTIVE|SUSPENDED|DELETED", message = "Invalid status")
+    @Pattern(regexp = "ACTIVE|IN_ACTIVE|INACTIVE|SUSPENDED|DELETED", message = "Invalid status")
     private String status;
     @CreationTimestamp()
     private Date date;

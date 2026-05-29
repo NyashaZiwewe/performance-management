@@ -197,10 +197,10 @@ public class ReportingPeriodController {
         String adminEmail = commonService.getAdminEmail();
         String hrEmail = commonService.getHREmail();
         if (adminEmail != null && !adminEmail.trim().isEmpty()) {
-            notificationService.sendUserMessage(adminEmail.trim(), "Administrator", subject, message);
+            notificationService.sendUserMessageAsync(adminEmail.trim(), "Administrator", subject, message);
         }
         if (hrEmail != null && !hrEmail.trim().isEmpty() && (adminEmail == null || !hrEmail.equalsIgnoreCase(adminEmail))) {
-            notificationService.sendUserMessage(hrEmail.trim(), "HR", subject, message);
+            notificationService.sendUserMessageAsync(hrEmail.trim(), "HR", subject, message);
         }
     }
 

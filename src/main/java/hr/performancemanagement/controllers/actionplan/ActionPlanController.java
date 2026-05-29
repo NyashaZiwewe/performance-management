@@ -181,14 +181,22 @@ public class ActionPlanController {
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
     public String updatePlan(HttpServletRequest request, ActionPlan newPlan) {
         try {
-            if(newPlan.getProgress() == 0){
-                newPlan.setStatus("todo");
-            } else if (newPlan.getProgress() == 100) {
-                newPlan.setStatus("completed");
-            }else {
-                newPlan.setStatus("inprogress");
+            ActionPlan existingPlan = actionPlanService.getActionPlanById(newPlan.getId());
+            if(existingPlan == null){
+                PortletUtils.addErrorMsg("Action plan not found.", request);
+                return "redirect:/action-plans";
             }
-            actionPlanService.saveActionPlan(newPlan);
+
+            existingPlan.setName(newPlan.getName());
+            existingPlan.setDescription(newPlan.getDescription());
+            existingPlan.setMeasureOfSuccess(newPlan.getMeasureOfSuccess());
+            existingPlan.setManager(newPlan.getManager());
+            existingPlan.setReportingPeriod(newPlan.getReportingPeriod());
+            existingPlan.setStartDate(newPlan.getStartDate());
+            existingPlan.setEndDate(newPlan.getEndDate());
+
+            applyTaskDrivenProgress(existingPlan);
+            actionPlanService.saveActionPlan(existingPlan);
             PortletUtils.addInfoMsg("Action Plan successfully updated.", request);
         }catch (Exception e){
             log.error("Error updating action plan: {}", newPlan != null ? newPlan.getId() : "null", e);
@@ -360,7 +368,18 @@ public class ActionPlanController {
 
     private void appendActionPlanProgressPayload(JSONObject jsonObject, long actionPlanId){
         ActionPlan plan = actionPlanService.getActionPlanById(actionPlanId);
-        List<Task> taskList = taskService.listAllTasks(actionPlanId);
+        int[] progressSnapshot = applyTaskDrivenProgress(plan);
+        actionPlanService.saveActionPlan(plan);
+
+        jsonObject.put("planId", plan.getId());
+        jsonObject.put("planStatus", plan.getStatus());
+        jsonObject.put("planProgress", plan.getProgress());
+        jsonObject.put("totalTasks", progressSnapshot[0]);
+        jsonObject.put("completedTasks", progressSnapshot[1]);
+    }
+
+    private int[] applyTaskDrivenProgress(ActionPlan plan){
+        List<Task> taskList = taskService.listAllTasks(plan.getId());
         int totalTasks = taskList == null ? 0 : taskList.size();
         int completedTasks = 0;
         if(taskList != null){
@@ -373,7 +392,6 @@ public class ActionPlanController {
 
         double progress = totalTasks == 0 ? 0.0 : (completedTasks * 100.0) / totalTasks;
         progress = Math.round(progress * 10.0) / 10.0;
-
         plan.setProgress(progress);
         if(totalTasks == 0 || completedTasks == 0){
             plan.setStatus("todo");
@@ -382,13 +400,7 @@ public class ActionPlanController {
         } else {
             plan.setStatus("inprogress");
         }
-        actionPlanService.saveActionPlan(plan);
-
-        jsonObject.put("planId", plan.getId());
-        jsonObject.put("planStatus", plan.getStatus());
-        jsonObject.put("planProgress", plan.getProgress());
-        jsonObject.put("totalTasks", totalTasks);
-        jsonObject.put("completedTasks", completedTasks);
+        return new int[]{totalTasks, completedTasks};
     }
 
 

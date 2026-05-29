@@ -45,7 +45,7 @@
                 <div class="alert alert-warning" th:if="${accountWarnings != null and !accountWarnings.isEmpty()}">
                     <div th:each="warning : ${accountWarnings}" th:text="${warning}">Warning</div>
                 </div>
-                <form th:action="@{/accounts/save-account}" method="post" th:object="${account}">
+                <form id="addAccountForm" th:action="@{/accounts/save-account}" method="post" th:object="${account}">
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
@@ -262,6 +262,35 @@
     })
     $(document).on('select2:open', () => {
         document.querySelector('.select2-search__field').focus();
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var accountForm = document.getElementById('addAccountForm');
+        if (!accountForm) {
+            return;
+        }
+        accountForm.addEventListener('submit', function (event) {
+            if (accountForm.dataset.submitting === 'true') {
+                event.preventDefault();
+                return;
+            }
+            accountForm.dataset.submitting = 'true';
+            var submitButtons = accountForm.querySelectorAll('button[type="submit"], input[type="submit"]');
+            submitButtons.forEach(function (button) {
+                button.disabled = true;
+                if (button.tagName === 'BUTTON') {
+                    if (!button.dataset.originalHtml) {
+                        button.dataset.originalHtml = button.innerHTML;
+                    }
+                    button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+                } else if (button.tagName === 'INPUT') {
+                    if (!button.dataset.originalValue) {
+                        button.dataset.originalValue = button.value;
+                    }
+                    button.value = 'Saving...';
+                }
+            });
+        });
     });
 
 

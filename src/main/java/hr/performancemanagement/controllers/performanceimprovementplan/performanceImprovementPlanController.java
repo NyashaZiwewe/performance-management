@@ -167,20 +167,29 @@ public class performanceImprovementPlanController {
 
     @RequestMapping(value = "/update-plan", method = RequestMethod.POST)
     public String updatePlan(HttpServletRequest request, PerformanceImprovementPlan newPlan) {
-        PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(newPlan.getId());
-        plan.setEmployee(newPlan.getEmployee());
-        plan.setAgreedAction(newPlan.getAgreedAction());
-        plan.setConcern(newPlan.getConcern());
-        plan.setEndDate(newPlan.getEndDate());
-        plan.setExpectedStandard(newPlan.getExpectedStandard());
-        plan.setProgress(newPlan.getProgress());
-        plan.setRequiredSupport(newPlan.getRequiredSupport());
-        plan.setReviewNotes(newPlan.getReviewNotes());
-        plan.setTargetArea(newPlan.getTargetArea());
-        plan.setStatus(newPlan.getStatus());
+        try {
+            PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(newPlan.getId());
+            if(plan == null){
+                PortletUtils.addErrorMsg("Performance improvement plan not found.", request);
+                return "redirect:/performance-improvement-plans";
+            }
 
-        performanceImprovementPlanService.addPerformanceImprovementPlan(plan);
-        PortletUtils.addInfoMsg("Performance Improvement Plan successfully updated.", request);
+            plan.setEmployee(newPlan.getEmployee());
+            plan.setAgreedAction(newPlan.getAgreedAction());
+            plan.setConcern(newPlan.getConcern());
+            plan.setEndDate(newPlan.getEndDate());
+            plan.setExpectedStandard(newPlan.getExpectedStandard());
+            plan.setRequiredSupport(newPlan.getRequiredSupport());
+            plan.setReviewNotes(newPlan.getReviewNotes());
+            plan.setTargetArea(newPlan.getTargetArea());
+
+            applyTaskDrivenProgress(plan);
+            performanceImprovementPlanService.addPerformanceImprovementPlan(plan);
+            PortletUtils.addInfoMsg("Performance Improvement Plan successfully updated.", request);
+        } catch (Exception e){
+            log.error("Error updating performance improvement plan: {}", newPlan != null ? newPlan.getId() : "null", e);
+            PortletUtils.addErrorMsg("Failed to update performance improvement plan.", request);
+        }
         return "redirect:/performance-improvement-plans";
     }
 
@@ -373,7 +382,18 @@ public class performanceImprovementPlanController {
 
     private void appendPipProgressPayload(JSONObject jsonObject, long performanceImprovementPlanId){
         PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId);
-        List<PIPTask> taskList = pipTaskService.listAllPIPTasks(performanceImprovementPlanId);
+        int[] progressSnapshot = applyTaskDrivenProgress(plan);
+        performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
+
+        jsonObject.put("planId", plan.getId());
+        jsonObject.put("planStatus", plan.getStatus());
+        jsonObject.put("planProgress", plan.getProgress());
+        jsonObject.put("totalTasks", progressSnapshot[0]);
+        jsonObject.put("completedTasks", progressSnapshot[1]);
+    }
+
+    private int[] applyTaskDrivenProgress(PerformanceImprovementPlan plan){
+        List<PIPTask> taskList = pipTaskService.listAllPIPTasks(plan.getId());
         int totalTasks = taskList == null ? 0 : taskList.size();
         int completedTasks = 0;
         if(taskList != null){
@@ -386,7 +406,6 @@ public class performanceImprovementPlanController {
 
         double progress = totalTasks == 0 ? 0.0 : (completedTasks * 100.0) / totalTasks;
         progress = Math.round(progress * 10.0) / 10.0;
-
         plan.setProgress(progress);
         if(totalTasks == 0 || completedTasks == 0){
             plan.setStatus("todo");
@@ -395,13 +414,7 @@ public class performanceImprovementPlanController {
         } else {
             plan.setStatus("inprogress");
         }
-        performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
-
-        jsonObject.put("planId", plan.getId());
-        jsonObject.put("planStatus", plan.getStatus());
-        jsonObject.put("planProgress", plan.getProgress());
-        jsonObject.put("totalTasks", totalTasks);
-        jsonObject.put("completedTasks", completedTasks);
+        return new int[]{totalTasks, completedTasks};
     }
 
 

@@ -245,22 +245,38 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-scorecard", method = RequestMethod.POST)
-    public String saveScorecard(HttpServletRequest request, @Valid Scorecard newScorecard, BindingResult bindingResult) throws UnsupportedEncodingException {
-        if (bindingResult.hasErrors()) {
-            PortletUtils.addErrorMsg("Validation failed: " + bindingResult.getFieldError().getDefaultMessage(), request);
+    public String saveScorecard(HttpServletRequest request, Scorecard newScorecard) throws UnsupportedEncodingException {
+        if (newScorecard == null
+                || newScorecard.getOwner() == null
+                || newScorecard.getOwner().getId() <= 0) {
+            PortletUtils.addErrorMsg("Validation failed: Owner is required", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
+        if (newScorecard.getReportingPeriod() == null
+                || newScorecard.getReportingPeriod().getId() <= 0) {
+            PortletUtils.addErrorMsg("Validation failed: Reporting period is required", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
+        if (newScorecard.getScorecardModel() == null
+                || newScorecard.getScorecardModel().getId() <= 0) {
+            PortletUtils.addErrorMsg("Validation failed: Scorecard model is required", request);
             return "redirect:/scorecards/add-scorecard";
         }
 
-         Account loggedUser = commonService.getLoggedUser();
+        Account loggedUser = commonService.getLoggedUser();
+        if (loggedUser == null) {
+            PortletUtils.addErrorMsg("Validation failed: Unable to identify the logged-in user.", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
 
         if(scorecardService.countActiveScorecards(newScorecard.getOwner(), newScorecard.getReportingPeriod()) >= 1){
             PortletUtils.addErrorMsg(newScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + newScorecard.getReportingPeriod().getStartDate() +" - "+ newScorecard.getReportingPeriod().getEndDate() +")", request);
             return "redirect:/scorecards/add-scorecard";
         }else {
-            newScorecard.setClientId(commonService.getLoggedUser().getClientId());
-            newScorecard.setLockStatus("OPEN");
-            newScorecard.setStatus("ACTIVE");
-            newScorecard.setApprovalStatus("NEW");
+            newScorecard.setClientId(loggedUser.getClientId());
+            newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
+            newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
+            newScorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_NEW);
             scorecardService.addScorecard(newScorecard);
 
             String recipient = newScorecard.getOwner().getEmail();
@@ -609,12 +625,24 @@ public class ScorecardController {
     public String submitScorecardForApproval(HttpServletRequest request, Scorecard updatedScorecard) throws UnsupportedEncodingException, MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Scorecard not found.", request);
+            return "redirect:/scorecards";
+        }
+        Account owner = scorecard.getOwner();
+        Account supervisor = owner == null ? null : owner.getSupervisor();
+        String supervisorEmail = supervisor == null ? null : supervisor.getEmail();
+        if (supervisor == null || !StringUtils.hasText(supervisorEmail)) {
+            String ownerName = owner == null ? "this owner" : owner.getFullName();
+            PortletUtils.addErrorMsg("Cannot submit scorecard: no supervisor account is configured for " + ownerName + ".", request);
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
 
         scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_PENDING_APPROVAL);
         scorecard.setLockStatus(PMConstants.LOCK_STATUS_LOCKED);
         scorecardService.saveScorecard(scorecard);
         URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
-        String recipient = scorecard.getOwner().getSupervisor().getEmail();
+        String recipient = supervisorEmail;
 
         String subject = "Scorecard Approval,";
         String template = "Good day, \n\n"
@@ -1446,10 +1474,7 @@ public class ScorecardController {
             normalizedBody = appendParagraph(normalizedBody, "Open Platform: " + platformUrl);
         }
 
-        boolean sent = notificationService.sendUserMessage(recipient, null, normalizedSubject, normalizedBody);
-        if (!sent) {
-            throw new RuntimeException("Notification delivery failed");
-        }
+        notificationService.sendUserMessageAsync(recipient, null, normalizedSubject, normalizedBody);
     }
 
     private String normalizeScorecardEmailSubject(String subject) {

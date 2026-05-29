@@ -42,7 +42,7 @@ public class Scorecard {
     private ScorecardModel scorecardModel;
 
     @NotBlank(message = "Status is required")
-    @Pattern(regexp = "ACTIVE|INACTIVE|ARCHIVED|DELETED", message = "Invalid status")
+    @Pattern(regexp = "ACTIVE|IN_ACTIVE|INACTIVE|ARCHIVED|DELETED", message = "Invalid status")
     private String status;
 
     @DecimalMin(value = "0.0", message = "Employee score must be non-negative")
@@ -67,7 +67,10 @@ public class Scorecard {
 
     @Column(columnDefinition = "varchar(50) default 'NEW'")
     @NotBlank(message = "Approval status is required")
-    @Pattern(regexp = "NEW|PENDING|APPROVED|REJECTED|RETURNED", message = "Invalid approval status")
+    @Pattern(
+            regexp = "NEW|PENDING_APPROVAL|APPROVED_BY_SUPERVISOR|REJECTED_BY_SUPERVISOR|APPROVED_BY_HR|REJECTED_BY_HR|SCORED_BY_EMPLOYEE|SCORED_BY_SUPERVISOR|AGREED_BY_TWO|MODERATED_BY_HR|CLOSED|PENDING|APPROVED|REJECTED|RETURNED",
+            message = "Invalid approval status"
+    )
     private String approvalStatus;
 
     @Size(max = 1000, message = "Owner comment cannot exceed 1000 characters")

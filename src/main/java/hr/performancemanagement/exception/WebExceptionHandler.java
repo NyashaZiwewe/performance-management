@@ -16,7 +16,8 @@ public class WebExceptionHandler {
 
     @ExceptionHandler({
             DataIntegrityViolationException.class,
-            org.hibernate.exception.ConstraintViolationException.class
+            org.hibernate.exception.ConstraintViolationException.class,
+            javax.validation.ConstraintViolationException.class
     })
     public String handleDataIntegrity(Exception ex, HttpServletRequest request) {
         PortletUtils.addErrorMsg(PortletUtils.sanitiseUserErrorMessage(ex.getMessage()), request, ex);

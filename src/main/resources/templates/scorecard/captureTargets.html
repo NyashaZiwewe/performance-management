@@ -24,8 +24,49 @@
           th:href="@{/css/plugins/select2/select2-bootstrap4.min.css}">
 
     <script>
+        function setButtonLoadingState(button, loadingText) {
+            if (!button) {
+                return;
+            }
+            button.disabled = true;
+            if (button.tagName === 'BUTTON') {
+                if (!button.dataset.originalHtml) {
+                    button.dataset.originalHtml = button.innerHTML;
+                }
+                button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> ' + loadingText;
+            } else if (button.tagName === 'INPUT') {
+                if (!button.dataset.originalValue) {
+                    button.dataset.originalValue = button.value;
+                }
+                button.value = loadingText;
+            }
+        }
+
+        function lockSubmittingForm(form, loadingText) {
+            if (!form) {
+                return false;
+            }
+            if (form.dataset.submitting === 'true') {
+                return true;
+            }
+            form.dataset.submitting = 'true';
+            var submitButtons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+            submitButtons.forEach(function (button) {
+                setButtonLoadingState(button, loadingText || 'Saving...');
+            });
+            return false;
+        }
+
         function submitScorecardForApproval(){
-            document.getElementById('scorecardForm').submit();
+            var form = document.getElementById('scorecardForm');
+            if (lockSubmittingForm(form, 'Submitting...')) {
+                return;
+            }
+            var actionButtons = document.querySelectorAll('.submit-scorecard-btn');
+            actionButtons.forEach(function (button) {
+                setButtonLoadingState(button, 'Submitting...');
+            });
+            form.submit();
         }
     </script>
     <style>
@@ -425,8 +466,8 @@
                         </div>
                         <div class="col-lg-8" th:if="${totalAllocatedWeight == 100.0}">
                             <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
-                            <button class="btn btn-success" th:if="${scorecard.approvalStatus == 'NEW'}" type="button" onclick="submitScorecardForApproval()">Submit for Approval</button>
-                            <button class="btn btn-success" th:if="${scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" type="button" onclick="submitScorecardForApproval()">Re-Submit for Approval</button>
+                            <button class="btn btn-success submit-scorecard-btn" th:if="${scorecard.approvalStatus == 'NEW'}" type="button" onclick="submitScorecardForApproval()">Submit for Approval</button>
+                            <button class="btn btn-success submit-scorecard-btn" th:if="${scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" type="button" onclick="submitScorecardForApproval()">Re-Submit for Approval</button>
                         </div>
                         <div class="col-lg-8" th:if="${totalAllocatedWeight != 100.0}">
                             <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
@@ -482,6 +523,19 @@
     })
     $(document).on('select2:open', () => {
         document.querySelector('.select2-search__field').focus();
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var forms = document.querySelectorAll('form');
+        forms.forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (form.dataset.submitting === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+                lockSubmittingForm(form, 'Saving...');
+            });
+        });
     });
 </script>
 

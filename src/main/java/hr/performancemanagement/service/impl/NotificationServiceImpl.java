@@ -56,6 +56,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Async
+    public void sendAccountSetupAsync(Account account, String resetLink) {
+        sendAccountSetup(account, resetLink);
+    }
+
+    @Override
+    @Async
     public void sendScheduledTaskStatus(String taskName, boolean success, String details) {
         String subject = taskName + " " + (success ? "Succeeded" : "Failed");
         String body = buildMessage(
@@ -81,6 +87,12 @@ public class NotificationServiceImpl implements NotificationService {
     public boolean sendUserMessage(String recipientEmail, String recipientName, String subject, String message) {
         String body = buildMessage(greeting(recipientName), message);
         return send(recipientEmail, subject, body);
+    }
+
+    @Override
+    @Async
+    public void sendUserMessageAsync(String recipientEmail, String recipientName, String subject, String message) {
+        sendUserMessage(recipientEmail, recipientName, subject, message);
     }
 
     private boolean send(String to, String subject, String body) {

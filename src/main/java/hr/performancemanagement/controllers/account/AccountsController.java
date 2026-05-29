@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.Department;
 import hr.performancemanagement.entities.Division;
 import hr.performancemanagement.service.api.*;
+import hr.performancemanagement.utils.enums.AccountType;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
@@ -121,6 +122,8 @@ public class AccountsController {
         }
         if (newAccount.getAccountType() == null || newAccount.getAccountType().trim().isEmpty()) {
             errors.add("Account type is required.");
+        } else if (!isSupportedAccountType(newAccount.getAccountType())) {
+            errors.add("Invalid account type selected.");
         }
         if (newAccount.getStatus() == null || newAccount.getStatus().trim().isEmpty()) {
             errors.add("Account status is required.");
@@ -167,9 +170,18 @@ public class AccountsController {
         newAccount.setResetPassword(cs.hashResetToken(setupToken));
         newAccount.setClientId(clientId);
         accountService.addAccount(newAccount);
-        sendSetupLink(newAccount, setupToken, request);
-        PortletUtils.addInfoMsg("Employee record was successfully created. A password setup link was sent if email delivery is available.", request);
-        return "redirect:/accounts/view-account/"+ newAccount.getId();
+        boolean setupEmailQueued = sendSetupLink(newAccount, setupToken, request);
+        if (setupEmailQueued) {
+            PortletUtils.addInfoMsg("Employee record was successfully created. Password setup instructions are being sent to " + newAccount.getEmail() + ".", request);
+            return "redirect:/accounts/view-account/"+ newAccount.getId();
+        }
+        try {
+            accountService.deleteAccount(newAccount);
+        } catch (Exception ignored) {
+            // If rollback cleanup fails, keep the explanatory message below.
+        }
+        PortletUtils.addErrorMsg("Account creation failed because setup instructions could not be queued for " + newAccount.getEmail() + ". Verify host URL and email settings, then try again.", request);
+        return "redirect:/accounts/add-account";
 
     }
 
@@ -195,14 +207,81 @@ public class AccountsController {
 
     @RequestMapping(value = "/update-account", method = RequestMethod.POST)
     public String updateAccount(HttpServletRequest request, Account account) {
+        long accountId = account == null ? 0 : account.getId();
+        if (accountId <= 0) {
+            PortletUtils.addErrorMsg("Invalid employee record.", request);
+            return "redirect:/accounts";
+        }
+
+        Account existingAccount = accountService.getAccountById(accountId);
+        if (existingAccount == null) {
+            PortletUtils.addErrorMsg("Employee record not found.", request);
+            return "redirect:/accounts";
+        }
+
+        if (!hasText(account.getFullName())) {
+            PortletUtils.addErrorMsg("Employee full name is required.", request);
+            return "redirect:/accounts/edit-account/" + accountId;
+        }
+        if (!hasText(account.getEmail())) {
+            PortletUtils.addErrorMsg("Employee email is required.", request);
+            return "redirect:/accounts/edit-account/" + accountId;
+        }
+        if (!hasText(account.getPosition())) {
+            PortletUtils.addErrorMsg("Employee position is required.", request);
+            return "redirect:/accounts/edit-account/" + accountId;
+        }
+        if (!hasText(account.getAccountType()) || !isSupportedAccountType(account.getAccountType())) {
+            PortletUtils.addErrorMsg("Invalid account type selected.", request);
+            return "redirect:/accounts/edit-account/" + accountId;
+        }
+
+        Account duplicateEmail = accountService.findAccountByEmail(account.getEmail().trim());
+        if (duplicateEmail != null && duplicateEmail.getId() != accountId) {
+            PortletUtils.addErrorMsg("An employee with email " + account.getEmail() + " already exists.", request);
+            return "redirect:/accounts/edit-account/" + accountId;
+        }
+
+        Account supervisor = null;
+        if (account.getSupervisor() != null && account.getSupervisor().getId() > 0) {
+            long supervisorId = account.getSupervisor().getId();
+            if (supervisorId == accountId) {
+                PortletUtils.addErrorMsg("An employee cannot be their own supervisor.", request);
+                return "redirect:/accounts/edit-account/" + accountId;
+            }
+            supervisor = accountService.getAccountById(supervisorId);
+            if (supervisor == null) {
+                PortletUtils.addErrorMsg("Selected supervisor does not exist.", request);
+                return "redirect:/accounts/edit-account/" + accountId;
+            }
+        }
 
         try {
-            accountService.saveAccount(account);
+            existingAccount.setFullName(account.getFullName().trim());
+            existingAccount.setEmail(account.getEmail().trim());
+            existingAccount.setSupervisor(supervisor);
+            existingAccount.setDepartment(account.getDepartment() != null && account.getDepartment().getId() > 0
+                    ? account.getDepartment()
+                    : existingAccount.getDepartment());
+            existingAccount.setPosition(account.getPosition().trim());
+            existingAccount.setAccountType(account.getAccountType().trim());
+            existingAccount.setDivision(account.getDivision() != null && account.getDivision().getId() > 0
+                    ? account.getDivision()
+                    : null);
+            existingAccount.setSpecial(account.getSpecial());
+            existingAccount.setAdmin(account.getAdmin());
+            existingAccount.setAccounts(account.getAccounts());
+            existingAccount.setRole(account.getRole());
+            existingAccount.setStatus(account.getStatus());
+            if (hasText(account.getPassword())) {
+                existingAccount.setPassword(account.getPassword().trim());
+            }
+            accountService.saveAccount(existingAccount);
             PortletUtils.addInfoMsg("Employee record successfully updated.", request);
-            return "redirect:/accounts/view-account/"+ account.getId();
+            return "redirect:/accounts/view-account/"+ accountId;
         }catch (Exception e){
-            PortletUtils.addErrorMsg("Employee record wasn't updated.", request);
-            return "redirect:/accounts/view-account/"+ account.getId();
+            PortletUtils.addErrorMsg("Employee record wasn't updated. " + PortletUtils.sanitiseUserErrorMessage(e.getMessage()), request, e);
+            return "redirect:/accounts/edit-account/" + accountId;
         }
 
     }
@@ -220,13 +299,31 @@ public class AccountsController {
         return "redirect:/accounts/";
     }
 
-    private void sendSetupLink(Account account, String setupToken, HttpServletRequest request) {
+    private boolean sendSetupLink(Account account, String setupToken, HttpServletRequest request) {
         try {
             URL setupLink = new URL(cs.getCurrentUrl(request).concat("/change-password/" + setupToken));
-            notificationService.sendAccountSetup(account, setupLink.toString());
+            notificationService.sendAccountSetupAsync(account, setupLink.toString());
+            return true;
         } catch (Exception ignored) {
-            // Account creation must still succeed when email delivery is unavailable.
+            return false;
         }
+    }
+
+    private boolean isSupportedAccountType(String accountType) {
+        if (accountType == null) {
+            return false;
+        }
+        String candidate = accountType.trim();
+        for (AccountType type : AccountType.values()) {
+            if (type.name().equalsIgnoreCase(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
 

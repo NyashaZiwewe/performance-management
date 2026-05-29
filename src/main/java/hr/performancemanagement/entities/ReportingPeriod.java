@@ -37,7 +37,7 @@ public class ReportingPeriod {
     private String endDate;
 
     @NotBlank(message = "Status is required")
-    @Pattern(regexp = "ACTIVE|INACTIVE|ARCHIVED", message = "Invalid status")
+    @Pattern(regexp = "ACTIVE|IN_ACTIVE|INACTIVE|ARCHIVED", message = "Invalid status")
     private String status;
 
     @NotBlank(message = "Model is required")
