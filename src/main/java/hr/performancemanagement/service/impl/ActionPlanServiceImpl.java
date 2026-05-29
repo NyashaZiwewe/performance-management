@@ -72,6 +72,13 @@ public class ActionPlanServiceImpl implements hr.performancemanagement.service.a
     }
 
     @Override
+    public List<ActionPlan> listActionPlansByManagerAndReportingPeriod(Account manager, ReportingPeriod reportingPeriod) {
+        List<ActionPlan> actionPlanList = new ArrayList<>();
+        actionPlanRepository.findActionPlansByReportingPeriodAndManager(reportingPeriod, manager).forEach(actionPlanList::add);
+        return actionPlanList;
+    }
+
+    @Override
     public List<ActionPlan> listAllUserActionPlans(Account manager){
 
         List<ActionPlan> actionPlanList = new ArrayList<>();

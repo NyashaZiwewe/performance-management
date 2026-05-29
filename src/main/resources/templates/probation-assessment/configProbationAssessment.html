@@ -93,14 +93,20 @@
                         </div>
                         <div class="form-group" id="accountTypeGroup">
                             <label>Approver Account Type</label>
-                            <input class="form-control" th:field="*{approverAccountType}">
+                            <select class="form-control" th:field="*{approverAccountType}">
+                                <option value="">-- Select Account Type --</option>
+                                <option th:each="accountType : ${accountTypes}" th:value="${accountType}" th:text="${accountType}"></option>
+                            </select>
                         </div>
                         <div class="form-group" id="sameDivisionGroup">
                             <label><input type="checkbox" th:field="*{sameDivisionOnly}"> Same Division Only</label>
                         </div>
                         <div class="form-group" id="roleGroup">
                             <label>Approver Role</label>
-                            <input class="form-control" th:field="*{approverRole}">
+                            <select class="form-control" th:field="*{approverRole}">
+                                <option value="">-- Select Role --</option>
+                                <option th:each="role : ${roles}" th:value="${role}" th:text="${role}"></option>
+                            </select>
                         </div>
                         <div class="form-group" id="userGroup">
                             <label>Specific Approver</label>
@@ -161,15 +167,54 @@
 
     $(document).ready(function () {
         $('.select2_demo_1').select2({});
+        $("#approverMode").on("change", toggleWorkflowFields);
         toggleWorkflowFields();
     });
 
+    function setGroupVisibility(groupSelector, visible) {
+        const $group = $(groupSelector);
+        if (!$group.length) {
+            return;
+        }
+
+        if (visible) {
+            $group.show();
+        } else {
+            $group.hide();
+        }
+    }
+
     function toggleWorkflowFields() {
-        let mode = document.getElementById("approverMode").value;
-        document.getElementById("accountTypeGroup").style.display = mode === APPROVER_MODE_ACCOUNT_TYPE ? "block" : "none";
-        document.getElementById("sameDivisionGroup").style.display = mode === APPROVER_MODE_ACCOUNT_TYPE ? "block" : "none";
-        document.getElementById("roleGroup").style.display = mode === APPROVER_MODE_ROLE ? "block" : "none";
-        document.getElementById("userGroup").style.display = mode === APPROVER_MODE_USER ? "block" : "none";
+        let mode = $("#approverMode").val();
+        let showAccountType = mode === APPROVER_MODE_ACCOUNT_TYPE;
+        let showRole = mode === APPROVER_MODE_ROLE;
+        let showUser = mode === APPROVER_MODE_USER;
+
+        setGroupVisibility("#accountTypeGroup", showAccountType);
+        setGroupVisibility("#sameDivisionGroup", showAccountType);
+        setGroupVisibility("#roleGroup", showRole);
+        setGroupVisibility("#userGroup", showUser);
+
+        let $accountTypeField = $("[name='approverAccountType']");
+        let $sameDivisionField = $("[name='sameDivisionOnly']");
+        let $roleField = $("[name='approverRole']");
+        let $userField = $("[name='approverAccount']");
+
+        $accountTypeField.prop("disabled", !showAccountType);
+        $sameDivisionField.prop("disabled", !showAccountType);
+        $roleField.prop("disabled", !showRole);
+        $userField.prop("disabled", !showUser);
+
+        if (!showAccountType) {
+            $accountTypeField.val("");
+            $sameDivisionField.prop("checked", false);
+        }
+        if (!showRole) {
+            $roleField.val("");
+        }
+        if (!showUser) {
+            $userField.val("").trigger("change");
+        }
     }
 </script>
 </body>

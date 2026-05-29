@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/probation-assessments")
@@ -34,9 +37,27 @@ public class ProbationAssessmentController {
     private CommonService commonService;
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
+        List<hr.performancemanagement.entities.Account> accounts = accountService.listAllAccounts();
+        List<String> accountTypes = accounts.stream()
+                .map(hr.performancemanagement.entities.Account::getAccountType)
+                .filter(value -> value != null && !value.trim().isEmpty())
+                .map(String::trim)
+                .distinct()
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.toList());
+        List<String> roles = accounts.stream()
+                .map(hr.performancemanagement.entities.Account::getRole)
+                .filter(value -> value != null && !value.trim().isEmpty())
+                .map(String::trim)
+                .distinct()
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.toList());
+
         modelAndView.addObject("pageDomain", "Performance");
         modelAndView.addObject("pageName", "Probation Assessments");
-        modelAndView.addObject("accountsList", accountService.listAllAccounts());
+        modelAndView.addObject("accountsList", accounts);
+        modelAndView.addObject("accountTypes", accountTypes);
+        modelAndView.addObject("roles", roles);
         modelAndView.addObject("approverModes", probationConfigService.listApproverModes());
         modelAndView.addObject("approverModeAccountType", PMConstants.PROBATION_APPROVER_MODE_ACCOUNT_TYPE);
         modelAndView.addObject("approverModeRole", PMConstants.PROBATION_APPROVER_MODE_ROLE);

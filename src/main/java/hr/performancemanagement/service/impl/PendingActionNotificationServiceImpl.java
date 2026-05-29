@@ -1,10 +1,12 @@
 package hr.performancemanagement.service.impl;
 
 import hr.performancemanagement.entities.Account;
+import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.PendingActionNotificationService;
+import hr.performancemanagement.service.api.ReportingDateService;
 import hr.performancemanagement.service.api.ScorecardService;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.dto.NotificationSummary;
@@ -26,6 +28,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
     private static final long SUMMARY_CACHE_TTL_MS = 15_000L;
     private final CommonService commonService;
     private final ScorecardService scorecardService;
+    private final ReportingDateService reportingDateService;
     private final Map<String, CacheEntry> summaryCache = new ConcurrentHashMap<>();
 
     @Override
@@ -48,6 +51,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         }
 
         List<PendingActionNotification> notifications = new ArrayList<PendingActionNotification>();
+        addReportingDateOperationalNotification(loggedUser, notifications);
         List<Scorecard> scorecards = scorecardService.listActiveScorecards(loggedUser.getClientId());
         for (Scorecard scorecard : scorecards) {
             if (!isPotentiallyActionable(scorecard)) {
@@ -68,6 +72,43 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         summaryCache.put(cacheKey, new CacheEntry(summary, now + SUMMARY_CACHE_TTL_MS));
         pruneExpiredCacheEntries(now);
         return summary;
+    }
+
+    private void addReportingDateOperationalNotification(Account loggedUser, List<PendingActionNotification> notifications) {
+        if (loggedUser == null || notifications == null) {
+            return;
+        }
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        boolean open = reportingDateService.isReportingDateOpen(reportingDate)
+                || (reportingDate != null
+                && reportingDate.getStatus() != null
+                && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(reportingDate.getStatus().trim()));
+        boolean canOperateDates = commonService.isAdmin() || commonService.hasSpecialRights();
+
+        if (canOperateDates && !open) {
+            notifications.add(new PendingActionNotification(
+                    "Reporting Date",
+                    "No open reporting date",
+                    "Score capture is blocked until a reporting date is opened.",
+                    "/reporting-periods",
+                    "fa fa-calendar-times-o",
+                    "danger",
+                    new Date()
+            ));
+            return;
+        }
+
+        if (!canOperateDates && !open) {
+            notifications.add(new PendingActionNotification(
+                    "Score Capture",
+                    "Capture window currently closed",
+                    "A reporting date must be opened before score capture can continue.",
+                    "/",
+                    "fa fa-clock-o",
+                    "warning",
+                    new Date()
+            ));
+        }
     }
 
     private PendingActionNotification resolveScorecardNotification(Account loggedUser, Scorecard scorecard) {

@@ -22,6 +22,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
@@ -206,39 +207,100 @@ public class ActionPlanController {
     }
 
     @RequestMapping(value = "/save-task", method = RequestMethod.POST)
-    public String saveTask(HttpServletRequest request, long actionPlanId, String task) {
+    public void saveTask(HttpServletResponse response, long actionPlanId, String task) {
 
-        Task newTask = new Task();
-        newTask.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
-        newTask.setName(task);
-        newTask.setStatus(PMConstants.TASK_STATUS_OPEN);
-        taskService.saveTask(newTask);
-        PortletUtils.addInfoMsg("Task successfully created.", request);
-        return "redirect:/action-plans/view-plan/"+ actionPlanId;
+        JSONObject jsonObject = new JSONObject();
+        String taskName = task == null ? "" : task.trim();
+        if(taskName.isEmpty()){
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Task cannot be empty.");
+            writeJsonResponse(response, jsonObject);
+            return;
+        }
+
+        try {
+            Task newTask = new Task();
+            newTask.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
+            newTask.setName(taskName);
+            newTask.setStatus(PMConstants.TASK_STATUS_OPEN);
+            taskService.saveTask(newTask);
+
+            jsonObject.put("saved", true);
+            jsonObject.put("id", newTask.getId());
+            jsonObject.put("name", newTask.getName());
+            jsonObject.put("status", newTask.getStatus());
+            appendActionPlanProgressPayload(jsonObject, actionPlanId);
+        } catch (Exception e){
+            log.error("Error saving action plan task for planId={}", actionPlanId, e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Failed to create task.");
+        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/save-issue", method = RequestMethod.POST)
-    public String saveIssue(HttpServletRequest request, long actionPlanId, String issue) {
+    public void saveIssue(HttpServletResponse response, long actionPlanId, String issue) {
 
-        Issue newIssue = new Issue();
-        newIssue.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
-        newIssue.setName(issue);
-        newIssue.setStatus(PMConstants.TASK_STATUS_OPEN);
-        issueService.saveIssue(newIssue);
-        PortletUtils.addInfoMsg("Issue successfully created.", request);
-        return "redirect:/action-plans/view-plan/"+ actionPlanId;
+        JSONObject jsonObject = new JSONObject();
+        String issueName = issue == null ? "" : issue.trim();
+        if(issueName.isEmpty()){
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Issue cannot be empty.");
+            writeJsonResponse(response, jsonObject);
+            return;
+        }
+
+        try {
+            Issue newIssue = new Issue();
+            newIssue.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
+            newIssue.setName(issueName);
+            newIssue.setStatus(PMConstants.TASK_STATUS_OPEN);
+            issueService.saveIssue(newIssue);
+
+            jsonObject.put("saved", true);
+            jsonObject.put("id", newIssue.getId());
+            jsonObject.put("name", newIssue.getName());
+            jsonObject.put("status", newIssue.getStatus());
+        } catch (Exception e){
+            log.error("Error saving action plan issue for planId={}", actionPlanId, e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Failed to create issue.");
+        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/save-note", method = RequestMethod.POST)
-    public String saveNote(HttpServletRequest request, long actionPlanId, String note) {
+    public void saveNote(HttpServletResponse response, long actionPlanId, String note) {
 
-        Note newNote = new Note();
-        newNote.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
-        newNote.setComment(note);
-        newNote.setStatus(PMConstants.TASK_STATUS_OPEN);
-        noteService.saveNote(newNote);
-        PortletUtils.addInfoMsg("Comment successfully posted.", request);
-        return "redirect:/action-plans/view-plan/"+ actionPlanId;
+        JSONObject jsonObject = new JSONObject();
+        String noteComment = note == null ? "" : note.trim();
+        if(noteComment.isEmpty()){
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Comment cannot be empty.");
+            writeJsonResponse(response, jsonObject);
+            return;
+        }
+
+        try {
+            Note newNote = new Note();
+            newNote.setActionPlan(actionPlanService.getActionPlanById(actionPlanId));
+            newNote.setComment(noteComment);
+            newNote.setEmployee(commonService.getLoggedUser());
+            newNote.setStatus(PMConstants.TASK_STATUS_OPEN);
+            noteService.saveNote(newNote);
+
+            jsonObject.put("saved", true);
+            jsonObject.put("id", newNote.getId());
+            jsonObject.put("comment", newNote.getComment());
+        } catch (Exception e){
+            log.error("Error saving action plan comment for planId={}", actionPlanId, e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Failed to post comment.");
+        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/update-task-status", method = RequestMethod.POST)
@@ -253,15 +315,8 @@ public class ActionPlanController {
         taskService.saveTask(task);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("status", task.getStatus());
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+        appendActionPlanProgressPayload(jsonObject, task.getActionPlan().getId());
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/update-action-plan-status", method = RequestMethod.POST)
@@ -275,15 +330,7 @@ public class ActionPlanController {
         actionPlanService.saveActionPlan(plan);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("alreadyExists", false);
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)
@@ -298,15 +345,50 @@ public class ActionPlanController {
         issueService.saveIssue(issue);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("status", issue.getStatus());
+        writeJsonResponse(response, jsonObject);
+    }
 
-        String jsonString = jsonObject.toString();
-
+    private void writeJsonResponse(HttpServletResponse response, JSONObject jsonObject) {
+        response.setContentType("application/json");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
+            outputStream.write(jsonObject.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e){
+            throw new RuntimeException("Failed to write JSON response.", e);
         }
+    }
+
+    private void appendActionPlanProgressPayload(JSONObject jsonObject, long actionPlanId){
+        ActionPlan plan = actionPlanService.getActionPlanById(actionPlanId);
+        List<Task> taskList = taskService.listAllTasks(actionPlanId);
+        int totalTasks = taskList == null ? 0 : taskList.size();
+        int completedTasks = 0;
+        if(taskList != null){
+            for (Task planTask : taskList){
+                if(PMConstants.TASK_STATUS_COMPLETED.equalsIgnoreCase(planTask.getStatus())){
+                    completedTasks += 1;
+                }
+            }
+        }
+
+        double progress = totalTasks == 0 ? 0.0 : (completedTasks * 100.0) / totalTasks;
+        progress = Math.round(progress * 10.0) / 10.0;
+
+        plan.setProgress(progress);
+        if(totalTasks == 0 || completedTasks == 0){
+            plan.setStatus("todo");
+        } else if (completedTasks == totalTasks){
+            plan.setStatus("completed");
+        } else {
+            plan.setStatus("inprogress");
+        }
+        actionPlanService.saveActionPlan(plan);
+
+        jsonObject.put("planId", plan.getId());
+        jsonObject.put("planStatus", plan.getStatus());
+        jsonObject.put("planProgress", plan.getProgress());
+        jsonObject.put("totalTasks", totalTasks);
+        jsonObject.put("completedTasks", completedTasks);
     }
 
 

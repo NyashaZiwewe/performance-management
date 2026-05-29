@@ -24,6 +24,7 @@ public class PerformanceReviewResource {
     private final ReportingPeriodService reportingPeriodService;
     private final ScorecardService scorecardService;
     private final PerformanceImprovementPlanService performanceImprovementPlanService;
+    private final ActionPlanService actionPlanService;
     private final GoalService goalService;
     private final AccountService accountService;
 
@@ -124,6 +125,7 @@ public class PerformanceReviewResource {
         Account owner = scorecard.getOwner();
         List<PerformanceImprovementPlan> pips =
                 performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+        List<ActionPlan> actionPlans = actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
 
         double averageModeratedScore = goalService.getAverageModeratorScore(scorecardId);
         double weightedScore;
@@ -137,6 +139,7 @@ public class PerformanceReviewResource {
                 scorecard,
                 goals,
                 pips,
+                actionPlans,
                 owner,
                 reportingPeriod == null ? null : reportingPeriod.getStartDate(),
                 reportingPeriod == null ? null : reportingPeriod.getEndDate(),

@@ -1,6 +1,7 @@
 package hr.performancemanagement.controllers.assessment;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.service.OutcomeService;
 import hr.performancemanagement.service.OutputService;
 import hr.performancemanagement.service.OverallCommentService;
@@ -28,11 +29,15 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,6 +54,8 @@ public class AssessmentController {
 
     @Autowired
     PerformanceImprovementPlanService performanceImprovementPlanService;
+    @Autowired
+    ActionPlanService actionPlanService;
     @Autowired
     private final TargetService targetService;
     @Autowired
@@ -74,6 +81,8 @@ public class AssessmentController {
     private PdfGeneratorService pdfGeneratorService;
     @Autowired
     OverallCommentService overallCommentService;
+    @Autowired
+    ScoreRepository scoreRepository;
     private List<Double> scores;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
@@ -158,10 +167,23 @@ public class AssessmentController {
         List<ReportingDate> reportingDates = reportingPeriod.getReportingDates();
         Map<Long, Map<Long, OverallScore>> overallScoresByDate =
                 overallScoreService.getOverallScoresByScorecardsAndReportingDates(scorecards, reportingDates);
+        Map<Long, Integer> pipCountsByScorecardId = new HashMap<>();
+        Map<Long, Integer> actionPlanCountsByScorecardId = new HashMap<>();
 
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
+
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getOwner() == null) {
+                continue;
+            }
+            Account owner = scorecard.getOwner();
+            pipCountsByScorecardId.put(scorecard.getId(),
+                    performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod).size());
+            actionPlanCountsByScorecardId.put(scorecard.getId(),
+                    actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod).size());
+        }
 
         for(ReportingDate reportingDate : reportingDates) {
             List<OverallScore> overallScores = new ArrayList<>();
@@ -176,7 +198,9 @@ public class AssessmentController {
         }
 
         modelAndView.addObject("reportingDates", reportingDates);
-//        modelAndView.addObject("scoresList", scoresList);
+        modelAndView.addObject("scoresList", scorecards);
+        modelAndView.addObject("pipCountsByScorecardId", pipCountsByScorecardId);
+        modelAndView.addObject("actionPlanCountsByScorecardId", actionPlanCountsByScorecardId);
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);
@@ -268,6 +292,7 @@ public class AssessmentController {
 
         Scorecard scoreCard = scorecardService.getScorecardById(id);
         List<Output> outputs = outputService.listAllOutputs(scoreCard);
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard.getId());
         ReportingPeriod reportingPeriod = scoreCard.getReportingPeriod();
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
@@ -275,6 +300,7 @@ public class AssessmentController {
         Account loggedUser = commonService.getLoggedUser();
         Account owner = scoreCard.getOwner();
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+        List<ActionPlan> actionPlans = actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
@@ -285,17 +311,27 @@ public class AssessmentController {
         }catch (Exception e){
             weightedScore = 0;
         }
+        double totalWeightedScore = 0.0;
+        for (Target target : targetsList) {
+            if (target != null && target.getWeightedScore() != null) {
+                totalWeightedScore += target.getWeightedScore();
+            }
+        }
 
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("pips", pips);
+        modelAndView.addObject("actionPlans", actionPlans);
         modelAndView.addObject("owner", owner);
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);
         modelAndView.addObject("endDate", endDate);
         modelAndView.addObject("scorecard", scoreCard);
         modelAndView.addObject("outputs", outputs);
+        modelAndView.addObject("targetsList", targetsList);
         modelAndView.addObject("averageModeratedScore", averageModeratedScore);
         modelAndView.addObject("weightedScore", weightedScore);
+        modelAndView.addObject("totalWeightedScore", totalWeightedScore);
+        populatePerformanceInsights(modelAndView, scoreCard, reportingPeriod, targetsList, pips, actionPlans);
         PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
         preparePage(modelAndView, request);
         return modelAndView;
@@ -324,18 +360,22 @@ public class AssessmentController {
         Account loggedUser = cs.getLoggedUser();
         Account owner = scoreCard.getOwner();
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+        List<ActionPlan> actionPlans = actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
 
         double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard.getId());
         double totalWeightedScore = 0.0;
-//        for(Target target: targetsList){
-//            totalWeightedScore += target.getWeightedScore();
-//        }
+        for(Target target: targetsList){
+            if (target != null && target.getWeightedScore() != null) {
+                totalWeightedScore += target.getWeightedScore();
+            }
+        }
 
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("pips", pips);
+        modelAndView.addObject("actionPlans", actionPlans);
         modelAndView.addObject("owner", owner);
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);
@@ -344,6 +384,7 @@ public class AssessmentController {
         modelAndView.addObject("targetsList", targetsList);
         modelAndView.addObject("averageModeratedScore", averageModeratedScore);
         modelAndView.addObject("totalWeightedScore", totalWeightedScore);
+        populatePerformanceInsights(modelAndView, scoreCard, reportingPeriod, targetsList, pips, actionPlans);
         PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
         preparePage(modelAndView, request);
         return modelAndView;
@@ -412,6 +453,8 @@ public class AssessmentController {
             Account loggedUser = cs.getLoggedUser();
             Account owner = scorecard.getOwner();
             List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+            List<ActionPlan> actionPlans = actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
+            List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard.getId());
             List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
             long loggedUserId = loggedUser.getId();
             String role = loggedUser.getRole();
@@ -427,12 +470,39 @@ public class AssessmentController {
 
             context.setVariable("loggedUserId", loggedUserId);
             context.setVariable("pips", pips);
+            context.setVariable("actionPlans", actionPlans);
             context.setVariable("overallComments", overallComments);
             context.setVariable("owner", owner);
             context.setVariable("role", role);
             context.setVariable("reportingPeriod", reportingPeriod);
             context.setVariable("scorecard", scorecard);
             context.setVariable("username", username);
+            ReportInsight reportInsight = buildReportInsight(scorecard, reportingPeriod, targetsList, pips, actionPlans);
+            context.setVariable("reportInsight", reportInsight);
+            context.setVariable("averageEmployeeScore", reportInsight.averageEmployeeScore);
+            context.setVariable("averageManagerScore", reportInsight.averageManagerScore);
+            context.setVariable("averageAgreedScore", reportInsight.averageAgreedScore);
+            context.setVariable("averageModeratedScore", reportInsight.averageModeratedScore);
+            context.setVariable("alignmentGapEmployeeManager", reportInsight.alignmentGapEmployeeManager);
+            context.setVariable("alignmentGapManagerAgreed", reportInsight.alignmentGapManagerAgreed);
+            context.setVariable("alignmentGapAgreedModerated", reportInsight.alignmentGapAgreedModerated);
+            context.setVariable("totalTargets", reportInsight.totalTargets);
+            context.setVariable("targetsWithScore", reportInsight.targetsWithScore);
+            context.setVariable("targetsWithoutScore", reportInsight.targetsWithoutScore);
+            context.setVariable("scoreCoveragePercent", reportInsight.scoreCoveragePercent);
+            context.setVariable("riskRedTargets", reportInsight.riskRedTargets);
+            context.setVariable("riskAmberTargets", reportInsight.riskAmberTargets);
+            context.setVariable("riskGreenTargets", reportInsight.riskGreenTargets);
+            context.setVariable("targetsWithEvidence", reportInsight.targetsWithEvidence);
+            context.setVariable("targetsWithoutEvidence", reportInsight.targetsWithoutEvidence);
+            context.setVariable("evidenceCoveragePercent", reportInsight.evidenceCoveragePercent);
+            context.setVariable("insightReportingDateLabel", reportInsight.insightReportingDateLabel);
+            context.setVariable("pipOpenCount", reportInsight.pipOpenCount);
+            context.setVariable("pipInProgressCount", reportInsight.pipInProgressCount);
+            context.setVariable("pipClosedCount", reportInsight.pipClosedCount);
+            context.setVariable("actionOpenCount", reportInsight.actionOpenCount);
+            context.setVariable("actionInProgressCount", reportInsight.actionInProgressCount);
+            context.setVariable("actionClosedCount", reportInsight.actionClosedCount);
 
             String fileName = owner.getFullName().toUpperCase();
             String page = Pages.DOWNLOADABLE_REPORT;
@@ -460,6 +530,262 @@ public class AssessmentController {
             log.error("Error in assessment download endpoint", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private void populatePerformanceInsights(ModelAndView modelAndView,
+                                             Scorecard scorecard,
+                                             ReportingPeriod reportingPeriod,
+                                             List<Target> targetsList,
+                                             List<PerformanceImprovementPlan> pips,
+                                             List<ActionPlan> actionPlans) {
+        ReportInsight reportInsight = buildReportInsight(scorecard, reportingPeriod, targetsList, pips, actionPlans);
+        modelAndView.addObject("reportInsight", reportInsight);
+        modelAndView.addObject("averageEmployeeScore", reportInsight.averageEmployeeScore);
+        modelAndView.addObject("averageManagerScore", reportInsight.averageManagerScore);
+        modelAndView.addObject("averageAgreedScore", reportInsight.averageAgreedScore);
+        modelAndView.addObject("averageModeratedScore", reportInsight.averageModeratedScore);
+        modelAndView.addObject("alignmentGapEmployeeManager", reportInsight.alignmentGapEmployeeManager);
+        modelAndView.addObject("alignmentGapManagerAgreed", reportInsight.alignmentGapManagerAgreed);
+        modelAndView.addObject("alignmentGapAgreedModerated", reportInsight.alignmentGapAgreedModerated);
+        modelAndView.addObject("totalTargets", reportInsight.totalTargets);
+        modelAndView.addObject("targetsWithScore", reportInsight.targetsWithScore);
+        modelAndView.addObject("targetsWithoutScore", reportInsight.targetsWithoutScore);
+        modelAndView.addObject("scoreCoveragePercent", reportInsight.scoreCoveragePercent);
+        modelAndView.addObject("riskRedTargets", reportInsight.riskRedTargets);
+        modelAndView.addObject("riskAmberTargets", reportInsight.riskAmberTargets);
+        modelAndView.addObject("riskGreenTargets", reportInsight.riskGreenTargets);
+        modelAndView.addObject("targetsWithEvidence", reportInsight.targetsWithEvidence);
+        modelAndView.addObject("targetsWithoutEvidence", reportInsight.targetsWithoutEvidence);
+        modelAndView.addObject("evidenceCoveragePercent", reportInsight.evidenceCoveragePercent);
+        modelAndView.addObject("insightReportingDateLabel", reportInsight.insightReportingDateLabel);
+        modelAndView.addObject("pipOpenCount", reportInsight.pipOpenCount);
+        modelAndView.addObject("pipInProgressCount", reportInsight.pipInProgressCount);
+        modelAndView.addObject("pipClosedCount", reportInsight.pipClosedCount);
+        modelAndView.addObject("actionOpenCount", reportInsight.actionOpenCount);
+        modelAndView.addObject("actionInProgressCount", reportInsight.actionInProgressCount);
+        modelAndView.addObject("actionClosedCount", reportInsight.actionClosedCount);
+    }
+
+    private ReportInsight buildReportInsight(Scorecard scorecard,
+                                             ReportingPeriod reportingPeriod,
+                                             List<Target> targetsList,
+                                             List<PerformanceImprovementPlan> pips,
+                                             List<ActionPlan> actionPlans) {
+        ReportInsight insight = new ReportInsight();
+        if (scorecard == null) {
+            return insight;
+        }
+
+        insight.averageEmployeeScore = safeScore(goalService.getAverageEmployeeScore(scorecard.getId()));
+        insight.averageManagerScore = safeScore(goalService.getAverageManagerScore(scorecard.getId()));
+        insight.averageAgreedScore = safeScore(goalService.getAverageAgreedScore(scorecard.getId()));
+        insight.averageModeratedScore = safeScore(goalService.getAverageModeratorScore(scorecard.getId()));
+        insight.alignmentGapEmployeeManager = roundTwoDecimals(Math.abs(insight.averageEmployeeScore - insight.averageManagerScore));
+        insight.alignmentGapManagerAgreed = roundTwoDecimals(Math.abs(insight.averageManagerScore - insight.averageAgreedScore));
+        insight.alignmentGapAgreedModerated = roundTwoDecimals(Math.abs(insight.averageAgreedScore - insight.averageModeratedScore));
+
+        List<Target> safeTargets = targetsList == null ? Collections.emptyList() : targetsList;
+        insight.totalTargets = safeTargets.size();
+        ReportingDate insightReportingDate = resolveInsightReportingDate(reportingPeriod);
+        insight.insightReportingDateLabel = insightReportingDate == null || insightReportingDate.getEndDate() == null
+                ? "Latest available context"
+                : insightReportingDate.getEndDate();
+
+        for (Target target : safeTargets) {
+            if (target == null) {
+                continue;
+            }
+            double scoreValue = resolveTargetInsightScore(target);
+            if (scoreValue > 0.0) {
+                insight.targetsWithScore++;
+                if (scoreValue < 2.5) {
+                    insight.riskRedTargets++;
+                } else if (scoreValue < 3.5) {
+                    insight.riskAmberTargets++;
+                } else {
+                    insight.riskGreenTargets++;
+                }
+            }
+
+            boolean hasEvidence = false;
+            if (insightReportingDate != null) {
+                Score score = scoreRepository.findScoreByTargetAndReportingDate(target, insightReportingDate);
+                hasEvidence = score != null && (hasText(score.getEvidence()) || hasText(score.getAttachmentName()));
+            }
+            if (!hasEvidence) {
+                hasEvidence = hasText(target.getCurrentEvidence()) || hasText(target.getCurrentAttachmentName());
+            }
+            if (hasEvidence) {
+                insight.targetsWithEvidence++;
+            }
+        }
+
+        insight.targetsWithoutScore = Math.max(0, insight.totalTargets - insight.targetsWithScore);
+        insight.targetsWithoutEvidence = Math.max(0, insight.totalTargets - insight.targetsWithEvidence);
+        insight.scoreCoveragePercent = percentage(insight.targetsWithScore, insight.totalTargets);
+        insight.evidenceCoveragePercent = percentage(insight.targetsWithEvidence, insight.totalTargets);
+
+        List<PerformanceImprovementPlan> safePips = pips == null ? Collections.emptyList() : pips;
+        for (PerformanceImprovementPlan pip : safePips) {
+            if (pip == null) {
+                continue;
+            }
+            int statusCategory = classifyProgressStatus(pip.getStatus(), pip.getProgress());
+            if (statusCategory == 2) {
+                insight.pipClosedCount++;
+            } else if (statusCategory == 1) {
+                insight.pipInProgressCount++;
+            } else {
+                insight.pipOpenCount++;
+            }
+        }
+
+        List<ActionPlan> safeActionPlans = actionPlans == null ? Collections.emptyList() : actionPlans;
+        for (ActionPlan actionPlan : safeActionPlans) {
+            if (actionPlan == null) {
+                continue;
+            }
+            int statusCategory = classifyProgressStatus(actionPlan.getStatus(), actionPlan.getProgress());
+            if (statusCategory == 2) {
+                insight.actionClosedCount++;
+            } else if (statusCategory == 1) {
+                insight.actionInProgressCount++;
+            } else {
+                insight.actionOpenCount++;
+            }
+        }
+        return insight;
+    }
+
+    private ReportingDate resolveInsightReportingDate(ReportingPeriod reportingPeriod) {
+        if (reportingPeriod == null || reportingPeriod.getReportingDates() == null || reportingPeriod.getReportingDates().isEmpty()) {
+            return null;
+        }
+        ReportingDate selected = null;
+        LocalDate selectedDate = null;
+        for (ReportingDate reportingDate : reportingPeriod.getReportingDates()) {
+            if (reportingDate == null) {
+                continue;
+            }
+            LocalDate candidateDate = parseLocalDate(reportingDate.getEndDate());
+            if (candidateDate == null) {
+                if (selected == null) {
+                    selected = reportingDate;
+                }
+                continue;
+            }
+            if (selectedDate == null || candidateDate.isAfter(selectedDate)) {
+                selected = reportingDate;
+                selectedDate = candidateDate;
+            }
+        }
+        return selected;
+    }
+
+    private LocalDate parseLocalDate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalDate.parse(trimmed);
+        } catch (DateTimeParseException ignored) {
+            try {
+                return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+            } catch (DateTimeParseException ignoredAgain) {
+                return null;
+            }
+        }
+    }
+
+    private double resolveTargetInsightScore(Target target) {
+        if (target == null) {
+            return 0.0;
+        }
+        Double[] candidates = new Double[]{
+                target.getCurrentModeratedScore(),
+                target.getModeratedScore(),
+                target.getCurrentAgreedScore(),
+                target.getAgreedScore(),
+                target.getCurrentManagerScore(),
+                target.getManagerScore(),
+                target.getCurrentEmployeeScore(),
+                target.getEmployeeScore()
+        };
+        for (Double candidate : candidates) {
+            if (candidate != null && candidate > 0.0) {
+                return candidate;
+            }
+        }
+        return 0.0;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private double safeScore(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return 0.0;
+        }
+        return roundTwoDecimals(value);
+    }
+
+    private double percentage(int numerator, int denominator) {
+        if (denominator <= 0) {
+            return 0.0;
+        }
+        return roundTwoDecimals((numerator * 100.0) / denominator);
+    }
+
+    private double roundTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private int classifyProgressStatus(String status, double progress) {
+        String normalized = status == null ? "" : status.trim().toUpperCase();
+        if (progress >= 100.0
+                || "COMPLETED".equals(normalized)
+                || "DONE".equals(normalized)
+                || "CLOSED".equals(normalized)
+                || "RESOLVED".equals(normalized)) {
+            return 2;
+        }
+        if (progress > 0.0
+                || "IN_PROGRESS".equals(normalized)
+                || "INPROGRESS".equals(normalized)
+                || "ACTIVE".equals(normalized)
+                || "ONGOING".equals(normalized)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static class ReportInsight {
+        private double averageEmployeeScore = 0.0;
+        private double averageManagerScore = 0.0;
+        private double averageAgreedScore = 0.0;
+        private double averageModeratedScore = 0.0;
+        private double alignmentGapEmployeeManager = 0.0;
+        private double alignmentGapManagerAgreed = 0.0;
+        private double alignmentGapAgreedModerated = 0.0;
+        private int totalTargets = 0;
+        private int targetsWithScore = 0;
+        private int targetsWithoutScore = 0;
+        private double scoreCoveragePercent = 0.0;
+        private int riskRedTargets = 0;
+        private int riskAmberTargets = 0;
+        private int riskGreenTargets = 0;
+        private int targetsWithEvidence = 0;
+        private int targetsWithoutEvidence = 0;
+        private double evidenceCoveragePercent = 0.0;
+        private String insightReportingDateLabel = "Latest available context";
+        private int pipOpenCount = 0;
+        private int pipInProgressCount = 0;
+        private int pipClosedCount = 0;
+        private int actionOpenCount = 0;
+        private int actionInProgressCount = 0;
+        private int actionClosedCount = 0;
     }
 
     private OverallScore resolveOverallScore(Map<Long, OverallScore> scoreByScorecard, Scorecard scorecard, ReportingDate reportingDate) {

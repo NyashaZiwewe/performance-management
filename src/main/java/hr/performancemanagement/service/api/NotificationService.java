@@ -10,4 +10,6 @@ public interface NotificationService {
     void sendScheduledTaskStatus(String taskName, boolean success, String details);
 
     void sendDepartmentAssignmentUpdate(Account recipient, String subject, String message);
+
+    boolean sendUserMessage(String recipientEmail, String recipientName, String subject, String message);
 }

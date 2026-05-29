@@ -136,6 +136,54 @@
                         </table>
                     </div>
 
+                    <h2>Performance Insights</h2>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                            <tr>
+                                <th>Insight Reference Date</th>
+                                <td th:text="${insightReportingDateLabel}"></td>
+                                <th>Target Coverage</th>
+                                <td th:text="${targetsWithScore + '/' + totalTargets + ' (' + #numbers.formatDecimal(scoreCoveragePercent, 0, 2) + '%)'}"></td>
+                            </tr>
+                            <tr>
+                                <th>Average Employee Score</th>
+                                <td th:text="${#numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></td>
+                                <th>Average Manager Score</th>
+                                <td th:text="${#numbers.formatDecimal(averageManagerScore, 0, 2)}"></td>
+                            </tr>
+                            <tr>
+                                <th>Average Agreed Score</th>
+                                <td th:text="${#numbers.formatDecimal(averageAgreedScore, 0, 2)}"></td>
+                                <th>Average Moderated Score</th>
+                                <td th:text="${#numbers.formatDecimal(averageModeratedScore, 0, 2)}"></td>
+                            </tr>
+                            <tr>
+                                <th>Gap Employee vs Manager</th>
+                                <td th:text="${#numbers.formatDecimal(alignmentGapEmployeeManager, 0, 2)}"></td>
+                                <th>Gap Manager vs Agreed</th>
+                                <td th:text="${#numbers.formatDecimal(alignmentGapManagerAgreed, 0, 2)}"></td>
+                            </tr>
+                            <tr>
+                                <th>Gap Agreed vs Moderated</th>
+                                <td th:text="${#numbers.formatDecimal(alignmentGapAgreedModerated, 0, 2)}"></td>
+                                <th>Evidence Coverage</th>
+                                <td th:text="${targetsWithEvidence + '/' + totalTargets + ' (' + #numbers.formatDecimal(evidenceCoveragePercent, 0, 2) + '%)'}"></td>
+                            </tr>
+                            <tr>
+                                <th>Risk Distribution</th>
+                                <td colspan="3" th:text="${'Red: ' + riskRedTargets + ' | Amber: ' + riskAmberTargets + ' | Green: ' + riskGreenTargets}"></td>
+                            </tr>
+                            <tr>
+                                <th>PIP Progress Mix</th>
+                                <td th:text="${'Open: ' + pipOpenCount + ', In Progress: ' + pipInProgressCount + ', Closed: ' + pipClosedCount}"></td>
+                                <th>Action Plan Mix</th>
+                                <td th:text="${'Open: ' + actionOpenCount + ', In Progress: ' + actionInProgressCount + ', Closed: ' + actionClosedCount}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
                     <h2>Performance Improvement Plan</h2>
                     <h4>Confidential</h4>
 
@@ -209,6 +257,35 @@
                             </div>
                         </div>
                     </div>
+
+                    <h2>Action Plans</h2>
+                    <div th:if="${not #lists.isEmpty(actionPlans)}" class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                            <tr>
+                                <th>Plan</th>
+                                <th>Description</th>
+                                <th>Measure of Success</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                                <th>Start</th>
+                                <th>End</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="actionPlan : ${actionPlans}">
+                                <td th:text="${actionPlan.name}"></td>
+                                <td th:text="${actionPlan.description}"></td>
+                                <td th:text="${actionPlan.measureOfSuccess}"></td>
+                                <td th:text="${#numbers.formatDecimal(actionPlan.progress, 0, 0) + '%'}"></td>
+                                <td th:text="${actionPlan.status}"></td>
+                                <td th:text="${actionPlan.startDate}"></td>
+                                <td th:text="${actionPlan.endDate}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p th:if="${#lists.isEmpty(actionPlans)}">No action plans were recorded for this reporting period.</p>
 
                     <p><b>2. Follow-up Updates:</b> You will receive feedback on your progress according to the following schedule: </p>
                     <div class="table-responsive">

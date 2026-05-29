@@ -96,7 +96,7 @@ public class ScorecardController {
     @Autowired
     private final CommentService commentService;
     @Autowired
-    private final Mailservice mailservice;
+    private final NotificationService notificationService;
     @Autowired
     private final ApprovalService approvalService;
     @Autowired
@@ -113,7 +113,7 @@ public class ScorecardController {
     private final Environment environment;
 
 
-    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, Mailservice mailservice, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, Environment environment) {
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, Environment environment) {
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
         this.scorecardService = scorecardService;
@@ -122,7 +122,7 @@ public class ScorecardController {
         this.targetService = targetService;
         this.strategicObjectiveService = strategicObjectiveService;
         this.commentService = commentService;
-        this.mailservice = mailservice;
+        this.notificationService = notificationService;
         this.approvalService = approvalService;
         this.reportingDateService = reportingDateService;
         this.standardScorecardScoreService = standardScorecardScoreService;
@@ -1446,7 +1446,10 @@ public class ScorecardController {
             normalizedBody = appendParagraph(normalizedBody, "Open Platform: " + platformUrl);
         }
 
-        mailservice.sendEmail(recipient, normalizedSubject, normalizedBody);
+        boolean sent = notificationService.sendUserMessage(recipient, null, normalizedSubject, normalizedBody);
+        if (!sent) {
+            throw new RuntimeException("Notification delivery failed");
+        }
     }
 
     private String normalizeScorecardEmailSubject(String subject) {

@@ -20,6 +20,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 
@@ -192,39 +193,100 @@ public class performanceImprovementPlanController {
     }
 
     @RequestMapping(value = "/save-task", method = RequestMethod.POST)
-    public String saveTask(HttpServletRequest request, HttpServletResponse response, long performanceImprovementPlanId, String task) {
+    public void saveTask(HttpServletResponse response, long performanceImprovementPlanId, String task) {
 
-        PIPTask newTask = new PIPTask();
-        newTask.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
-        newTask.setName(task);
-        newTask.setStatus(PMConstants.TASK_STATUS_OPEN);
-        newTask = pipTaskService.savePIPTask(newTask);
-        PortletUtils.addInfoMsg("Task successfully created.", request);
-        return "redirect:/performance-improvement-plans";
+        JSONObject jsonObject = new JSONObject();
+        String taskName = task == null ? "" : task.trim();
+        if(taskName.isEmpty()){
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Task cannot be empty.");
+            writeJsonResponse(response, jsonObject);
+            return;
+        }
+
+        try {
+            PIPTask newTask = new PIPTask();
+            newTask.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
+            newTask.setName(taskName);
+            newTask.setStatus(PMConstants.TASK_STATUS_OPEN);
+            newTask = pipTaskService.savePIPTask(newTask);
+
+            jsonObject.put("saved", true);
+            jsonObject.put("id", newTask.getId());
+            jsonObject.put("name", newTask.getName());
+            jsonObject.put("status", newTask.getStatus());
+            appendPipProgressPayload(jsonObject, performanceImprovementPlanId);
+        } catch (Exception e){
+            log.error("Error saving PIP task for planId={}", performanceImprovementPlanId, e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Failed to create task.");
+        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/save-issue", method = RequestMethod.POST)
-    public String saveIssue(HttpServletRequest request, long performanceImprovementPlanId, String issue) {
+    public void saveIssue(HttpServletResponse response, long performanceImprovementPlanId, String issue) {
 
-        PIPIssue newIssue = new PIPIssue();
-        newIssue.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
-        newIssue.setName(issue);
-        newIssue.setStatus(PMConstants.TASK_STATUS_OPEN);
-        pipIssueService.savePIPIssue(newIssue);
-        PortletUtils.addInfoMsg("Issue successfully created.", request);
-        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+        JSONObject jsonObject = new JSONObject();
+        String issueName = issue == null ? "" : issue.trim();
+        if(issueName.isEmpty()){
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Issue cannot be empty.");
+            writeJsonResponse(response, jsonObject);
+            return;
+        }
+
+        try {
+            PIPIssue newIssue = new PIPIssue();
+            newIssue.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
+            newIssue.setName(issueName);
+            newIssue.setStatus(PMConstants.TASK_STATUS_OPEN);
+            pipIssueService.savePIPIssue(newIssue);
+
+            jsonObject.put("saved", true);
+            jsonObject.put("id", newIssue.getId());
+            jsonObject.put("name", newIssue.getName());
+            jsonObject.put("status", newIssue.getStatus());
+        } catch (Exception e){
+            log.error("Error saving PIP issue for planId={}", performanceImprovementPlanId, e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Failed to create issue.");
+        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/save-note", method = RequestMethod.POST)
-    public String saveNote(HttpServletRequest request, long performanceImprovementPlanId, String note) {
+    public void saveNote(HttpServletResponse response, long performanceImprovementPlanId, String note) {
 
-        PIPNote newNote = new PIPNote();
-        newNote.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
-        newNote.setComment(note);
-        newNote.setStatus(PMConstants.TASK_STATUS_OPEN);
-        pipNoteService.savePIPNote(newNote);
-        PortletUtils.addInfoMsg("Comment successfully posted.", request);
-        return "redirect:/performance-improvement-plans/view-plan/"+ performanceImprovementPlanId;
+        JSONObject jsonObject = new JSONObject();
+        String noteComment = note == null ? "" : note.trim();
+        if(noteComment.isEmpty()){
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Comment cannot be empty.");
+            writeJsonResponse(response, jsonObject);
+            return;
+        }
+
+        try {
+            PIPNote newNote = new PIPNote();
+            newNote.setPerformanceImprovementPlan(performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId));
+            newNote.setComment(noteComment);
+            newNote.setEmployee(commonService.getLoggedUser());
+            newNote.setStatus(PMConstants.TASK_STATUS_OPEN);
+            pipNoteService.savePIPNote(newNote);
+
+            jsonObject.put("saved", true);
+            jsonObject.put("id", newNote.getId());
+            jsonObject.put("comment", newNote.getComment());
+        } catch (Exception e){
+            log.error("Error saving PIP comment for planId={}", performanceImprovementPlanId, e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            jsonObject.put("saved", false);
+            jsonObject.put("message", "Failed to post comment.");
+        }
+        writeJsonResponse(response, jsonObject);
     }
 
 //    @RequestMapping(value = "/update-task-status", method = RequestMethod.POST)
@@ -266,15 +328,8 @@ public class performanceImprovementPlanController {
         pipTaskService.savePIPTask(task);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("status", task.getStatus());
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+        appendPipProgressPayload(jsonObject, task.getPerformanceImprovementPlan().getId());
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/update-performance-improvement-plan-status", method = RequestMethod.POST)
@@ -288,15 +343,7 @@ public class performanceImprovementPlanController {
         performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("alreadyExists", false);
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
-        }
+        writeJsonResponse(response, jsonObject);
     }
 
     @RequestMapping(value = "/update-issue-status", method = RequestMethod.POST)
@@ -311,15 +358,50 @@ public class performanceImprovementPlanController {
         pipIssueService.savePIPIssue(issue);
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("status", issue.getStatus());
+        writeJsonResponse(response, jsonObject);
+    }
 
-        String jsonString = jsonObject.toString();
-
+    private void writeJsonResponse(HttpServletResponse response, JSONObject jsonObject) {
+        response.setContentType("application/json");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-
-        }catch (IOException e){
-            throw  new RuntimeException();
+            outputStream.write(jsonObject.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e){
+            throw new RuntimeException("Failed to write JSON response.", e);
         }
+    }
+
+    private void appendPipProgressPayload(JSONObject jsonObject, long performanceImprovementPlanId){
+        PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(performanceImprovementPlanId);
+        List<PIPTask> taskList = pipTaskService.listAllPIPTasks(performanceImprovementPlanId);
+        int totalTasks = taskList == null ? 0 : taskList.size();
+        int completedTasks = 0;
+        if(taskList != null){
+            for (PIPTask planTask : taskList){
+                if(PMConstants.TASK_STATUS_COMPLETED.equalsIgnoreCase(planTask.getStatus())){
+                    completedTasks += 1;
+                }
+            }
+        }
+
+        double progress = totalTasks == 0 ? 0.0 : (completedTasks * 100.0) / totalTasks;
+        progress = Math.round(progress * 10.0) / 10.0;
+
+        plan.setProgress(progress);
+        if(totalTasks == 0 || completedTasks == 0){
+            plan.setStatus("todo");
+        } else if (completedTasks == totalTasks){
+            plan.setStatus("completed");
+        } else {
+            plan.setStatus("inprogress");
+        }
+        performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
+
+        jsonObject.put("planId", plan.getId());
+        jsonObject.put("planStatus", plan.getStatus());
+        jsonObject.put("planProgress", plan.getProgress());
+        jsonObject.put("totalTasks", totalTasks);
+        jsonObject.put("completedTasks", completedTasks);
     }
 
 

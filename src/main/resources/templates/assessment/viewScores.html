@@ -74,6 +74,8 @@
                                         <th>Agreed Score</th>
                                         <th>Moderated Score</th>
                                         <th>Weighted Score</th>
+                                        <th>PIP Count</th>
+                                        <th>Action Plan Count</th>
                                         <th></th>
                                     </tr>
                                     </thead>
@@ -85,6 +87,8 @@
                                           <td th:text="${score.agreedScore == 0.0 ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}" th:attr="class = ${score.agreedScore < 2.5 ? 'fail' : 'pass' }"></td>
                                           <td th:text="${score.moderatedScore == 0.0 ? '' : #numbers.formatDecimal(score.moderatedScore, 0, 2)}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
                                           <td th:text="${score.moderatedScore == 0.0 ? '' : #numbers.formatDecimal((score.moderatedScore / 5) * 100, 0, 2) + '%'}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${pipCountsByScorecardId != null && pipCountsByScorecardId.containsKey(score.id) ? pipCountsByScorecardId.get(score.id) : 0}"></td>
+                                          <td th:text="${actionPlanCountsByScorecardId != null && actionPlanCountsByScorecardId.containsKey(score.id) ? actionPlanCountsByScorecardId.get(score.id) : 0}"></td>
                                            <td>
                                                <a th:if="${role == 'MODERATOR' AND score.managerScore != 0.0}" th:href="@{/scorecards/capture-scores/{id}(id=${score.id})}" target="_blank" class="btn btn-success btn-sm">Moderate Scores</a>
                                                <a th:if="${loggedUserId == score.owner?.supervisor?.id AND score.employeeScore != 0.0 }" th:href="@{/scorecards/capture-scores/{id}(id=${score.id})}" target="_blank" class="btn btn-success btn-sm">Capture Scores</a>
@@ -149,23 +153,23 @@
                 {extend: 'csv',
                     title: 'Performance Scores [' + startDate + ' to '+endDate+']',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
                 {extend: 'excel',
                     title: 'Performance Scores [' + startDate + ' to '+endDate+']',
                     exportOptions: {
-                        columns: [0,1,2,3,4]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
                 {extend: 'pdf',
                     title: 'Performance Scores [' + startDate + ' to '+endDate+']',
                     exportOptions: {
-                        columns: [0,1,2,3,4]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
 
                 {extend: 'print',
                     title: 'Performance Scores [' + startDate + ' to '+endDate+']',
                     exportOptions: {
-                        columns: [0,1,2,3,4]
+                        columns: [0,1,2,3,4,5,6,7]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

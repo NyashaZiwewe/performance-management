@@ -31,6 +31,174 @@
             border-top: 4px solid #d6d6d4 !important;
         }
 
+        .plan-capture-modal .modal-content {
+            border: 1px solid #dfe3e8;
+            border-radius: 10px;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+        }
+
+        .plan-capture-modal .modal-header {
+            background: #f7f9fb;
+            border-bottom: 1px solid #e2e8f0;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .plan-capture-modal .modal-title {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .plan-capture-modal .table {
+            margin-bottom: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .plan-capture-modal .table th {
+            color: #475569;
+            font-weight: 600;
+            width: 20%;
+            border-top: 0;
+        }
+
+        .plan-capture-modal .table td {
+            color: #0f172a;
+            border-top: 0;
+        }
+
+        .plan-capture-modal .pm-work-columns {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .plan-capture-modal .pm-work-columns > div {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .plan-capture-modal .pm-section-title {
+            color: #0f172a !important;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .plan-capture-modal .todo-list {
+            margin: 0 0 10px;
+            padding-left: 0;
+        }
+
+        .plan-capture-modal .pm-row-card {
+            align-items: center;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+            display: flex;
+            gap: 10px;
+            padding: 8px 10px;
+        }
+
+        .plan-capture-modal .pm-row-input {
+            list-style: none;
+            padding: 0;
+        }
+
+        .plan-capture-modal .pm-row-input .form-control {
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            box-shadow: none;
+            height: 36px;
+        }
+
+        .plan-capture-modal input[type="checkbox"].pm-check {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ffffff;
+            border: 1px solid #94a3b8;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-grid;
+            flex: 0 0 18px;
+            height: 18px;
+            margin: 0;
+            place-content: center;
+            width: 18px;
+        }
+
+        .plan-capture-modal input[type="checkbox"].pm-check::after {
+            color: #ffffff;
+            content: "\2713";
+            font-size: 11px;
+            line-height: 1;
+            opacity: 0;
+            transform: scale(0.7);
+            transition: 120ms transform ease-in-out, 120ms opacity ease-in-out;
+        }
+
+        .plan-capture-modal input[type="checkbox"].pm-check:checked {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .plan-capture-modal input[type="checkbox"].pm-check:checked::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .plan-capture-modal .pm-progress-meta {
+            align-items: center;
+            display: flex;
+            font-size: 12px;
+            font-weight: 600;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .plan-capture-modal .pm-progress-track {
+            background: #e2e8f0;
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .plan-capture-modal .pm-progress-fill {
+            background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+            border-radius: 999px;
+            height: 100%;
+            transition: width 220ms ease;
+        }
+
+        .plan-capture-modal .pm-status-chip {
+            background: #e2e8f0;
+            border-radius: 999px;
+            color: #0f172a;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            text-transform: capitalize;
+        }
+
+        .plan-capture-modal .label {
+            border-radius: 999px;
+            font-size: 10px;
+            letter-spacing: 0;
+            padding: 3px 8px;
+            text-transform: uppercase;
+        }
+
+        .plan-capture-modal .m-l-xs {
+            flex: 1;
+            margin-left: 0;
+        }
+
         .completed {
             position: relative;
         }
@@ -82,7 +250,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade plan-capture-modal" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-xl" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -146,10 +314,10 @@
                                                                 <li>
                                                                     <input th:id="${issue.id}" type="checkbox" th:if="${issue.status =='COMPLETED'}" checked  style="zoom:1.3;" onchange="updateIssueStatus(this.id)"/>
                                                                     <input th:id="${issue.id}" type="checkbox" th:unless="${issue.status =='COMPLETED'}"  style="zoom:1.3;" onchange="updateIssueStatus(this.id)">
-                                                                    <span th:id="'issueName' + ${task.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
-                                                                    <span th:id="'issueName' + ${task.id}" class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
-                                                                    <small th:id="'issueLabel' + ${task.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
-                                                                    <small th:id="'issueLabel' + ${task.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
                                                             <ul class="todo-list m-t">
@@ -351,7 +519,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade plan-capture-modal" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-xl" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -620,7 +788,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade plan-capture-modal" data-bs-backdrop="static" data-bs-keyboard="false" th:id="'planModal'+ ${plan.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-xl" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
@@ -683,10 +851,10 @@
                                                                 <li>
                                                                     <input th:id="${issue.id}" type="checkbox" th:if="${issue.status =='COMPLETED'}" checked  style="zoom:1.3;" onchange="updateIssueStatus(this.id)"/>
                                                                     <input th:id="${issue.id}" type="checkbox" th:unless="${issue.status =='COMPLETED'}"  style="zoom:1.3;" onchange="updateIssueStatus(this.id)">
-                                                                    <span th:id="'issueName' + ${task.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
-                                                                    <span th:id="'issueName' + ${task.id}" class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
-                                                                    <small th:id="'issueLabel' + ${task.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
-                                                                    <small th:id="'issueLabel' + ${task.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs completed" th:text="${issue.name}" th:if="${issue.status =='COMPLETED'}"></span>
+                                                                    <span th:id="'issueName' + ${issue.id}" class="m-l-xs" th:text="${issue.name}" th:unless="${issue.status =='COMPLETED'}"></span>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-primary" th:if="${issue.status =='COMPLETED'}"> completed</small>
+                                                                    <small th:id="'issueLabel' + ${issue.id}" class="label label-warning" th:unless="${issue.status =='COMPLETED'}">pending</small>
                                                                 </li>
                                                             </ul>
                                                             <ul class="todo-list m-t">
@@ -918,6 +1086,8 @@
             }
         }).disableSelection();
 
+        enhancePlanCaptureModals();
+
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const plan = urlParams.get('plan');
@@ -972,60 +1142,234 @@
         });
     }
 
+    function escapeHtml(value){
+        return $("<div>").text(value || "").html();
+    }
+
+    function formatProgress(progress){
+        const value = Number(progress || 0);
+        return (Math.round(value * 10) / 10).toFixed(1).replace(".0", "");
+    }
+
+    function normalizePlanStatus(status){
+        return (status || "").toString().toLowerCase().replace(/[\s_-]/g, "");
+    }
+
+    function friendlyPlanStatus(status){
+        const normalizedStatus = normalizePlanStatus(status);
+        if(normalizedStatus === "inprogress"){
+            return "In Progress";
+        }
+        if(normalizedStatus === "completed"){
+            return "Completed";
+        }
+        return "To-do";
+    }
+
+    function enhancePlanCaptureModals(){
+        $(".plan-capture-modal").each(function () {
+            const $modal = $(this);
+            const modalId = $modal.attr("id") || "";
+            const planId = modalId.replace("planModal", "");
+            if(!planId){
+                return;
+            }
+
+            $modal.find(".modal-body > .row").eq(1).addClass("pm-work-columns");
+            $modal.find("h4").addClass("pm-section-title");
+            $modal.find(".todo-list li").has("input[type='checkbox']").addClass("pm-row-card");
+            $modal.find(".todo-list li").has("input.form-control").addClass("pm-row-input");
+            $modal.find(".todo-list input[type='checkbox']").addClass("pm-check").css("zoom", "");
+
+            const $statusCell = $modal.find("th").filter(function(){
+                return $(this).text().trim() === "Status:";
+            }).first().next("td");
+            if($statusCell.length){
+                $statusCell.attr("id", "planStatus" + planId);
+                $statusCell.addClass("pm-status-chip");
+                $statusCell.text(friendlyPlanStatus($statusCell.text()));
+            }
+
+            const $progressCell = $modal.find("th").filter(function(){
+                return $(this).text().trim() === "Progress:";
+            }).first().next("td");
+            if($progressCell.length){
+                const currentProgress = parseFloat($progressCell.text()) || 0;
+                $progressCell.html(
+                    '<div class="pm-progress-meta">' +
+                        '<span id="planProgressText' + planId + '">' + formatProgress(currentProgress) + '% complete</span>' +
+                        '<span id="taskCounter' + planId + '"></span>' +
+                    '</div>' +
+                    '<div class="pm-progress-track">' +
+                        '<div id="planProgressBar' + planId + '" class="pm-progress-fill" style="width:' + currentProgress + '%;"></div>' +
+                    '</div>'
+                );
+            }
+
+            const totalTasks = $modal.find("small[id^='taskLabel']").length;
+            const completedTasks = $modal.find("small[id^='taskLabel'].label-primary").length;
+            const currentProgressText = $("#planProgressText" + planId).text();
+            const progressValue = parseFloat(currentProgressText) || 0;
+            updatePlanProgressUI(planId, progressValue, $("#planStatus" + planId).text(), completedTasks, totalTasks);
+        });
+    }
+
+    function updateBoardCardStatus(planId, status){
+        const normalizedStatus = normalizePlanStatus(status);
+        const $card = $("li[id='" + planId + "']");
+        if(!$card.length){
+            return;
+        }
+
+        let targetColumnId = "todo";
+        let cardClass = "secondary-element";
+        if(normalizedStatus === "completed"){
+            targetColumnId = "completed";
+            cardClass = "success-element";
+        } else if (normalizedStatus === "inprogress"){
+            targetColumnId = "inprogress";
+            cardClass = "warning-element";
+        }
+
+        const $targetColumn = $("#" + targetColumnId);
+        if($targetColumn.length && $card.parent().attr("id") !== targetColumnId){
+            $targetColumn.append($card);
+        }
+        $card.removeClass("secondary-element warning-element success-element").addClass(cardClass);
+    }
+
+    function updatePlanProgressUI(planId, progress, status, completedTasks, totalTasks){
+        if(planId == null){
+            return;
+        }
+        const safeProgress = Math.max(0, Math.min(100, Number(progress || 0)));
+        $("#planProgressText" + planId).text(formatProgress(safeProgress) + "% complete");
+        $("#planProgressBar" + planId).css("width", safeProgress + "%");
+        $("#planStatus" + planId).text(friendlyPlanStatus(status));
+
+        if(Number.isFinite(Number(totalTasks)) && Number.isFinite(Number(completedTasks))){
+            $("#taskCounter" + planId).text(completedTasks + "/" + totalTasks + " tasks done");
+        }
+
+        updateBoardCardStatus(planId, status);
+    }
+
+    function appendTaskRow(actionPlanId, taskData){
+        const taskInput = $("#newTask" + actionPlanId);
+        if(!taskInput.length){
+            return;
+        }
+
+        const newTaskHtml =
+            '<ul class="todo-list m-t">' +
+            '<li class="pm-row-card">' +
+            '<input id="' + taskData.id + '" class="pm-check" type="checkbox" onchange="updateTaskStatus(this.id)">' +
+            '<span id="taskName' + taskData.id + '" class="m-l-xs">' + escapeHtml(taskData.name) + '</span>' +
+            '<small id="taskLabel' + taskData.id + '" class="label label-warning">pending</small>' +
+            '</li>' +
+            '</ul>';
+        taskInput.closest("ul").before(newTaskHtml);
+    }
+
+    function appendIssueRow(actionPlanId, issueData){
+        const issueInput = $("#newIssue" + actionPlanId);
+        if(!issueInput.length){
+            return;
+        }
+
+        const newIssueHtml =
+            '<ul class="todo-list m-t">' +
+            '<li class="pm-row-card">' +
+            '<input id="' + issueData.id + '" class="pm-check" type="checkbox" onchange="updateIssueStatus(this.id)">' +
+            '<span id="issueName' + issueData.id + '" class="m-l-xs">' + escapeHtml(issueData.name) + '</span>' +
+            '<small id="issueLabel' + issueData.id + '" class="label label-warning">pending</small>' +
+            '</li>' +
+            '</ul>';
+        issueInput.closest("ul").before(newIssueHtml);
+    }
+
     function saveTask(actionPlanId){
 
-        let task = document.getElementById("newTask" + actionPlanId).value;
+        const taskInput = document.getElementById("newTask" + actionPlanId);
+        let task = taskInput.value.trim();
+        if(task === ""){
+            return;
+        }
 
         $.ajax({
             url : '/action-plans/save-task',
             method: "POST",
+            dataType: "json",
             data: {
                 actionPlanId, task
             },
             success: function (data) {
-                window.location.href = "/action-plans?plan="+actionPlanId;
-
+                if(!data.saved){
+                    alert(data.message || "Failed to create task.");
+                    return;
+                }
+                appendTaskRow(actionPlanId, data);
+                updatePlanProgressUI(data.planId, data.planProgress, data.planStatus, data.completedTasks, data.totalTasks);
+                taskInput.value = "";
             },
-            error : function(data) {
-
+            error : function() {
+                alert("Failed to create task.");
             }
         });
     }
 
     function saveIssue(actionPlanId){
 
-        let issue = document.getElementById("newIssue"+ actionPlanId).value;
+        const issueInput = document.getElementById("newIssue"+ actionPlanId);
+        let issue = issueInput.value.trim();
+        if(issue === ""){
+            return;
+        }
 
         $.ajax({
             url : '/action-plans/save-issue',
             method: "POST",
+            dataType: "json",
             data: {
                 actionPlanId, issue
             },
             success: function (data) {
-                window.location.href = "/action-plans?plan="+actionPlanId;
+                if(!data.saved){
+                    alert(data.message || "Failed to create issue.");
+                    return;
+                }
+                appendIssueRow(actionPlanId, data);
+                issueInput.value = "";
             },
-            error : function(data) {
-
+            error : function() {
+                alert("Failed to create issue.");
             }
         });
     }
 
     function saveNote(actionPlanId){
 
-        let note = document.getElementById("newNote"+ actionPlanId).value;
+        const noteInput = document.getElementById("newNote"+ actionPlanId);
+        if(!noteInput){
+            return;
+        }
+        let note = noteInput.value.trim();
+        if(note === ""){
+            return;
+        }
 
         $.ajax({
             url : '/action-plans/save-note',
             method: "POST",
+            dataType: "json",
             data: {
                 actionPlanId, note
             },
-            success: function (data) {
-                window.location.href = "/action-plans?plan="+actionPlanId;
+            success: function () {
+                noteInput.value = "";
             },
-            error : function(data) {
-
+            error : function() {
+                alert("Failed to post comment.");
             }
         });
     }
@@ -1035,25 +1379,21 @@
         $.ajax({
             url : '/action-plans/update-task-status',
             method: "POST",
+            dataType: "json",
             data: {
                 taskId
             },
             success: function (data) {
-                let response = JSON.parse(data);
-                if(response.status === "TODO"){
-                    document.getElementById("taskName"+ taskId).classList.remove("completed");
-                    document.getElementById("taskLabel"+ taskId).classList.replace("label-primary","label-warning");
-                    document.getElementById("taskLabel"+ taskId).innerText="pending";
-                }else if(response.status ==="COMPLETED"){
+                if(data.status === "COMPLETED"){
                     document.getElementById("taskName"+ taskId).classList.add("completed");
                     document.getElementById("taskLabel"+ taskId).classList.replace("label-warning","label-primary");
                     document.getElementById("taskLabel"+ taskId).innerText="completed";
-
                 }else{
                     document.getElementById("taskName"+ taskId).classList.remove("completed");
                     document.getElementById("taskLabel"+ taskId).classList.replace("label-primary","label-warning");
                     document.getElementById("taskLabel"+ taskId).innerText="pending";
                 }
+                updatePlanProgressUI(data.planId, data.planProgress, data.planStatus, data.completedTasks, data.totalTasks);
             },
             error : function(data) {
 
@@ -1065,16 +1405,16 @@
         $.ajax({
             url : '/action-plans/update-issue-status',
             method: "POST",
+            dataType: "json",
             data: {
                 issueId
             },
             success: function (data) {
-                let response = JSON.parse(data);
-                if(response.status === "TODO"){
+                if(data.status === "TODO"){
                     document.getElementById("issueName"+ issueId).classList.remove("completed");
                     document.getElementById("issueLabel"+ issueId).classList.replace("label-primary","label-warning");
                     document.getElementById("issueLabel"+ issueId).innerText="pending";
-                }else if(response.status ==="COMPLETED"){
+                }else if(data.status ==="COMPLETED"){
                     document.getElementById("issueName"+ issueId).classList.add("completed");
                     document.getElementById("issueLabel"+ issueId).classList.replace("label-warning","label-primary");
                     document.getElementById("issueLabel"+ issueId).innerText="completed";

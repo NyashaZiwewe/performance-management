@@ -3,6 +3,8 @@ package hr.performancemanagement.controllers.reportingperiod;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.StrategicObjective;
+import hr.performancemanagement.service.api.CommonService;
+import hr.performancemanagement.service.api.NotificationService;
 import hr.performancemanagement.service.api.ReportingDateService;
 import hr.performancemanagement.service.api.ReportingPeriodService;
 import hr.performancemanagement.service.api.StrategicObjectiveService;
@@ -27,11 +29,19 @@ public class ReportingPeriodController {
     private final ReportingPeriodService reportingPeriodService;
     private final StrategicObjectiveService strategicObjectiveService;
     private final ReportingDateService reportingDateService;
+    private final NotificationService notificationService;
+    private final CommonService commonService;
 
-    public ReportingPeriodController(ReportingPeriodService reportingPeriodService, StrategicObjectiveService strategicObjectiveService, ReportingDateService reportingDateService) {
+    public ReportingPeriodController(ReportingPeriodService reportingPeriodService,
+                                     StrategicObjectiveService strategicObjectiveService,
+                                     ReportingDateService reportingDateService,
+                                     NotificationService notificationService,
+                                     CommonService commonService) {
         this.reportingPeriodService = reportingPeriodService;
         this.strategicObjectiveService = strategicObjectiveService;
         this.reportingDateService = reportingDateService;
+        this.notificationService = notificationService;
+        this.commonService = commonService;
     }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
@@ -147,6 +157,7 @@ public class ReportingPeriodController {
     public String addReportingDate(HttpServletRequest request, ReportingDate newReportingDate) {
 
         reportingDateService.saveReportingDate(newReportingDate);
+        sendReportingDateActivationNotice(request, newReportingDate, "created");
         PortletUtils.addInfoMsg("Reporting Date successfully added.", request);
         return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
     }
@@ -155,8 +166,50 @@ public class ReportingPeriodController {
     public String saveReportingDate( HttpServletRequest request, ReportingDate newReportingDate) {
 
         reportingDateService.saveReportingDate(newReportingDate);
+        sendReportingDateActivationNotice(request, newReportingDate, "updated");
         PortletUtils.addInfoMsg("Reporting Date successfully updated.", request);
         return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
+    }
+
+    private void sendReportingDateActivationNotice(HttpServletRequest request, ReportingDate reportingDate, String action) {
+        if (reportingDate == null || reportingDate.getReportingPeriod() == null || !isOpenStatus(reportingDate.getStatus())) {
+            return;
+        }
+        String periodRange = (reportingDate.getReportingPeriod().getStartDate() == null ? "?" : reportingDate.getReportingPeriod().getStartDate())
+                + " to "
+                + (reportingDate.getReportingPeriod().getEndDate() == null ? "?" : reportingDate.getReportingPeriod().getEndDate());
+        String host = "";
+        try {
+            host = commonService.getCurrentUrl(request);
+        } catch (Exception ignored) {
+            // Optional host URL for action links.
+        }
+        String link = (host == null || host.trim().isEmpty())
+                ? "/reporting-periods/reporting-dates/" + reportingDate.getReportingPeriod().getId()
+                : host + "/reporting-periods/reporting-dates/" + reportingDate.getReportingPeriod().getId();
+        String subject = "Reporting Date Opened";
+        String message = "A reporting date was " + action + " and set to OPEN.\n"
+                + "Reporting date: " + (reportingDate.getEndDate() == null ? "N/A" : reportingDate.getEndDate()) + "\n"
+                + "Period: " + periodRange + "\n"
+                + "Impact: score capture is now available for this window.\n"
+                + "Link: " + link;
+
+        String adminEmail = commonService.getAdminEmail();
+        String hrEmail = commonService.getHREmail();
+        if (adminEmail != null && !adminEmail.trim().isEmpty()) {
+            notificationService.sendUserMessage(adminEmail.trim(), "Administrator", subject, message);
+        }
+        if (hrEmail != null && !hrEmail.trim().isEmpty() && (adminEmail == null || !hrEmail.equalsIgnoreCase(adminEmail))) {
+            notificationService.sendUserMessage(hrEmail.trim(), "HR", subject, message);
+        }
+    }
+
+    private boolean isOpenStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = status.trim().toUpperCase();
+        return "OPEN".equals(normalized) || "ACTIVE".equals(normalized);
     }
 
 }

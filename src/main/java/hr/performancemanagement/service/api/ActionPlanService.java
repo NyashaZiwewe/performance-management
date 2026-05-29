@@ -12,6 +12,7 @@ public interface ActionPlanService {
     List<ActionPlan> listAllActionPlans(ReportingPeriod reportingPeriod);
     List<ActionPlan> listAllActionPlansByClientId(long clientId);
     List<ActionPlan> listAllActionPlansByReportingPeriod(long clientId, ReportingPeriod reportingPeriod);
+    List<ActionPlan> listActionPlansByManagerAndReportingPeriod(Account manager, ReportingPeriod reportingPeriod);
     List<ActionPlan> listAllUserActionPlans(Account manager);
     ActionPlan getActionPlanById(long id);
     void addActionPlan(ActionPlan actionPlan);

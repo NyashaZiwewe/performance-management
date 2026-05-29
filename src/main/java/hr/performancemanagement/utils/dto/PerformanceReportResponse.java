@@ -1,6 +1,7 @@
 package hr.performancemanagement.utils.dto;
 
 import hr.performancemanagement.entities.Account;
+import hr.performancemanagement.entities.ActionPlan;
 import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.PerformanceImprovementPlan;
 import hr.performancemanagement.entities.Scorecard;
@@ -20,6 +21,7 @@ public class PerformanceReportResponse {
     private Scorecard scorecard;
     private List<Goal> goals;
     private List<PerformanceImprovementPlan> performanceImprovementPlans;
+    private List<ActionPlan> actionPlans;
     private Account owner;
     private String startDate;
     private String endDate;

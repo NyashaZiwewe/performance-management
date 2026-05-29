@@ -77,6 +77,12 @@ public class NotificationServiceImpl implements NotificationService {
         send(recipient != null ? recipient.getEmail() : null, subject, body);
     }
 
+    @Override
+    public boolean sendUserMessage(String recipientEmail, String recipientName, String subject, String message) {
+        String body = buildMessage(greeting(recipientName), message);
+        return send(recipientEmail, subject, body);
+    }
+
     private boolean send(String to, String subject, String body) {
         if (to == null || to.trim().isEmpty()) {
             return false;
