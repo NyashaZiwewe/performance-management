@@ -63,9 +63,13 @@
                                         <table class="table">
                                             <thead>
                                             <tr>
-                                                <th>Key Focus Area</th>
-                                                <th> Strategic Objective</th>
-                                                <th>Goal</th>
+                                                <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
+                                                <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
+                                                <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
+                                                <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
+                                                <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
+                                                <th th:unless="${model == 'gear' || model == 'programme'}"> Strategic Objective</th>
+                                                <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
                                                 <th>Performance Measure</th>
                                                 <th>Unit</th>
                                                 <th>Base Target</th>
@@ -225,9 +229,13 @@
                                             <table class="table">
                                                 <thead>
                                                 <tr>
-                                                    <th>Key Focus Area</th>
-                                                    <th> Strategic Objective</th>
-                                                    <th>Goal</th>
+                                                    <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
+                                                    <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
+                                                    <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
+                                                    <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
+                                                    <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
+                                                    <th th:unless="${model == 'gear' || model == 'programme'}"> Strategic Objective</th>
+                                                    <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
                                                     <th>Performance Measure</th>
                                                     <th>Unit</th>
                                                     <th>Base Target</th>
@@ -250,16 +258,16 @@
                                                     <td th:text="${target.stretchTarget}"></td>
                                                     <td th:text="${target.allocatedWeight}"></td>
                                                     <td>
-                                                        <input type="number" step="any" th:id="'actual' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentActual}" required>
+                                                        <input type="number" step="any" th:id="'actual' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentActual}" required th:attr="aria-label=${'Actual score for ' + target.measure}">
                                                     </td>
                                                     <td>
                                                         <span th:text="${target.currentWeightedScore}"></span>
                                                     </td>
                                                     <td>
-                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}">
+                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}" th:attr="aria-label=${'Evidence link for ' + target.measure}">
                                                     </td>
                                                     <td>
-                                                        <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}">
+                                                        <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}" th:attr="aria-label=${'Justification for ' + target.measure}">
                                                     </td>
                                                 </tr>
                                                 </tbody>
@@ -277,6 +285,7 @@
                                             <button class="btn btn-success" type="submit">Validate & Submit</button>
                                         </div>
                                     </div>
+                                    <div id="scoreSaveStatus" class="score-save-status" role="status" aria-live="polite" aria-atomic="true"></div>
                                     </fieldset>
 
                                 </form>

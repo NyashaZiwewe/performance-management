@@ -81,7 +81,7 @@
 
                     <div class="row">
                         <div class="col-6">
-                            <img th:src="@{/img/tbtlogo.png}" src="../../static/img/tbtlogo.png" class="logo" style="height: 100px !important; width: 200px !important;"/>
+                            <img th:src="@{/img/tbtlogo.png}" src="../../static/img/tbtlogo.png" class="logo" alt="Company logo" style="height: 100px !important; width: 200px !important;"/>
                         </div>
                         <div class="col-6">
                             <table class="table" style="border: none; width: 100%">
@@ -290,11 +290,11 @@
                     <table class="table">
                         <tr>
                             <td>Employee has achieved required improvements as described above.</td>
-                            <td><input type="checkbox" checked="checked" /></td>
+                            <td><input type="checkbox" checked="checked" aria-label="Employee achieved required improvements" /></td>
                         </tr>
                         <tr>
                             <td>Employee has not achieved required improvements as described above.</td>
-                            <td><input type="checkbox" /></td>
+                            <td><input type="checkbox" aria-label="Employee has not achieved required improvements" /></td>
                         </tr>
                     </table>
 

@@ -3,6 +3,8 @@ package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Gear;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.GearRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +13,7 @@ import java.util.List;
 
 @Service
 public class GearService {
+    private static final Logger log = LoggerFactory.getLogger(GearService.class);
 
     @Autowired
     GearRepository gearRepository;
@@ -38,11 +41,12 @@ public class GearService {
     public List<Gear> listSelectedGears(Scorecard scorecard)
     {
         List<Gear> gears = new ArrayList<>();
+        String model = getModelFromScorecard(scorecard);
 
-        if("programme".equalsIgnoreCase(scorecard.getModel())){
-            gearRepository.selectedProgrammesByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+        if("programme".equalsIgnoreCase(model)){
+            gearRepository.selectedProgrammesByScorecard(scorecard, model).forEach(gear ->  gears.add(gear));
         }else{
-            gearRepository.selectedGearsByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+            gearRepository.selectedGearsByScorecard(scorecard, model).forEach(gear ->  gears.add(gear));
         }
         for(Gear gear: gears){
             gear.setTotalAllocatedWeight(getGearTotalAllocatedWeight(scorecard.getId(), gear));
@@ -53,13 +57,14 @@ public class GearService {
     public List<Gear> listRemainingGears(Scorecard scorecard)
     {
         List<Gear> gears = new ArrayList<>();
-        List<Gear> allGears = listApplicableGears(1, scorecard.getModel());
+        String model = getModelFromScorecard(scorecard);
+        List<Gear> allGears = listApplicableGears(1, model);
         List<Gear> remainingGears = new ArrayList<>();
 
-        if("programme".equalsIgnoreCase(scorecard.getModel())){
-            gearRepository.selectedProgrammesByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+        if("programme".equalsIgnoreCase(model)){
+            gearRepository.selectedProgrammesByScorecard(scorecard, model).forEach(gear ->  gears.add(gear));
         }else{
-            gearRepository.selectedGearsByScorecard(scorecard,scorecard.getModel()).forEach(gear ->  gears.add(gear));
+            gearRepository.selectedGearsByScorecard(scorecard, model).forEach(gear ->  gears.add(gear));
         }
 
         for(Gear gear: allGears){
@@ -68,7 +73,7 @@ public class GearService {
                     remainingGears.add(gear);
                 }
             }catch (Exception e){
-                System.out.println(e.getMessage());
+                log.error("Error processing gear id={}: {}", gear.getId(), e.getMessage(), e);
             }
         }
         return remainingGears;
@@ -90,6 +95,13 @@ public class GearService {
 
     public void deleteGear(long id) {
         gearRepository.deleteById(id);
+    }
+
+    private String getModelFromScorecard(Scorecard scorecard) {
+        if(scorecard.getReportingPeriod() != null && scorecard.getReportingPeriod().getModel() != null) {
+            return scorecard.getReportingPeriod().getModel();
+        }
+        return "standard"; // default
     }
 
 }

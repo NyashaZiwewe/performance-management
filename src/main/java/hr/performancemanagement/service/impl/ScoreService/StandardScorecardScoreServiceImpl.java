@@ -45,9 +45,8 @@ public class StandardScorecardScoreServiceImpl implements hr.performancemanageme
     @Override
     public Score saveScore(Score score) {
 
-            boolean exists = scoreExists(score);
-            if(exists){
-                Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+            if(existingScore != null){
                 score.setId(existingScore.getId());
             }
             score.setWeightedScore(calculateWeightedScore(score));
@@ -58,19 +57,20 @@ public class StandardScorecardScoreServiceImpl implements hr.performancemanageme
 
     @Override
     public boolean scoreExists(Score score){
-        return scoreRepository.existsScoresByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        return scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate()) != null;
     }
 
     @Override
     public boolean  updateTargetData(Target target){
 
-        double weightedRating = scoreRepository.totalWeightedScoreByTarget(target);
+        Object[] aggregates = scoreRepository.aggregateStandardTargetScores(target);
+        double weightedRating = toDouble(aggregates[0]);
         String unit = target.getUnit();
         double actual;
         if("%".equalsIgnoreCase(unit)){
-            actual = scoreRepository.averageActualByTarget(target);
+            actual = toDouble(aggregates[1]);
         }else {
-            actual = scoreRepository.sumActualByTarget(target);
+            actual = toDouble(aggregates[2]);
         }
         target.setActual(actual);
         target.setWeightedScore(weightedRating);
@@ -87,5 +87,12 @@ public class StandardScorecardScoreServiceImpl implements hr.performancemanageme
     @Override
     public void deleteScore(Score score){
         scoreRepository.delete(score);
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return 0.0;
     }
 }

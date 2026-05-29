@@ -58,6 +58,7 @@
                                     <tr>
                                         <th>Start Date</th>
                                         <th>End Date</th>
+                                        <th>Hierarchy Model</th>
 <!--                                        <th>Assessment Status</th>-->
                                         <th>Status</th>
                                         <th>Strategic Objectives</th>
@@ -70,6 +71,12 @@
                                     <tr th:each="period :${reportingPeriodsList}">
                                         <td th:text="${period.startDate}"></td>
                                         <td th:text="${period.endDate}"></td>
+                                        <td>
+                                            <span th:if="${period.model == 'gear'}" class="label label-info">Gear</span>
+                                            <span th:if="${period.model == 'programme'}" class="label label-info">Programme</span>
+                                            <span th:if="${period.model == 'standard'}" class="label label-info">Standard</span>
+                                            <span th:if="${period.model == null || period.model == ''}" class="label label-warning">Not Set</span>
+                                        </td>
 <!--                                        <td>-->
 <!--                                            <div th:switch="${period.assessmentStatus}">-->
 <!--                                                <label class="label label-primary" th:case="MID_YEAR" th:text="${period.assessmentStatus}"></label>-->

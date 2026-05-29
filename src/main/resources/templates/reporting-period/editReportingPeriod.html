@@ -83,6 +83,21 @@
 <!--                        </div>-->
                         <div class="col-12">
                             <div class="form-group row">
+                                <label class="col-form-label col-4 required">Hierarchy Model</label>
+                                <div class="col-8">
+                                    <div class="input-group m-b">
+                                        <select class="form-control" th:field="*{model}" required>
+                                            <option value="">-- Select Model --</option>
+                                            <option value="gear">Gear (Outcome → Output)</option>
+                                            <option value="programme">Programme (Outcome → Pillar → Strategic Goal → Output)</option>
+                                            <option value="standard">Standard (Perspective → Strategic Objective → Goal)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group row">
                                 <label class="col-form-label col-4 required">Status</label>
                                 <div class="col-8">
                                     <select class="select2_demo_1 form-control" name="status" required th:field="*{status}">

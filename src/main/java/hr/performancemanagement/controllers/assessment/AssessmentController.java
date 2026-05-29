@@ -20,6 +20,8 @@ import org.springframework.web.servlet.ModelAndView;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring5.SpringTemplateEngine;
 import org.xhtmlrenderer.pdf.ITextRenderer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -30,11 +32,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping(value = "/performance-review")
 public class AssessmentController {
+
+    private static final Logger log = LoggerFactory.getLogger(AssessmentController.class);
 
     @Autowired
     ReportingPeriodService reportingPeriodService;
@@ -150,7 +156,8 @@ public class AssessmentController {
         String endDate = reportingPeriod.getEndDate();
         List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
         List<ReportingDate> reportingDates = reportingPeriod.getReportingDates();
-        OverallScore overallScore;
+        Map<Long, Map<Long, OverallScore>> overallScoresByDate =
+                overallScoreService.getOverallScoresByScorecardsAndReportingDates(scorecards, reportingDates);
 
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
@@ -158,9 +165,10 @@ public class AssessmentController {
 
         for(ReportingDate reportingDate : reportingDates) {
             List<OverallScore> overallScores = new ArrayList<>();
+            Map<Long, OverallScore> scoreByScorecard = reportingDate == null ? null : overallScoresByDate.get(reportingDate.getId());
 
             for(Scorecard scorecard : scorecards) {
-                overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+                OverallScore overallScore = resolveOverallScore(scoreByScorecard, scorecard, reportingDate);
                 overallScores.add(overallScore);
             }
             reportingDate.setOverallScores(overallScores);
@@ -182,10 +190,7 @@ public class AssessmentController {
     public ModelAndView viewPerformanceLevels(@RequestParam("scorecards") List<Long> scorecardIds, HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_LEVELS);
         modelAndView.addObject("pageTitle", "View performance Levels");
-        List<Scorecard> scorecardList = new ArrayList<>();
-        for(Long scorecardId : scorecardIds){
-            scorecardList.add(scorecardService.getScorecardById(scorecardId));
-        }
+        List<Scorecard> scorecardList = scorecardService.getScorecardsByIds(scorecardIds);
 
         List<String> names = new ArrayList<>();
         List<Double> scores = new ArrayList<>();
@@ -215,11 +220,28 @@ public class AssessmentController {
 
         List<String> monthNames = new ArrayList<>();
         List<Double> scores = new ArrayList<>();
+        List<ReportingDate> reportingDates = new ArrayList<>();
+        for (Scorecard scorecard : scorecardList) {
+            if (scorecard != null
+                    && scorecard.getReportingPeriod() != null
+                    && scorecard.getReportingPeriod().getReportingDates() != null) {
+                reportingDates.addAll(scorecard.getReportingPeriod().getReportingDates());
+            }
+        }
+        Map<Long, Map<Long, Double>> scoresByDate =
+                scorecardService.getScoresByReportingDatesAndScorecardIds(reportingDates, scorecardList);
         for(Scorecard scorecard : scorecardList){
+            List<ReportingDate> dates = scorecard.getReportingPeriod().getReportingDates();
 
-               for(ReportingDate date: scorecard.getReportingPeriod().getReportingDates()){
+               for(ReportingDate date: dates){
                    try {
-                       Double score = scorecardService.getScoresByReportingDateAndScorecardId(date, scorecard);
+                       Double score = 0.0;
+                       if (date != null) {
+                           Map<Long, Double> scoreByScorecard = scoresByDate.get(date.getId());
+                           if (scoreByScorecard != null && scoreByScorecard.containsKey(scorecard.getId())) {
+                               score = scoreByScorecard.get(scorecard.getId());
+                           }
+                       }
                         scores.add(score);
                         monthNames.add(date.getEndDate());
 
@@ -393,9 +415,13 @@ public class AssessmentController {
             List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
             long loggedUserId = loggedUser.getId();
             String role = loggedUser.getRole();
+            List<ReportingDate> reportingDates = reportingPeriod.getReportingDates();
+            Map<Long, Map<Long, OverallScore>> overallScoresByDate =
+                    overallScoreService.getOverallScoresByScorecardsAndReportingDates(Collections.singletonList(scorecard), reportingDates);
 
-            for (ReportingDate reportingDate : reportingPeriod.getReportingDates()) {
-                OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            for (ReportingDate reportingDate : reportingDates) {
+                Map<Long, OverallScore> scoreByScorecard = reportingDate == null ? null : overallScoresByDate.get(reportingDate.getId());
+                OverallScore overallScore = resolveOverallScore(scoreByScorecard, scorecard, reportingDate);
                 reportingDate.setOverallScore(overallScore);
             }
 
@@ -427,13 +453,33 @@ public class AssessmentController {
                         .contentLength(pdfBytes.length)
                         .body(resource);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Error generating PDF for assessment", e);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Error in assessment download endpoint", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private OverallScore resolveOverallScore(Map<Long, OverallScore> scoreByScorecard, Scorecard scorecard, ReportingDate reportingDate) {
+        if (scorecard == null) {
+            return null;
+        }
+        if (scoreByScorecard != null) {
+            OverallScore overallScore = scoreByScorecard.get(scorecard.getId());
+            if (overallScore != null) {
+                return overallScore;
+            }
+        }
+        OverallScore defaultScore = new OverallScore();
+        defaultScore.setScorecard(scorecard);
+        defaultScore.setReportingDate(reportingDate);
+        defaultScore.setEmployeeOverall(0.0);
+        defaultScore.setManagerOverall(0.0);
+        defaultScore.setAgreedOverall(0.0);
+        defaultScore.setModeratedOverall(0.0);
+        return defaultScore;
     }
 
 }

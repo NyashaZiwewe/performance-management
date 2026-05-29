@@ -6,6 +6,8 @@ import hr.performancemanagement.repository.EmailNotificationLogRepository;
 import hr.performancemanagement.service.api.NotificationService;
 import hr.performancemanagement.service.api.SystemSettingService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -22,6 +24,7 @@ import java.util.Properties;
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
+    private static final Logger log = LoggerFactory.getLogger(NotificationServiceImpl.class);
     private final JavaMailSender javaMailSender;
     private final SystemSettingService systemSettingService;
     private final EmailNotificationLogRepository emailNotificationLogRepository;
@@ -92,9 +95,10 @@ public class NotificationServiceImpl implements NotificationService {
             helper.setText(buildHtmlEmail(subject, body), true);
             activeMailSender.send(message);
             recordEmailNotification(to, subject, body);
+            log.info("Email sent successfully to: {}", to);
             return true;
-        } catch (Exception ignored) {
-            System.err.println("Failed to send email to " + to + ": " + ignored.getMessage());
+        } catch (Exception e) {
+            log.warn("Failed to send email to {}: {}", to, e.getMessage());
             // Mail delivery is optional; operational flows should continue even when email is unavailable.
             return false;
         }

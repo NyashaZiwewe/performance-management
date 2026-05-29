@@ -11,30 +11,44 @@ import hr.performancemanagement.utils.wrappers.EvidenceWrapper;
 import hr.performancemanagement.utils.wrappers.GoalWrapper;
 import hr.performancemanagement.utils.wrappers.TargetCaptureRow;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.FileCopyUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.validation.BindingResult;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Controller
 @RequestMapping(value="/scorecards")
 public class ScorecardController {
+    private static final Logger log = LoggerFactory.getLogger(ScorecardController.class);
 
     private enum ValueBasedCaptureStage {
         EMPLOYEE(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, Pages.CAPTURE_EMPLOYEE_SCORE, "submit-employee-scores"),
@@ -135,6 +149,7 @@ public class ScorecardController {
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("loggedUser", loggedUser);
         modelAndView.addObject("role", role);
+        addTerminology(modelAndView);
         PortletUtils.addMessagesToPage(modelAndView, request);
 
     }
@@ -230,7 +245,11 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-scorecard", method = RequestMethod.POST)
-    public String saveScorecard(HttpServletRequest request, Scorecard newScorecard) throws UnsupportedEncodingException {
+    public String saveScorecard(HttpServletRequest request, @Valid Scorecard newScorecard, BindingResult bindingResult) throws UnsupportedEncodingException {
+        if (bindingResult.hasErrors()) {
+            PortletUtils.addErrorMsg("Validation failed: " + bindingResult.getFieldError().getDefaultMessage(), request);
+            return "redirect:/scorecards/add-scorecard";
+        }
 
          Account loggedUser = commonService.getLoggedUser();
 
@@ -458,7 +477,11 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
-    public String saveTarget(GoalWrapper goalWrapper) {
+    public String saveTarget(@Valid GoalWrapper goalWrapper, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            log.warn("Target validation failed: {}", bindingResult.getFieldError().getDefaultMessage());
+            return "redirect:/scorecards/view-scorecards";
+        }
 
         long scorecardId = goalWrapper.getScorecardId();
         Goal goal;
@@ -497,7 +520,11 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-target-to-existing-goal", method = RequestMethod.POST)
-    public String saveTargetToExistingGoal(Target target) {
+    public String saveTargetToExistingGoal(@Valid Target target, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            log.warn("Target validation failed: {}", bindingResult.getFieldError().getDefaultMessage());
+            return "redirect:/scorecards/view-scorecards";
+        }
 
         long scorecardId = target.getGoal().getScorecardId();
         targetService.saveTarget(target);
@@ -546,10 +573,13 @@ public class ScorecardController {
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
+            response.setContentType("application/json; charset=UTF-8");
+            response.setCharacterEncoding("UTF-8");
+            outputStream.write(jsonString.getBytes(StandardCharsets.UTF_8));
 
-        }catch (IOException e){
-            throw  new RuntimeException();
+        }catch (IOException exception){
+            log.error("Failed to write overall comment response for scorecardId={}", scorecardId, exception);
+            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
         }
     }
 
@@ -816,7 +846,7 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-                e.printStackTrace();
+                log.warn("Failed to persist supervisor approval audit for scorecardId={}", scorecard.getId(), e);
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String subject = "Scorecard Approval,";
@@ -895,7 +925,7 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-                e.printStackTrace();
+                log.warn("Failed to persist supervisor rejection audit for scorecardId={}", scorecard.getId(), e);
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String subject = "Scorecard Approval,";
@@ -959,7 +989,7 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-                e.printStackTrace();
+                log.warn("Failed to persist HR approval audit for scorecardId={}", scorecard.getId(), e);
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String subject = "Scorecard Approval,";
@@ -1038,7 +1068,7 @@ public class ScorecardController {
                 approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_BY_HR);
                 approvalService.addApproval(approval);
             }catch (Exception e){
-              e.printStackTrace();
+              log.warn("Failed to persist HR rejection audit for scorecardId={}", scorecard.getId(), e);
             }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String subject = "Scorecard Approval,";
@@ -1236,38 +1266,56 @@ public class ScorecardController {
 
     @RequestMapping(value = "/save-value-based-evidence", method = RequestMethod.POST)
     public String saveValueBasedEvidence(EvidenceWrapper wrapper, HttpServletRequest request){
-
-        Target target = targetService.getTargetById(wrapper.getTargetId());
-        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
-
-        MultipartFile file = wrapper.getAttachment();
-        String fileName = file.getOriginalFilename();
+        Long scorecardId = null;
         try {
-            if(fileName != ""){
-                file.transferTo( new File(fileName));
+            Target target = targetService.getTargetById(wrapper.getTargetId());
+            if (target == null || target.getGoal() == null) {
+                PortletUtils.addErrorMsg("Target could not be resolved for evidence upload.", request);
+                return "redirect:/scorecards";
             }
 
-        } catch (Exception e) {
-
-        }
-        try {
-            if(commonService.isOwner(scorecard)){
-                ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-                if (!reportingDateService.isReportingDateOpen(reportingDate)) {
-                    PortletUtils.addErrorMsg("Scores can only be captured for an open reporting date", request);
-                    return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
-                }
-                Score score = new Score();
-                score.setTarget(target);
-                score.setReportingDate(reportingDate);
-                score.setEvidence(wrapper.getEvidence());
-                score.setAttachmentName(fileName);
-                valueBasedScoreService.saveEvidence(score);
+            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            if (scorecard == null) {
+                PortletUtils.addErrorMsg("Scorecard could not be resolved for evidence upload.", request);
+                return "redirect:/scorecards";
             }
-        }catch (Exception ignored){
+            scorecardId = scorecard.getId();
 
+            if(!commonService.isOwner(scorecard)){
+                PortletUtils.addErrorMsg("You are not allowed to upload evidence for this scorecard.", request);
+                return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
+            }
+
+            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+            if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+                PortletUtils.addErrorMsg("Scores can only be captured for an open reporting date", request);
+                return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
+            }
+
+            Score score = new Score();
+            score.setTarget(target);
+            score.setReportingDate(reportingDate);
+            score.setEvidence(wrapper.getEvidence());
+
+            MultipartFile file = wrapper.getAttachment();
+            if (file != null && !file.isEmpty()) {
+                String storedFileName = storeEvidenceFile(file);
+                score.setAttachmentName(storedFileName);
+            }
+
+            valueBasedScoreService.saveEvidence(score);
+            PortletUtils.addInfoMsg("Evidence saved successfully.", request);
+        }catch (IllegalArgumentException exception){
+            PortletUtils.addErrorMsg(exception.getMessage(), request, exception);
+        }catch (IOException exception) {
+            PortletUtils.addErrorMsg("Evidence upload failed. Please retry with a supported file.", request, exception);
+        }catch (Exception exception){
+            PortletUtils.addErrorMsg("Evidence could not be saved. Please try again.", request, exception);
         }
-        return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
+        if (scorecardId == null) {
+            return "redirect:/scorecards";
+        }
+        return "redirect:/scorecards/capture-scores/"+ scorecardId;
     }
 
     @RequestMapping(value = "/save-value-based-manager-score", method = RequestMethod.POST, consumes = {"*/*"})
@@ -1287,9 +1335,26 @@ public class ScorecardController {
 
     private void saveValueBasedScore(HttpServletResponse response, Long targetId, Double scoreValue, String justification, ValueBasedCaptureStage stage) {
         try {
+            if (targetId == null) {
+                writeScoreSaveResponse(response, true, "Target reference is required");
+                return;
+            }
+
             Target target = targetService.getTargetById(targetId);
+            if (target == null || target.getGoal() == null) {
+                writeScoreSaveResponse(response, true, "Target could not be resolved");
+                return;
+            }
             Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            if (scorecard == null) {
+                writeScoreSaveResponse(response, true, "Scorecard could not be resolved");
+                return;
+            }
             ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+            if (reportingDate == null) {
+                writeScoreSaveResponse(response, true, "No active reporting date is configured");
+                return;
+            }
 
             if (!reportingDateService.isReportingDateOpen(reportingDate)) {
                 writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
@@ -1302,11 +1367,15 @@ public class ScorecardController {
                 score.setReportingDate(reportingDate);
                 score.setJustification(justification);
                 persistScoreByStage(score, scoreValue, stage);
+                writeScoreSaveResponse(response);
+                return;
             }
-        }catch (Exception ignored){
-
+            writeScoreSaveResponse(response, true, "You are not allowed to capture this score at the current stage");
+        }catch (Exception exception){
+            log.error("Failed to save score for targetId={} stage={}", targetId, stage, exception);
+            writeScoreSaveResponse(response, true, "Score could not be saved. Please retry.");
+            return;
         }
-        writeScoreSaveResponse(response);
     }
 
     private boolean isStageCaptureAllowed(Scorecard scorecard, ValueBasedCaptureStage stage) {
@@ -1360,9 +1429,11 @@ public class ScorecardController {
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
-            outputStream.write(jsonString.getBytes());
-        }catch (IOException e){
-            throw  new RuntimeException();
+            response.setContentType("application/json; charset=UTF-8");
+            response.setCharacterEncoding("UTF-8");
+            outputStream.write(jsonString.getBytes(StandardCharsets.UTF_8));
+        }catch (IOException exception){
+            log.error("Failed to write score save response", exception);
         }
     }
 
@@ -1539,65 +1610,165 @@ public class ScorecardController {
     }
 
     @RequestMapping("/view-evidence/{fileName}")
-    public void viewEvidence(@PathVariable("fileName") String fileName, HttpServletResponse response, HttpServletRequest request) throws IOException {
-        String pathto = environment.getProperty("spring.servlet.multipart.location");
-        String path = pathto.concat(fileName);
-
-        File file = new File(path);
-
+    public void viewEvidence(@PathVariable("fileName") String fileName, HttpServletResponse response) throws IOException {
         try {
-            FileInputStream inputStream = new FileInputStream(file);
-            String ext = commonService.getFileExtention(fileName);
-            boolean supportedFile = false;
-            if (ext != null) {
-                if ("pdf".equalsIgnoreCase(ext)) {
-                    response.setContentType("application/pdf");
-                    supportedFile = true;
-                } else if ("xls".equalsIgnoreCase(ext) || "xlsx".equalsIgnoreCase(ext) || "csv".equalsIgnoreCase(ext)) {
-                    response.setContentType("application/vnd.ms-excel");
-                    supportedFile = true;
-                } else if ("docx".equalsIgnoreCase(ext)) {
-                    response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-                    supportedFile = true;
-                } else if ("doc".equalsIgnoreCase(ext)) {
-                    response.setContentType("application/msword");
-                    supportedFile = true;
-                } else if ("png".equalsIgnoreCase(ext)) {
-                    response.setContentType("image/png");
-                    supportedFile = true;
-                } else if ("jpg".equalsIgnoreCase(ext) || "jpeg".equalsIgnoreCase(ext)) {
-                    response.setContentType("image/jpeg");
-                    supportedFile = true;
-                } else if ("pptx".equalsIgnoreCase(ext)) {
-                    response.setContentType("application/vnd.openxmlformats-officedocument.presentationml.presentation");
-                    supportedFile = true;
-                } else if ("ppt".equalsIgnoreCase(ext)) {
-                    response.setContentType("application/vnd.ms-powerpoint");
-                    supportedFile = true;
-                } else {
+            String safeFileName = sanitizeFileName(fileName);
+            Path evidenceDirectory = resolveEvidenceDirectory();
+            Path filePath = evidenceDirectory.resolve(safeFileName).normalize();
 
-                }
+            if (!filePath.startsWith(evidenceDirectory)) {
+                throw new IllegalArgumentException("Invalid evidence path");
             }
 
-            if (supportedFile) {
-                System.out.println("File PAth to ########: "+ pathto);
-                System.out.println("File PAth ########## : "+ path);
-                response.setContentLength((int) file.length());
-                response.setHeader("Content-Disposition", "inline;filename=\"" + fileName + "\"");
-                FileCopyUtils.copy(inputStream, response.getOutputStream());
+            if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+                response.setStatus(HttpStatus.NOT_FOUND.value());
+                return;
             }
 
-        } catch (Exception e) {
-//            PortletUtils.addErrorMsg("Failed to view file with error: " + e.getMessage(), request);
-            fileName = "404.png";
-            path = pathto.concat(fileName);
-            file = new File(path);
-            FileInputStream inputStream = new FileInputStream(file);
-            response.setContentType("image/png");
-            response.setContentLength((int) file.length());
-            response.setHeader("Content-Disposition", "inline;filename=\"" + fileName + "\"");
-            FileCopyUtils.copy(inputStream, response.getOutputStream());
+            response.setContentType(resolveEvidenceContentType(safeFileName, filePath));
+            response.setHeader("Content-Disposition", "inline;filename=\"" + safeFileName + "\"");
+            response.setContentLengthLong(Files.size(filePath));
+
+            try (InputStream inputStream = Files.newInputStream(filePath);
+                 OutputStream outputStream = response.getOutputStream()) {
+                FileCopyUtils.copy(inputStream, outputStream);
+            }
+        } catch (IllegalArgumentException exception) {
+            log.warn("Rejected evidence file request for fileName={}", fileName, exception);
+            response.setStatus(HttpStatus.BAD_REQUEST.value());
+        } catch (IOException exception) {
+            log.error("Failed to stream evidence file fileName={}", fileName, exception);
+            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
         }
+    }
+
+    private String storeEvidenceFile(MultipartFile file) throws IOException {
+        String originalName = file == null ? null : file.getOriginalFilename();
+        String safeFileName = sanitizeFileName(originalName);
+        String extension = commonService.getFileExtention(safeFileName);
+        String generatedName = UUID.randomUUID().toString();
+        if (extension != null && !extension.trim().isEmpty()) {
+            generatedName = generatedName + "." + extension.toLowerCase(Locale.ENGLISH);
+        }
+
+        Path evidenceDirectory = resolveEvidenceDirectory();
+        Files.createDirectories(evidenceDirectory);
+        Path destination = evidenceDirectory.resolve(generatedName).normalize();
+        if (!destination.startsWith(evidenceDirectory)) {
+            throw new IllegalArgumentException("Invalid evidence destination path");
+        }
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, destination, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return generatedName;
+    }
+
+    private Path resolveEvidenceDirectory() {
+        String location = environment.getProperty("spring.servlet.multipart.location");
+        if (!StringUtils.hasText(location)) {
+            location = System.getProperty("java.io.tmpdir");
+        }
+        return Paths.get(location).toAbsolutePath().normalize();
+    }
+
+    private String sanitizeFileName(String fileName) {
+        if (!StringUtils.hasText(fileName)) {
+            throw new IllegalArgumentException("Attachment name is required");
+        }
+        String cleaned = StringUtils.cleanPath(fileName).trim();
+        String simpleName;
+        try {
+            simpleName = Paths.get(cleaned).getFileName().toString();
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("Invalid attachment name");
+        }
+        if (!StringUtils.hasText(simpleName)) {
+            throw new IllegalArgumentException("Invalid attachment name");
+        }
+        simpleName = simpleName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (".".equals(simpleName) || "..".equals(simpleName)) {
+            throw new IllegalArgumentException("Invalid attachment name");
+        }
+        return simpleName;
+    }
+
+    private String resolveEvidenceContentType(String fileName, Path filePath) throws IOException {
+        String detected = Files.probeContentType(filePath);
+        if (StringUtils.hasText(detected)) {
+            return detected;
+        }
+
+        String ext = commonService.getFileExtention(fileName);
+        if (ext == null) {
+            return "application/octet-stream";
+        }
+        String lowerExt = ext.toLowerCase(Locale.ENGLISH);
+        if ("pdf".equals(lowerExt)) {
+            return "application/pdf";
+        }
+        if ("xls".equals(lowerExt) || "xlsx".equals(lowerExt) || "csv".equals(lowerExt)) {
+            return "application/vnd.ms-excel";
+        }
+        if ("docx".equals(lowerExt)) {
+            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        }
+        if ("doc".equals(lowerExt)) {
+            return "application/msword";
+        }
+        if ("png".equals(lowerExt)) {
+            return "image/png";
+        }
+        if ("jpg".equals(lowerExt) || "jpeg".equals(lowerExt)) {
+            return "image/jpeg";
+        }
+        if ("pptx".equals(lowerExt)) {
+            return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        }
+        if ("ppt".equals(lowerExt)) {
+            return "application/vnd.ms-powerpoint";
+        }
+        return "application/octet-stream";
+    }
+
+    public ModelAndView addTerminology(ModelAndView modelAndView) {
+        if(modelAndView.getModel().containsKey("scorecard")){
+            String stage1, stage2,stage3,stage4, model;
+            Scorecard scorecard = (Scorecard) modelAndView.getModel().get("scorecard");
+
+            // Get model from ReportingPeriod
+            String hierarchyModel = "standard"; // default
+            if(scorecard.getReportingPeriod() != null && scorecard.getReportingPeriod().getModel() != null) {
+                hierarchyModel = scorecard.getReportingPeriod().getModel();
+            }
+
+            if("programme".equalsIgnoreCase(hierarchyModel)){
+                stage1 = "Programme";
+                stage2 = "Outcome";
+                stage3 = "Pillar";
+                stage4 = "Strategic goal";
+                model = "programme";
+            } else if("gear".equalsIgnoreCase(hierarchyModel)){
+                stage1 = "Gear";
+                stage2 = "Goal";
+                stage3 = "goal";
+                stage4 = "Outcome";
+                model = "gear";
+            } else {
+                // Default to standard model
+                stage1 = "Perspective";
+                stage2 = "Strategic Objective";
+                stage3 = "Goal";
+                stage4 = "Goal";
+                model = "standard";
+            }
+            modelAndView.addObject("stage1", stage1);
+            modelAndView.addObject("stage2", stage2);
+            modelAndView.addObject("stage3", stage3);
+            modelAndView.addObject("stage4", stage4);
+            modelAndView.addObject("model", model);
+        }
+        return modelAndView;
     }
 
 }

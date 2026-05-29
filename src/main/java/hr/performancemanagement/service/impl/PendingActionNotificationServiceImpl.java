@@ -16,13 +16,17 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PendingActionNotificationServiceImpl implements PendingActionNotificationService {
+    private static final long SUMMARY_CACHE_TTL_MS = 15_000L;
     private final CommonService commonService;
     private final ScorecardService scorecardService;
+    private final Map<String, CacheEntry> summaryCache = new ConcurrentHashMap<>();
 
     @Override
     public List<PendingActionNotification> getPendingNotifications() {
@@ -35,23 +39,35 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         if (loggedUser == null) {
             return new NotificationSummary(0, new ArrayList<PendingActionNotification>());
         }
+        int safeLimit = Math.max(0, previewLimit);
+        String cacheKey = loggedUser.getId() + ":" + safeLimit;
+        CacheEntry cachedSummary = summaryCache.get(cacheKey);
+        long now = System.currentTimeMillis();
+        if (cachedSummary != null && cachedSummary.expiresAt > now) {
+            return cachedSummary.summary;
+        }
 
         List<PendingActionNotification> notifications = new ArrayList<PendingActionNotification>();
-        List<Scorecard> scorecards = scorecardService.listAllScorecards(loggedUser.getClientId());
+        List<Scorecard> scorecards = scorecardService.listActiveScorecards(loggedUser.getClientId());
         for (Scorecard scorecard : scorecards) {
+            if (!isPotentiallyActionable(scorecard)) {
+                continue;
+            }
             PendingActionNotification notification = resolveScorecardNotification(loggedUser, scorecard);
             if (notification != null) {
                 notifications.add(notification);
             }
         }
 
-        int safeLimit = Math.max(0, previewLimit);
         List<PendingActionNotification> preview = notifications.stream()
                 .sorted(Comparator.comparing(PendingActionNotification::getDate,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(safeLimit)
                 .collect(Collectors.toList());
-        return new NotificationSummary(notifications.size(), preview);
+        NotificationSummary summary = new NotificationSummary(notifications.size(), preview);
+        summaryCache.put(cacheKey, new CacheEntry(summary, now + SUMMARY_CACHE_TTL_MS));
+        pruneExpiredCacheEntries(now);
+        return summary;
     }
 
     private PendingActionNotification resolveScorecardNotification(Account loggedUser, Scorecard scorecard) {
@@ -180,6 +196,32 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         }
     }
 
+    private boolean isPotentiallyActionable(Scorecard scorecard) {
+        if (scorecard == null || scorecard.getApprovalStatus() == null) {
+            return false;
+        }
+        String status = scorecard.getApprovalStatus().trim().toUpperCase();
+        return PMConstants.APPROVAL_STATUS_NEW.equals(status)
+                || PMConstants.APPROVAL_STATUS_PENDING_APPROVAL.equals(status)
+                || PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR.equals(status)
+                || PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR.equals(status)
+                || PMConstants.APPROVAL_STATUS_REJECTED_BY_HR.equals(status)
+                || PMConstants.APPROVAL_STATUS_APPROVED_BY_HR.equals(status)
+                || PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE.equals(status)
+                || PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR.equals(status)
+                || PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equals(status)
+                || PMConstants.APPROVAL_STATUS_MODERATED_BY_HR.equals(status);
+    }
+
+    private void pruneExpiredCacheEntries(long now) {
+        for (Map.Entry<String, CacheEntry> entry : summaryCache.entrySet()) {
+            CacheEntry cacheEntry = entry.getValue();
+            if (cacheEntry == null || cacheEntry.expiresAt <= now) {
+                summaryCache.remove(entry.getKey());
+            }
+        }
+    }
+
     private String formatPeriod(ReportingPeriod reportingPeriod) {
         if (reportingPeriod == null) {
             return "No reporting period";
@@ -187,5 +229,15 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         String start = reportingPeriod.getStartDate() != null ? reportingPeriod.getStartDate() : "?";
         String end = reportingPeriod.getEndDate() != null ? reportingPeriod.getEndDate() : "?";
         return start + " to " + end;
+    }
+
+    private static class CacheEntry {
+        private final NotificationSummary summary;
+        private final long expiresAt;
+
+        private CacheEntry(NotificationSummary summary, long expiresAt) {
+            this.summary = summary;
+            this.expiresAt = expiresAt;
+        }
     }
 }

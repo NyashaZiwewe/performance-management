@@ -55,9 +55,13 @@
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Key Focus Area</th>
-                                    <th> Strategic Objective</th>
-                                    <th>Goal</th>
+                                    <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
+                                    <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
+                                    <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
+                                    <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
+                                    <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
+                                    <th th:unless="${model == 'gear' || model == 'programme'}"> Strategic Objective</th>
+                                    <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
                                     <th data-toggle="popover" data-placement="top" data-content="Represents evidence of success and failure">Performance Measure</th>
                                     <th data-toggle="popover" data-placement="top" data-content="Unit of measurement can be in currency, number or percentage">Unit of Measure</th>
                                     <th data-toggle="popover" data-placement="top" data-content="Target" th:if="${scorecardModel == 'VALUE_BASED'}">Target</th>

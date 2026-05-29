@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -26,6 +28,8 @@ import java.util.List;
 @Controller
 @RequestMapping(value = "/action-plans")
 public class ActionPlanController {
+
+    private static final Logger log = LoggerFactory.getLogger(ActionPlanController.class);
 
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
@@ -151,7 +155,7 @@ public class ActionPlanController {
 
         actionPlan.setStatus("ACTIVE");
         actionPlan.setClientId(Client.CLIENT_ID);
-        System.out.println(actionPlan);
+        log.info("Creating action plan: {}", actionPlan.getName());
         actionPlanService.addActionPlan(actionPlan);
         PortletUtils.addInfoMsg("Action Plan successfully created.", request);
         return "redirect:/action-plans/add-plan/";
@@ -167,7 +171,7 @@ public class ActionPlanController {
         actionPlan.setName(plan);
         actionPlan.setManager(loggedUser);
         actionPlan.setReportingPeriod(reportingPeriod);
-        System.out.println(actionPlan);
+        log.info("Creating action plan for manager: {}", loggedUser.getEmail());
         actionPlanService.addActionPlan(actionPlan);
         PortletUtils.addInfoMsg("Action Plan successfully created.", request);
         return "redirect:/action-plans";
@@ -186,7 +190,8 @@ public class ActionPlanController {
             actionPlanService.saveActionPlan(newPlan);
             PortletUtils.addInfoMsg("Action Plan successfully updated.", request);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error("Error updating action plan: {}", newPlan != null ? newPlan.getId() : "null", e);
+            PortletUtils.addErrorMsg("Failed to update action plan.", request);
         }
 
         return "redirect:/action-plans";

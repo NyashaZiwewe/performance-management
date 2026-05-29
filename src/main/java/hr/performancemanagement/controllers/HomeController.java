@@ -12,6 +12,8 @@ import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.wrappers.ChangePasswordWrapper;
 import hr.performancemanagement.utils.wrappers.LoginWrapper;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.WebAttributes;
@@ -38,6 +40,7 @@ import static hr.performancemanagement.utils.PortletUtils.PortletUtils.ERROR_MSG
 @Controller
 @RequestMapping("/")
 public class HomeController {
+    private static final Logger log = LoggerFactory.getLogger(HomeController.class);
 
     @ModelAttribute("loginWrapper")
     public LoginWrapper getLoginWrapper(){
@@ -132,6 +135,7 @@ public class HomeController {
                 Optional.ofNullable(scorecardService.getScoresByPeriodId(selectedPeriod)).orElse(Collections.emptyList()),
                 scorecards
         );
+        Map<Long, Map<Long, Double>> weightedScoresByDate = scorecardService.getScoresByReportingDatesAndScorecardIds(reportingDates, scorecards);
 
         int scorecardTotal = scorecards.size();
         int lockedScorecards = 0;
@@ -157,8 +161,9 @@ public class HomeController {
         double scoreSum = 0;
         int scoredCount = 0;
         if (selectedReportingDate != null) {
+            Map<Long, Double> selectedDateScores = weightedScoresByDate.get(selectedReportingDate.getId());
             for (Scorecard scorecard : scorecards) {
-                double score = safeScore(scorecardService.getScoresByReportingDateAndScorecardId(selectedReportingDate, scorecard));
+                double score = resolveWeightedScore(selectedDateScores, scorecard);
                 if (score <= 0) {
                     notScored++;
                     continue;
@@ -217,8 +222,9 @@ public class HomeController {
             trendLabels.add(shortDate(reportingDate == null ? null : reportingDate.getEndDate()));
             double dateTotalScore = 0;
             int dateCoverage = 0;
+            Map<Long, Double> scoresByScorecard = reportingDate == null ? null : weightedScoresByDate.get(reportingDate.getId());
             for (Scorecard scorecard : scorecards) {
-                double weightedScore = safeScore(scorecardService.getScoresByReportingDateAndScorecardId(reportingDate, scorecard));
+                double weightedScore = resolveWeightedScore(scoresByScorecard, scorecard);
                 if (weightedScore <= 0) {
                     continue;
                 }
@@ -636,6 +642,14 @@ public class HomeController {
         return filtered;
     }
 
+    private double resolveWeightedScore(Map<Long, Double> scoresByScorecard, Scorecard scorecard) {
+        if (scoresByScorecard == null || scorecard == null) {
+            return 0.0;
+        }
+        Double score = scoresByScorecard.get(scorecard.getId());
+        return safeScore(score);
+    }
+
     private List<ActionPlan> filterActionPlansByWindow(List<ActionPlan> plans, LocalDate periodStart, LocalDate snapshotDate) {
         List<ActionPlan> filtered = new ArrayList<>();
         for (ActionPlan plan : plans) {
@@ -824,14 +838,14 @@ public class HomeController {
                 YearMonth.from(LocalDate.parse(sDate)),
                 YearMonth.from(LocalDate.parse(eDate))
         );
-        System.out.println(monthsBetween);
+        log.debug("Months between dates: {}", monthsBetween);
         List<String> monthsList = new ArrayList<>();
         for(int x = 0; x <= monthsBetween; x++){
 
             cal.setTime(startDate);
             cal.add(Calendar.MONTH, x);
             int month = cal.get(Calendar.MONTH);
-            System.out.println("Month is "+ months[month]);
+            log.debug("Processing month: {}", months[month]);
             monthsList.add(months[month]);
         }
       return monthsList;

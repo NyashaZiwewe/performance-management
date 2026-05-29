@@ -1,6 +1,8 @@
 package hr.performancemanagement.exception;
 
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +12,7 @@ import java.net.URI;
 
 @ControllerAdvice(basePackages = "hr.performancemanagement.controllers")
 public class WebExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(WebExceptionHandler.class);
 
     @ExceptionHandler({
             DataIntegrityViolationException.class,
@@ -22,7 +25,9 @@ public class WebExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public String handleUnhandled(Exception ex, HttpServletRequest request) {
-        PortletUtils.addErrorMsg("An unexpected error occurred. Please try again.", request, ex);
+        String traceId = PortletUtils.getRequestTraceId(request);
+        log.error("Unhandled web exception traceId={}", traceId, ex);
+        PortletUtils.addErrorMsg("An unexpected error occurred. Reference: " + traceId, request, ex);
         return "redirect:" + redirectTarget(request);
     }
 

@@ -93,4 +93,16 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
 
     @Query(value = "SELECT coalesce(SUM(s.employeeScore), 0) FROM Score s WHERE s.target = :target")
     double averageEmployeeScoreByTarget(@Param("target") Target target);
+
+    @Query("SELECT coalesce(SUM(s.weightedScore), 0), coalesce(AVG(s.actual), 0), coalesce(SUM(s.actual), 0) " +
+            "FROM Score s WHERE s.target = :target")
+    Object[] aggregateStandardTargetScores(@Param("target") Target target);
+
+    @Query("SELECT coalesce(SUM(s.weightedScore), 0), " +
+            "coalesce(SUM(s.employeeScore), 0), " +
+            "coalesce(SUM(s.managerScore), 0), " +
+            "coalesce(SUM(s.agreedScore), 0), " +
+            "coalesce(SUM(s.moderatedScore), 0) " +
+            "FROM Score s WHERE s.target = :target")
+    Object[] aggregateValueBasedTargetScores(@Param("target") Target target);
 }

@@ -5,9 +5,13 @@ import com.twilio.type.PhoneNumber;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class WhatsAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(WhatsAppService.class);
 
     @Value("${twilio.whatsapp.from:}")
     private String fromNumber; // your Twilio sandbox number
@@ -28,7 +32,7 @@ public class WhatsAppService {
                     part
             ).create();
 
-            System.out.println("✅ Message sent! SID: " + message.getSid());
+            log.info("WhatsApp message sent successfully. SID: {}", message.getSid());
         }
 
 

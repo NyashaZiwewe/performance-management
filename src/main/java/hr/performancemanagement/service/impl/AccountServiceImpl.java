@@ -88,8 +88,9 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
     }
 
    @Override
+   @Transactional
    public void addAccount(Account account) {
-        if (account != null && account.getPassword() != null && !account.getPassword().trim().isEmpty()) {
+        if (account != null && account.getPassword() != null && cs.requiresPasswordUpgrade(account.getPassword())) {
             account.setPassword(cs.encodePassword(account.getPassword()));
         }
 
@@ -97,12 +98,17 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
    }
 
    @Override
+   @Transactional
    public Account saveAccount(Account account){
+        if (account != null && account.getPassword() != null && cs.requiresPasswordUpgrade(account.getPassword())) {
+            account.setPassword(cs.encodePassword(account.getPassword()));
+        }
         Account savedAccount = accountRepository.save(account);
         return savedAccount;
     }
 
     @Override
+    @Transactional
     public Account updatePasswordResetToken(Account account, String resetTokenHash) {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");
@@ -112,6 +118,7 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
     }
 
     @Override
+    @Transactional
     public Account updatePasswordFromReset(Account account, String encodedPassword) {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");

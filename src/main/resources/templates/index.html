@@ -128,7 +128,11 @@
                             <h5>Strategic Objective Performance</h5>
                         </div>
                         <div class="ibox-content">
-                            <canvas id="objectiveChart" height="120"></canvas>
+                            <canvas id="objectiveChart" height="120" role="img" aria-describedby="objectiveChartSummary"></canvas>
+                            <p id="objectiveChartSummary" class="chart-sr-summary"
+                               th:text="${'Objectives tracked: ' + dashboardStrategicObjectiveCount + '. Average weighted score: ' + #numbers.formatDecimal(dashboardAverageWeightedScore, 1, 2) + '%'}">
+                                Objectives tracked: 0. Average weighted score: 0%.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -138,7 +142,11 @@
                             <h5>Target Attainment</h5>
                         </div>
                         <div class="ibox-content">
-                            <canvas id="attainmentChart" height="220"></canvas>
+                            <canvas id="attainmentChart" height="220" role="img" aria-describedby="attainmentChartSummary"></canvas>
+                            <p id="attainmentChartSummary" class="chart-sr-summary"
+                               th:text="${'Above target: ' + dashboardPassCount + ', below target: ' + dashboardFailCount + ', not scored: ' + dashboardNotScoredCount}">
+                                Above target: 0, below target: 0, not scored: 0
+                            </p>
                             <div class="dashboard-chart-stats">
                                 <div class="dashboard-stat-chip dashboard-stat-pass">
                                     <span>Above Target</span>
@@ -165,7 +173,11 @@
                             <h5>Reporting Date Trend</h5>
                         </div>
                         <div class="ibox-content">
-                            <canvas id="trendChart" height="110"></canvas>
+                            <canvas id="trendChart" height="110" role="img" aria-describedby="trendChartSummary"></canvas>
+                            <p id="trendChartSummary" class="chart-sr-summary"
+                               th:text="${'Trend points: ' + #lists.size(dashboardTrendLabels) + '. Latest average score: ' + #numbers.formatDecimal(dashboardAverageWeightedScore, 1, 2) + '%'}">
+                                Trend points: 0. Latest average score: 0%.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -175,7 +187,13 @@
                             <h5>Workstream Status Mix</h5>
                         </div>
                         <div class="ibox-content">
-                            <canvas id="workstreamChart" height="220"></canvas>
+                            <canvas id="workstreamChart" height="220" role="img" aria-describedby="workstreamChartSummary"></canvas>
+                            <p id="workstreamChartSummary" class="chart-sr-summary"
+                               th:text="${'Open: ' + (dashboardActionPlanOpen + dashboardPipOpen + dashboardProbationDraft + dashboardProbationRejected)
+                               + ', in progress: ' + (dashboardActionPlanInProgress + dashboardPipInProgress + dashboardProbationPending)
+                               + ', completed: ' + (dashboardActionPlanCompleted + dashboardPipCompleted + dashboardProbationAuthorized)}">
+                                Open: 0, in progress: 0, completed: 0
+                            </p>
                         </div>
                     </div>
                 </div>

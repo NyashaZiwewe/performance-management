@@ -41,8 +41,8 @@ public class ValueBasedScoreServiceImpl implements hr.performancemanagement.serv
     public Score saveEmployeeScore(Score score) {
 
         Score savedScore;
-        if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        if(existingScore != null){
             existingScore.setEmployeeScore(score.getEmployeeScore());
 //            existingScore.setEvidence(score.getEvidence());
             existingScore.setJustification(score.getJustification());
@@ -67,12 +67,12 @@ public class ValueBasedScoreServiceImpl implements hr.performancemanagement.serv
     public Score saveEvidence(Score score) {
 
         Score savedScore;
-        if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
-            if(score.getEvidence().length() > 0){
+        Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        if(existingScore != null){
+            if(score.getEvidence() != null && !score.getEvidence().trim().isEmpty()){
                 existingScore.setEvidence(score.getEvidence());
             }
-            if(score.getAttachmentName().length() > 0){
+            if(score.getAttachmentName() != null && !score.getAttachmentName().trim().isEmpty()){
                 existingScore.setAttachmentName(score.getAttachmentName());
             }
             savedScore = scoreRepository.save(existingScore);
@@ -125,8 +125,8 @@ public class ValueBasedScoreServiceImpl implements hr.performancemanagement.serv
     }
 
     private Score updateExistingScore(Score score, BiConsumer<Score, Score> scoreUpdater, BiConsumer<Target, Score> targetUpdater) {
-        if(scoreExists(score)){
-            Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        Score existingScore = scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        if(existingScore != null){
             scoreUpdater.accept(existingScore, score);
             Score savedScore = scoreRepository.save(existingScore);
             Target target = savedScore.getTarget();
@@ -139,17 +139,18 @@ public class ValueBasedScoreServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public boolean scoreExists(Score score){
-        return scoreRepository.existsScoresByTargetAndReportingDate(score.getTarget(), score.getReportingDate());
+        return scoreRepository.findScoreByTargetAndReportingDate(score.getTarget(), score.getReportingDate()) != null;
     }
 
     @Override
     public boolean  updateTargetData(Target target){
 
-        Double weightedRating = scoreRepository.totalWeightedScoreByTarget(target);
-        Double employeeScore = scoreRepository.averageEmployeeScoreByTarget(target);
-        Double managerScore = scoreRepository.averageManagerScoreByTarget(target);
-        Double agreedScore = scoreRepository.averageAgreedScoreByTarget(target);
-        Double moderatedScore = scoreRepository.averageModeratedScoreByTarget(target);
+        Object[] aggregates = scoreRepository.aggregateValueBasedTargetScores(target);
+        Double weightedRating = toDouble(aggregates[0]);
+        Double employeeScore = toDouble(aggregates[1]);
+        Double managerScore = toDouble(aggregates[2]);
+        Double agreedScore = toDouble(aggregates[3]);
+        Double moderatedScore = toDouble(aggregates[4]);
 
         target.setEmployeeScore(employeeScore);
         target.setManagerScore(managerScore);
@@ -169,5 +170,12 @@ public class ValueBasedScoreServiceImpl implements hr.performancemanagement.serv
     @Override
     public void deleteScore(Score score){
         scoreRepository.delete(score);
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return 0.0;
     }
 }

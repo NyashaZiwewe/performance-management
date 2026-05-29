@@ -6,10 +6,14 @@ import hr.performancemanagement.sessions.SessionManager;
 import hr.performancemanagement.sessions.UserSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/whatsapp")
 public class WhatsAppBotController {
+
+    private static final Logger log = LoggerFactory.getLogger(WhatsAppBotController.class);
 
     @Autowired
     private WhatsAppService whatsappService;
@@ -21,11 +25,11 @@ public class WhatsAppBotController {
     public void receiveMessage(@RequestParam("Body") String body,
                                @RequestParam("From") String from) {
 
-        System.out.println("User: " + body);
+        log.info("WhatsApp message received from {}: {}", from, body);
 
         String response = openAIService.getChatCompletion(from, body);
 
-        System.out.println("AI: " + response);
+        log.info("AI response generated for {}: {}", from, response);
 
         whatsappService.sendMessage(from, response);
     }

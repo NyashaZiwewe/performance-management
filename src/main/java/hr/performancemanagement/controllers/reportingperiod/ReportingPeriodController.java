@@ -105,7 +105,7 @@ public class ReportingPeriodController {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_STRATEGIC_OBJECTIVES);
         modelAndView.addObject("pageTitle", "View Strategic Objectives");
         List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(id);
-        modelAndView.addObject("strategicObjectivesList", strategicObjectivesList);
+        modelAndView.addObject("goalsList", strategicObjectivesList);
         modelAndView.addObject("reportingPeriod", reportingPeriodService.getReportingPeriodById(id));
         modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
         modelAndView.addObject("strategicObjective", new StrategicObjective());

@@ -22,6 +22,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -34,8 +35,8 @@ import java.util.stream.Collectors;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    private static final String BOOTSTRAP_ADMIN_EMAIL = "admin";
-    private static final String BOOTSTRAP_ADMIN_PASSWORD = "admin123";
+    private static final String BOOTSTRAP_ADMIN_EMAIL = System.getenv("BOOTSTRAP_ADMIN_EMAIL");
+    private static final String BOOTSTRAP_ADMIN_PASSWORD = System.getenv("BOOTSTRAP_ADMIN_PASSWORD");
 
     @Autowired
     private AccountService accountService;
@@ -113,8 +114,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .invalidateHttpSession(true)
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/")
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
-                .and().csrf().disable().cors();
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
+                .and().csrf()
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .and().cors();
     }
 
     @Bean
@@ -142,7 +145,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     private boolean isBootstrapAdminLogin(String name, String password) {
-        return BOOTSTRAP_ADMIN_EMAIL.equals(name)
+        return hasText(BOOTSTRAP_ADMIN_EMAIL)
+                && hasText(BOOTSTRAP_ADMIN_PASSWORD)
+                && BOOTSTRAP_ADMIN_EMAIL.equals(name)
                 && BOOTSTRAP_ADMIN_PASSWORD.equals(password)
                 && systemSettingService.isBootstrapAdminAvailable();
     }
@@ -152,7 +157,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         account.setId(0L);
         account.setClientId(Client.CLIENT_ID);
         account.setFullName("Bootstrap Administrator");
-        account.setEmail(BOOTSTRAP_ADMIN_EMAIL);
+        account.setEmail(hasText(BOOTSTRAP_ADMIN_EMAIL) ? BOOTSTRAP_ADMIN_EMAIL : "bootstrap-admin");
         account.setPosition("Bootstrap Setup");
         account.setAccountType("BOOTSTRAP_ADMIN");
         account.setRole("BOOTSTRAP_ADMIN");
@@ -168,5 +173,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         HttpSession session = attributes.getRequest().getSession();
         session.setAttribute("loggedUser", account);
         session.setAttribute("bootstrapAdmin", bootstrapAdmin);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

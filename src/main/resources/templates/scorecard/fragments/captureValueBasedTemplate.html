@@ -61,9 +61,13 @@
                                     <table class="table">
                                         <thead>
                                         <tr>
-                                            <th>Key Focus Area</th>
-                                            <th>Strategic Objective</th>
-                                            <th>Goal</th>
+                                            <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
+                                            <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
+                                            <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
+                                            <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
+                                            <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
+                                            <th th:unless="${model == 'gear' || model == 'programme'}">Strategic Objective</th>
+                                            <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
                                             <th>Performance Measure</th>
                                             <th>Unit</th>
                                             <th>Target</th>
@@ -208,9 +212,13 @@
                                         <table class="table">
                                             <thead>
                                             <tr>
-                                                <th>Key Focus Area</th>
-                                                <th>Strategic Objective</th>
-                                                <th>Goal</th>
+                                                <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
+                                                <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
+                                                <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
+                                                <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
+                                                <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
+                                                <th th:unless="${model == 'gear' || model == 'programme'}">Strategic Objective</th>
+                                                <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
                                                 <th>Performance Measure</th>
                                                 <th>Unit</th>
                                                 <th>Target</th>

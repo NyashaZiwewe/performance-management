@@ -10,7 +10,11 @@ import hr.performancemanagement.utils.wrappers.SystemSettingsWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -31,9 +35,20 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     private static final String MAIL_PORT = "mail.port";
     private static final String MAIL_USERNAME = "mail.username";
     private static final String MAIL_PASSWORD = "mail.password";
+    private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
 
     @Autowired
     private SystemSettingRepository repository;
+    private final Object settingsMonitor = new Object();
+    private volatile boolean defaultsInitialized = false;
+    private volatile Map<String, String> cachedSettings = Collections.emptyMap();
+    private volatile long cacheLoadedAt = 0L;
+
+    @PostConstruct
+    public void initializeSettings() {
+        ensureDefaults();
+        refreshSettingsCache();
+    }
 
     @Override
     public String getCompanyName() {
@@ -137,7 +152,6 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     @Transactional
     @Override
     public CredentialSettingsWrapper getCredentialSettings() {
-        ensureDefaults();
         CredentialSettingsWrapper wrapper = new CredentialSettingsWrapper();
         wrapper.setMailFromName(getMailFromName());
         wrapper.setMailFromEmail(getMailFromEmail());
@@ -152,7 +166,6 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     @Transactional
     @Override
     public void saveCredentialSettings(CredentialSettingsWrapper wrapper) {
-        ensureDefaults();
         saveValue(MAIL_FROM_NAME, wrapper.getMailFromName());
         saveValue(MAIL_FROM_EMAIL, wrapper.getMailFromEmail());
         saveValue(MAIL_HOST, wrapper.getMailHost());
@@ -164,7 +177,6 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     @Transactional
     @Override
     public SystemSettingsWrapper getSettingsWrapper() {
-        ensureDefaults();
         SystemSettingsWrapper wrapper = new SystemSettingsWrapper();
         wrapper.setCompanyName(getCompanyName());
         wrapper.setCompanyLogo(getCompanyLogo());
@@ -187,7 +199,6 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     @Transactional
     @Override
     public void saveSettings(SystemSettingsWrapper wrapper) {
-        ensureDefaults();
         String multipartLocation = hasText(wrapper.getMultipartLocation())
                 ? wrapper.getMultipartLocation()
                 : getMultipartLocation();
@@ -212,26 +223,47 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     @Transactional
     @Override
     public void ensureDefaults() {
-        Map<String, SettingDefinition> defaults = defaults();
-        for (Map.Entry<String, SettingDefinition> entry : defaults.entrySet()) {
-            SystemSetting setting = repository.findSystemSettingBySettingKey(entry.getKey());
-            if (setting == null) {
-                setting = new SystemSetting();
+        if (defaultsInitialized) {
+            return;
+        }
+        synchronized (settingsMonitor) {
+            if (defaultsInitialized) {
+                return;
+            }
+            Map<String, SettingDefinition> defaults = defaults();
+            Map<String, SystemSetting> existingByKey = new HashMap<>();
+            List<SystemSetting> existingSettings = repository.findAll();
+            boolean createdDefaults = false;
+            for (SystemSetting existingSetting : existingSettings) {
+                if (existingSetting != null && existingSetting.getSettingKey() != null) {
+                    existingByKey.put(existingSetting.getSettingKey(), existingSetting);
+                }
+            }
+            for (Map.Entry<String, SettingDefinition> entry : defaults.entrySet()) {
+                if (existingByKey.containsKey(entry.getKey())) {
+                    continue;
+                }
+                SystemSetting setting = new SystemSetting();
                 setting.setSettingKey(entry.getKey());
                 setting.setSettingValue(entry.getValue().defaultValue);
                 setting.setDescription(entry.getValue().description);
                 repository.save(setting);
+                createdDefaults = true;
+            }
+            defaultsInitialized = true;
+            if (createdDefaults) {
+                invalidateSettingsCache();
             }
         }
     }
 
     private String getValue(String key) {
-        ensureDefaults();
-        SystemSetting setting = repository.findSystemSettingBySettingKey(key);
-        if (setting == null || setting.getSettingValue() == null || setting.getSettingValue().trim().isEmpty()) {
+        Map<String, String> settings = getCachedSettings();
+        String value = settings.get(key);
+        if (!hasText(value)) {
             return defaults().get(key).defaultValue;
         }
-        return setting.getSettingValue().trim();
+        return value.trim();
     }
 
     private void saveValue(String key, String value) {
@@ -243,6 +275,7 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         }
         setting.setSettingValue(value == null ? "" : value.trim());
         repository.save(setting);
+        invalidateSettingsCache();
     }
 
     private Map<String, SettingDefinition> defaults() {
@@ -260,19 +293,19 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
                 "System name displayed in top navigation"
         ));
         settings.put(HOST_URL, new SettingDefinition(
-                "https://pm.tradezimbabwe.com",
+                "http://localhost:9000",
                 "Base host URL used for generated links"
         ));
         settings.put(MULTIPART_LOCATION, new SettingDefinition(
-                "/pm/pmdocuments/",
+                "/data/uploads/performance-management/",
                 "Multipart upload location used for storing document uploads"
         ));
         settings.put(EMAIL_HR, new SettingDefinition(
-                "sjdhliwayo@zimtrade.co.zw",
+                "",
                 "HR email used in approval notifications"
         ));
         settings.put(EMAIL_ADMIN, new SettingDefinition(
-                "amukwazhe@zimtrade.co.zw",
+                "",
                 "Administrator email used in system alerts"
         ));
         settings.put(BOOTSTRAP_ADMIN_ENABLED, new SettingDefinition(
@@ -280,11 +313,11 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
                 "Enables the hardcoded bootstrap setup login"
         ));
         settings.put(MAIL_FROM_NAME, new SettingDefinition(
-                "ZimTrade PM System",
+                "Performance Management System",
                 "Display name used in outgoing emails"
         ));
         settings.put(MAIL_FROM_EMAIL, new SettingDefinition(
-                "zimtradesystems@zimtrade.co.zw",
+                "",
                 "Email address used as sender in outgoing emails"
         ));
         settings.put(MAIL_HOST, new SettingDefinition(
@@ -296,11 +329,11 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
                 "SMTP port for outgoing mail"
         ));
         settings.put(MAIL_USERNAME, new SettingDefinition(
-                "zimtradesystems@zimtrade.co.zw",
+                "",
                 "SMTP username used to authenticate outgoing mail"
         ));
         settings.put(MAIL_PASSWORD, new SettingDefinition(
-                "M0n3v@systems@123",
+                "",
                 "SMTP password used to authenticate outgoing mail"
         ));
         return settings;
@@ -315,6 +348,41 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private Map<String, String> getCachedSettings() {
+        if (isCacheFresh()) {
+            return cachedSettings;
+        }
+        synchronized (settingsMonitor) {
+            if (!isCacheFresh()) {
+                refreshSettingsCache();
+            }
+            return cachedSettings;
+        }
+    }
+
+    private boolean isCacheFresh() {
+        return cacheLoadedAt > 0 && (System.currentTimeMillis() - cacheLoadedAt) <= SETTINGS_CACHE_TTL_MS;
+    }
+
+    private void refreshSettingsCache() {
+        ensureDefaults();
+        List<SystemSetting> settings = repository.findAll();
+        Map<String, String> values = new HashMap<>();
+        for (SystemSetting setting : settings) {
+            if (setting == null || setting.getSettingKey() == null) {
+                continue;
+            }
+            values.put(setting.getSettingKey(), setting.getSettingValue());
+        }
+        cachedSettings = values;
+        cacheLoadedAt = System.currentTimeMillis();
+    }
+
+    private void invalidateSettingsCache() {
+        cacheLoadedAt = 0L;
+        cachedSettings = Collections.emptyMap();
     }
 
     private static class SettingDefinition {

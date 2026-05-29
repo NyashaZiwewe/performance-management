@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
+import javax.validation.constraints.*;
 import java.io.Serializable;
 import java.sql.Date;
 import java.util.List;
@@ -27,6 +28,7 @@ public class Goal implements Serializable {
     @JoinColumn(name = "gear_id")
     private Gear gear;
 
+    @Positive(message = "Scorecard ID must be positive")
     private long scorecardId;
 
     @ManyToOne
@@ -37,6 +39,8 @@ public class Goal implements Serializable {
     @JoinColumn(name = "strategic_objective_id")
     private StrategicObjective strategicObjective;
 
+    @NotBlank(message = "Goal name is required")
+    @Size(min = 3, max = 500, message = "Goal name must be between 3 and 500 characters")
     private String name;
 
     @OneToMany(mappedBy = "goal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)

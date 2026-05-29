@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/performance-reviews")
@@ -46,17 +47,11 @@ public class PerformanceReviewResource {
     public ResponseEntity<CommonResponse<PerformanceLevelsResponse>> getPerformanceLevels(@RequestBody List<Long> scorecardIds) {
         List<String> names = new ArrayList<>();
         List<Double> scores = new ArrayList<>();
-
-        if (scorecardIds != null) {
-            for (Long scorecardId : scorecardIds) {
-                if (scorecardId == null) {
-                    continue;
-                }
-                Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
-                if (scorecard != null && scorecard.getOwner() != null) {
-                    names.add(scorecard.getOwner().getFullName());
-                    scores.add(scorecard.getWeightedScore());
-                }
+        List<Scorecard> scorecards = scorecardService.getScorecardsByIds(scorecardIds);
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard != null && scorecard.getOwner() != null) {
+                names.add(scorecard.getOwner().getFullName());
+                scores.add(scorecard.getWeightedScore());
             }
         }
 
@@ -80,13 +75,29 @@ public class PerformanceReviewResource {
         List<String> monthNames = new ArrayList<>();
         List<Double> scores = new ArrayList<>();
 
+        List<ReportingDate> allReportingDates = new ArrayList<>();
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard != null
+                    && scorecard.getReportingPeriod() != null
+                    && scorecard.getReportingPeriod().getReportingDates() != null) {
+                allReportingDates.addAll(scorecard.getReportingPeriod().getReportingDates());
+            }
+        }
+        Map<Long, Map<Long, Double>> scoresByDate =
+                scorecardService.getScoresByReportingDatesAndScorecardIds(allReportingDates, scorecards);
         for (Scorecard scorecard : scorecards) {
             if (scorecard.getReportingPeriod() == null || scorecard.getReportingPeriod().getReportingDates() == null) {
                 continue;
             }
 
             for (ReportingDate reportingDate : scorecard.getReportingPeriod().getReportingDates()) {
-                Double score = scorecardService.getScoresByReportingDateAndScorecardId(reportingDate, scorecard);
+                Double score = 0.0;
+                if (reportingDate != null) {
+                    Map<Long, Double> scoreByScorecard = scoresByDate.get(reportingDate.getId());
+                    if (scoreByScorecard != null && scoreByScorecard.containsKey(scorecard.getId())) {
+                        score = scoreByScorecard.get(scorecard.getId());
+                    }
+                }
                 monthNames.add(reportingDate.getEndDate());
                 scores.add(score);
             }

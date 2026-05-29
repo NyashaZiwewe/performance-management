@@ -4,6 +4,8 @@ import hr.performancemanagement.entities.Output;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.OutputRepository;
 import org.hibernate.result.Outputs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +13,8 @@ import java.util.List;
 
 @Service
 public class OutputService {
+    private static final Logger log = LoggerFactory.getLogger(OutputService.class);
+
     @Autowired
     OutputRepository outputRepository;
 
@@ -25,8 +29,8 @@ public class OutputService {
        try {
            return outputRepository.save(output);
        }catch (Exception e){
-           System.out.println(e.getMessage());
-           return null;
+           log.error("Error saving output: {}", output != null ? output.getName() : "null", e);
+           throw new RuntimeException("Failed to save output", e);
        }
     }
 

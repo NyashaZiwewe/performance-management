@@ -5,6 +5,8 @@
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
 
     <title>Performance Management</title>
 
@@ -526,13 +528,74 @@
                         <a href="/change-password">Change Password</a>
                     </li>
                     <li>
-                        <a href="/logout">
-                            <i class="fa fa-sign-out"></i> Log out
-                        </a>
+                        <form th:action="@{/logout}" method="post" class="topbar-inline-form">
+                            <button type="submit" class="topbar-link btn btn-link topbar-logout-button">
+                                <i class="fa fa-sign-out"></i> Log out
+                            </button>
+                        </form>
                     </li>
                 </ul>
 
             </nav>
+            <input type="hidden"
+                   th:if="${_csrf != null}"
+                   th:name="${_csrf.parameterName}"
+                   th:value="${_csrf.token}"
+                   autocomplete="off"
+                   style="display:none;">
+            <script>
+                (function () {
+                    function readCookie(name) {
+                        var cookieValue = null;
+                        if (!document.cookie) {
+                            return cookieValue;
+                        }
+                        var cookies = document.cookie.split(';');
+                        for (var i = 0; i < cookies.length; i++) {
+                            var cookie = cookies[i].trim();
+                            if (cookie.indexOf(name + '=') === 0) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                        return cookieValue;
+                    }
+
+                    function isSafeMethod(method) {
+                        return /^(GET|HEAD|OPTIONS|TRACE)$/i.test(method || "GET");
+                    }
+
+                    function installAjaxCsrfHook() {
+                        if (!window.jQuery || window.__pmCsrfHookInstalled) {
+                            return;
+                        }
+                        window.__pmCsrfHookInstalled = true;
+                        window.jQuery.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+                            if (isSafeMethod(options.type)) {
+                                return;
+                            }
+                            var token = readCookie('XSRF-TOKEN');
+                            if (!token) {
+                                var metaToken = document.querySelector('meta[name="_csrf"]');
+                                token = metaToken ? metaToken.getAttribute('content') : null;
+                            }
+                            if (token) {
+                                jqXHR.setRequestHeader('X-XSRF-TOKEN', token);
+                            }
+                        });
+                    }
+
+                    installAjaxCsrfHook();
+                    var attempts = 0;
+                    var timer = setInterval(function () {
+                        installAjaxCsrfHook();
+                        attempts++;
+                        if (window.__pmCsrfHookInstalled || attempts > 40) {
+                            clearInterval(timer);
+                        }
+                    }, 250);
+                })();
+            </script>
         </div>
         <div class="row wrapper border-bottom white-bg page-heading app-page-heading" th:fragment="page-heading">
             <div class="col-lg-12">
@@ -551,7 +614,7 @@
                 </ol>
             </div>
         </div>
-        <div class="alerts" th:fragment="alerts">
+        <div class="alerts" th:fragment="alerts" aria-live="polite" aria-atomic="true">
             <div th:if="${errorMsgs != null }">
                 <div th:each="message: ${errorMsgs}">
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">

@@ -50,7 +50,8 @@ body.login-page {
             radial-gradient(circle at 58% 86%, rgba(37, 99, 235, 0.24), transparent 32%),
             linear-gradient(135deg, #070b1f, #111743 48%, #081022) !important;
     color: #1f2937;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 body.login-page:before,
@@ -265,6 +266,13 @@ body.auth-light-page .login-company-name {
     body.login-page:after {
         animation: none;
     }
+
+    .animated,
+    .login-shell,
+    .login-panel {
+        animation: none !important;
+        transition: none !important;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -295,10 +303,59 @@ body.auth-light-page .login-company-name {
         display: block;
     }
 
-    .quick-links a {
+.quick-links a {
         display: block;
         margin-bottom: 10px;
     }
+}
+
+.topbar-inline-form {
+    display: inline;
+    margin: 0;
+}
+
+.topbar-logout-button {
+    color: inherit;
+    padding: 0;
+    border: 0;
+    text-decoration: none;
+}
+
+.topbar-logout-button:hover,
+.topbar-logout-button:focus {
+    text-decoration: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.chart-sr-summary {
+    margin-top: 12px;
+    color: #667085;
+    font-size: 13px;
+}
+
+.score-save-status {
+    margin: 8px 0 0;
+    min-height: 20px;
+    font-size: 13px;
+    color: #344054;
+}
+
+.score-save-status.error {
+    color: #b42318;
+}
+
+.score-save-status.success {
+    color: #067647;
 }
 
 html,

@@ -25,25 +25,26 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Override
     public List<Target> getAllTargetsByScorecard(long scorecardId){
         List<Target> targetList = new ArrayList<>();
-
-        List<Goal> goalList = goalRepository.findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(scorecardId);
-//        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-
-        for(Goal goal: goalList){
-           List<Target> targets = targetRepository.findTargetsByGoalId(goal.getId());
-            for(Target target: targets){
+        List<Target> targets = targetRepository.findTargetsByScorecardId(scorecardId);
+        for (Target target : targets) {
+            if (target == null) {
+                continue;
+            }
+            Goal goal = target.getGoal();
+            if (goal != null) {
                 target.setPerspective(goal.getPerspective());
                 target.setStrategicObjective(goal.getStrategicObjective());
-//                target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
-//                target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
-//                target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
-//                target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
-//                target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
-//                target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
-//                target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
-//                target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));
-                targetList.add(target);
             }
+//          ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+//          target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
+//          target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
+//          target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
+//          target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
+//          target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
+//          target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
+//          target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
+//          target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));
+            targetList.add(target);
         }
 
         return targetList;
@@ -70,8 +71,8 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
         return targetRepository.countTargetsByOutput(output) > 0;
     }
 
-    @Transactional
     @Override
+    @Transactional
     public void deleteTargets(List<Target> targets) {
         if (targets == null || targets.isEmpty()) {
             return;
@@ -129,6 +130,7 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
 
 
     @Override
+    @Transactional
     public Target saveTarget(Target target) {
         Target savedTarget = targetRepository.save(target);
         return savedTarget;

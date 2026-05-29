@@ -55,15 +55,7 @@ public class ScorecardResource {
             throw new ResourceNotFoundException("Reporting period not found with id " + reportingPeriodId);
         }
 
-        List<Scorecard> scorecards = scorecardService.listAllScorecards(clientId);
-        List<Scorecard> filteredScorecards = new ArrayList<>();
-        for (Scorecard scorecard : scorecards) {
-            if (scorecard != null
-                    && scorecard.getReportingPeriod() != null
-                    && scorecard.getReportingPeriod().getId() == reportingPeriodId) {
-                filteredScorecards.add(scorecard);
-            }
-        }
+        List<Scorecard> filteredScorecards = scorecardService.listAllScorecards(clientId, reportingPeriodId);
 
         return ResponseEntity.ok(CommonResponse.<List<Scorecard>>builder()
                 .isSuccess(true)
