@@ -94,10 +94,13 @@ public class AssessmentController {
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
         List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
+        ReportingDate activeReportingDate = reportingDateService.getActiveReportingDate();
+        boolean captureWindowOpen = reportingDateService.isReportingDateOpen(activeReportingDate);
         modelAndView.addObject("pageDomain", "Performance Review");
         modelAndView.addObject("pageName", "Assessments");
         modelAndView.addObject("profile", "moderator");
         modelAndView.addObject("accountsList", ACCOUNTS_LIST);
+        modelAndView.addObject("captureWindowOpen", captureWindowOpen);
         PortletUtils.addMessagesToPage(modelAndView, request);
     }
 

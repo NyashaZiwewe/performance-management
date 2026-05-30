@@ -85,7 +85,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public boolean sendUserMessage(String recipientEmail, String recipientName, String subject, String message) {
-        String body = buildMessage(greeting(recipientName), message);
+        String body = buildMessage(greeting(recipientName), normalizeUserMessage(message));
         return send(recipientEmail, subject, body);
     }
 
@@ -157,8 +157,20 @@ public class NotificationServiceImpl implements NotificationService {
                 builder.append(line).append("\n\n");
             }
         }
-        builder.append("Best regards,\n").append(systemSettingService.getSystemName());
+        builder.append("Best regards,\n").append(resolveSignatureName());
         return builder.toString();
+    }
+
+    private String normalizeUserMessage(String message) {
+        if (message == null || message.trim().isEmpty()) {
+            return "";
+        }
+        String normalized = message.replace("\r\n", "\n").replace('\r', '\n').trim();
+        normalized = normalized.replaceFirst("(?is)^good day[^\\n]*\\n+", "");
+        normalized = normalized.replaceFirst("(?is)\\n*best regards,?\\s*\\n\\s*the\\s+zimtrade\\s+team\\s*$", "");
+        normalized = normalized.replaceFirst("(?is)\\n*best regards,?\\s*\\n[^\\n]+\\s*$", "");
+        normalized = normalized.trim();
+        return normalized;
     }
 
     private void recordEmailNotification(String to, String subject, String body) {
@@ -176,76 +188,216 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private String buildHtmlEmail(String subject, String body) {
+        String normalizedBody = body == null ? "" : body.replace("\r\n", "\n").replace('\r', '\n').trim();
+        List<String> blocks = splitBlocks(normalizedBody);
+        String greeting = extractGreeting(blocks);
+        String closingName = extractClosingName(blocks);
+
         List<String> paragraphs = new ArrayList<String>();
-        List<String> actionLinks = new ArrayList<String>();
-        for (String block : body.split("\\n\\n")) {
-            String trimmed = block != null ? block.trim() : null;
-            if (trimmed == null || trimmed.isEmpty()) {
+        List<String[]> actionLinks = new ArrayList<String[]>();
+        List<String[]> details = new ArrayList<String[]>();
+
+        for (String block : blocks) {
+            appendBlockContent(block, paragraphs, details, actionLinks);
+        }
+
+        String brandName = escapeHtml(resolveBrandName());
+        String systemName = escapeHtml(resolveSystemName());
+        String safeSubject = escapeHtml(defaultText(subject, "Notification"));
+
+        StringBuilder html = new StringBuilder();
+        html.append("<!doctype html>")
+                .append("<html><body style=\"margin:0;padding:0;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;\">")
+                .append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#f3f6fb;padding:28px 12px;\">")
+                .append("<tr><td align=\"center\">")
+                .append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:640px;background:#ffffff;border:1px solid #dbe3ef;border-radius:8px;overflow:hidden;\">")
+                .append("<tr><td style=\"background:#12355b;padding:24px 28px;color:#ffffff;\">")
+                .append("<div style=\"font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#b8d7f5;font-weight:700;\">")
+                .append(systemName)
+                .append("</div>")
+                .append("<h1 style=\"margin:10px 0 0;font-size:24px;line-height:1.3;font-weight:700;\">")
+                .append(safeSubject)
+                .append("</h1>")
+                .append("</td></tr>")
+                .append("<tr><td style=\"padding:28px;\">")
+                .append("<p style=\"margin:0 0 14px;font-size:16px;line-height:1.6;color:#1f2937;\">")
+                .append(escapeHtml(greeting))
+                .append("</p>");
+
+        for (String paragraph : paragraphs) {
+            html.append("<p style=\"margin:0 0 14px;font-size:15px;line-height:1.7;color:#42526b;\">")
+                    .append(escapeHtml(paragraph))
+                    .append("</p>");
+        }
+
+        if (!details.isEmpty()) {
+            html.append("<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"border:1px solid #e1e8f0;border-radius:8px;margin:0 0 24px;\">");
+            for (String[] detail : details) {
+                if (detail == null || detail.length < 2) {
+                    continue;
+                }
+                html.append("<tr>")
+                        .append("<td style=\"padding:12px 16px;border-bottom:1px solid #e1e8f0;color:#697386;font-size:13px;width:42%;\">")
+                        .append(escapeHtml(detail[0]))
+                        .append("</td>")
+                        .append("<td style=\"padding:12px 16px;border-bottom:1px solid #e1e8f0;color:#1f2937;font-size:14px;font-weight:700;\">")
+                        .append(escapeHtml(detail[1]))
+                        .append("</td>")
+                        .append("</tr>");
+            }
+            html.append("</table>");
+        }
+
+        for (String[] actionLink : actionLinks) {
+            if (actionLink == null || actionLink.length < 2) {
                 continue;
             }
-            if (trimmed.contains(": http://") || trimmed.contains(": https://")) {
-                int separatorIndex = trimmed.indexOf(": ");
-                if (separatorIndex > 0 && separatorIndex + 2 < trimmed.length()) {
-                    String label = trimmed.substring(0, separatorIndex).trim();
-                    String url = trimmed.substring(separatorIndex + 2).trim();
-                    actionLinks.add(buildActionButton(label, url));
+            String actionText = defaultText(actionLink[0], "Open Link");
+            String actionUrl = actionLink[1];
+            html.append("<table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin:0 0 22px;\"><tr><td>")
+                    .append("<a href=\"")
+                    .append(escapeHtmlAttribute(actionUrl))
+                    .append("\" style=\"display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:13px 20px;border-radius:6px;\">")
+                    .append(escapeHtml(actionText))
+                    .append("</a>")
+                    .append("</td></tr></table>")
+                    .append("<p style=\"margin:0 0 22px;font-size:12px;line-height:1.6;color:#697386;word-break:break-all;\">")
+                    .append("If the button does not work, copy and paste this link into your browser:<br>")
+                    .append("<a href=\"")
+                    .append(escapeHtmlAttribute(actionUrl))
+                    .append("\" style=\"color:#0f766e;text-decoration:underline;\">")
+                    .append(escapeHtml(actionUrl))
+                    .append("</a></p>");
+        }
+
+        html.append("<p style=\"margin:0;font-size:15px;line-height:1.7;color:#42526b;\">Best regards,<br>")
+                .append(escapeHtml(closingName))
+                .append("</p>")
+                .append("</td></tr>")
+                .append("<tr><td style=\"background:#f8fafc;padding:16px 28px;color:#697386;font-size:12px;line-height:1.6;border-top:1px solid #e1e8f0;\">")
+                .append("This is an automated message from ")
+                .append(brandName)
+                .append(". Please do not reply directly to this email.")
+                .append("</td></tr>")
+                .append("</table></td></tr></table></body></html>");
+        return html.toString();
+    }
+
+    private List<String> splitBlocks(String content) {
+        List<String> blocks = new ArrayList<String>();
+        if (content == null || content.trim().isEmpty()) {
+            return blocks;
+        }
+        for (String block : content.split("\\n\\s*\\n")) {
+            String trimmed = block == null ? null : block.trim();
+            if (trimmed != null && !trimmed.isEmpty()) {
+                blocks.add(trimmed);
+            }
+        }
+        return blocks;
+    }
+
+    private String extractGreeting(List<String> blocks) {
+        if (blocks == null || blocks.isEmpty()) {
+            return "Good day,";
+        }
+        String first = blocks.get(0);
+        if (isGreetingLine(first)) {
+            blocks.remove(0);
+            return first;
+        }
+        return "Good day,";
+    }
+
+    private String extractClosingName(List<String> blocks) {
+        String defaultClosing = resolveSignatureName();
+        if (blocks == null || blocks.isEmpty()) {
+            return defaultClosing;
+        }
+        String last = blocks.get(blocks.size() - 1);
+        String lower = last.toLowerCase();
+        if (!lower.startsWith("best regards") && !lower.startsWith("kind regards")) {
+            return defaultClosing;
+        }
+        blocks.remove(blocks.size() - 1);
+        String[] lines = last.split("\\n");
+        if (lines.length > 1) {
+            for (int index = 1; index < lines.length; index++) {
+                String candidate = lines[index] == null ? null : lines[index].trim();
+                if (candidate != null && !candidate.isEmpty()) {
+                    return candidate;
+                }
+            }
+        }
+        return defaultClosing;
+    }
+
+    private void appendBlockContent(String block,
+                                    List<String> paragraphs,
+                                    List<String[]> details,
+                                    List<String[]> actionLinks) {
+        if (block == null || block.trim().isEmpty()) {
+            return;
+        }
+        String[] lines = block.split("\\n");
+        for (String rawLine : lines) {
+            String line = rawLine == null ? null : rawLine.trim();
+            if (line == null || line.isEmpty()) {
+                continue;
+            }
+            int separatorIndex = line.indexOf(": ");
+            if (separatorIndex > 0 && separatorIndex + 2 < line.length()) {
+                String key = line.substring(0, separatorIndex).trim();
+                String value = line.substring(separatorIndex + 2).trim();
+                if (isHttpUrl(value)) {
+                    actionLinks.add(new String[]{key, value});
+                    continue;
+                }
+                if (isDetailEntry(key, value)) {
+                    details.add(new String[]{key, value});
                     continue;
                 }
             }
-            paragraphs.add(trimmed);
+            paragraphs.add(line);
         }
-
-        String brandName = escapeHtml(defaultText(systemSettingService.getCompanyName(), systemSettingService.getSystemName()));
-        String systemName = escapeHtml(defaultText(systemSettingService.getSystemName(), "Performance Management"));
-        StringBuilder contentBuilder = new StringBuilder();
-        for (String paragraph : paragraphs) {
-            if (paragraph.contains("\n")) {
-                contentBuilder.append("<div style=\"margin:0 0 18px;padding:14px 16px;border-radius:14px;background:#f6f9fc;border:1px solid #d9e6f2;color:#314b63;font-size:14px;line-height:1.6;white-space:pre-line;\">")
-                        .append(escapeHtml(paragraph))
-                        .append("</div>");
-            } else {
-                contentBuilder.append("<p style=\"margin:0 0 14px;color:#314b63;font-size:15px;line-height:1.65;\">")
-                        .append(escapeHtml(paragraph))
-                        .append("</p>");
-            }
-        }
-
-        StringBuilder actionsBuilder = new StringBuilder();
-        for (String actionLink : actionLinks) {
-            actionsBuilder.append(actionLink);
-        }
-
-        return "<!DOCTYPE html>" +
-                "<html><body style=\"margin:0;padding:0;background:#eef4f8;font-family:'Segoe UI',Tahoma,sans-serif;color:#183247;\">" +
-                "<div style=\"padding:32px 16px;\">" +
-                "<div style=\"max-width:680px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 18px 42px rgba(24,50,71,0.12);\">" +
-                "<div style=\"padding:28px 32px;background:linear-gradient(135deg,#175ea8 0%,#103d6d 100%);color:#ffffff;\">" +
-                "<div style=\"font-size:12px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.8;\">"
-                + systemName + "</div>" +
-                "<h1 style=\"margin:10px 0 0;font-size:28px;line-height:1.25;font-weight:700;\">" + escapeHtml(subject) + "</h1>" +
-                "<div style=\"margin-top:8px;font-size:14px;opacity:0.9;\">Updates from " + brandName + "</div>" +
-                "</div>" +
-                "<div style=\"padding:30px 32px 22px;\">" +
-                contentBuilder +
-                (actionsBuilder.length() > 0
-                        ? "<div style=\"margin:26px 0 10px;\">" + actionsBuilder + "</div>"
-                        : "") +
-                "</div>" +
-                "<div style=\"padding:18px 32px 28px;border-top:1px solid #e1ebf3;background:#fbfdff;color:#6c7f92;font-size:12px;line-height:1.7;\">" +
-                "<div style=\"margin-bottom:6px;font-weight:700;color:#183247;\">" + brandName + "</div>" +
-                "<div>This is an automated notification from " + systemName + ".</div>" +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "</body></html>";
     }
 
-    private String buildActionButton(String label, String url) {
-        return "<a href=\"" + escapeHtmlAttribute(url) + "\" " +
-                "style=\"display:inline-block;margin:0 12px 12px 0;padding:12px 18px;border-radius:999px;" +
-                "background:#175ea8;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;\">" +
-                escapeHtml(label) +
-                "</a>";
+    private boolean isGreetingLine(String line) {
+        if (line == null) {
+            return false;
+        }
+        String lower = line.trim().toLowerCase();
+        return lower.startsWith("good day") || lower.startsWith("dear ");
+    }
+
+    private boolean isDetailEntry(String key, String value) {
+        if (key == null || value == null || key.trim().isEmpty() || value.trim().isEmpty()) {
+            return false;
+        }
+        if (isHttpUrl(value)) {
+            return false;
+        }
+        return key.length() <= 40;
+    }
+
+    private boolean isHttpUrl(String value) {
+        if (value == null) {
+            return false;
+        }
+        String lower = value.trim().toLowerCase();
+        return lower.startsWith("http://") || lower.startsWith("https://");
+    }
+
+    private String resolveBrandName() {
+        return defaultText(systemSettingService.getCompanyName(), systemSettingService.getSystemName());
+    }
+
+    private String resolveSystemName() {
+        return defaultText(systemSettingService.getSystemName(), "Performance Management");
+    }
+
+    private String resolveSignatureName() {
+        return defaultText(resolveBrandName(), "Performance Management");
     }
 
     private String escapeHtml(String value) {

@@ -53,8 +53,11 @@
                 <div class="tabs-container">
                     <ul class="nav nav-tabs" role="tablist">
                         <li><a class="nav-link" data-toggle="tab" href="#tab-1"> View Scores</a></li>
-                        <li><a class="nav-link active" data-toggle="tab" href="#tab-2">Capture Scores [<span th:text="${reportingDate.endDate}"></span>]</a></li>
+                        <li><a class="nav-link active" data-toggle="tab" href="#tab-2">Capture Scores [<span th:text="${reportingDateLabel}"></span>]</a></li>
                     </ul>
+                    <div th:if="${scoreCaptureAllowed == false}" class="alert alert-warning m-t-sm" th:text="${scoreCaptureBlockedMessage}">
+                        Score capture is currently unavailable.
+                    </div>
                     <div class="tab-content">
                         <div role="tabpanel" id="tab-1" class="tab-pane">
                             <div class="panel-body">
@@ -213,8 +216,9 @@
                                         </div>
                                         <div class="col-lg-8">
                                             <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
-                                            <button onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
-                                            <button class="btn btn-success" type="submit">Validate & Submit</button>
+                                            <button th:if="${scoreCaptureAllowed}" onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
+                                            <button th:if="${scoreCaptureAllowed}" class="btn btn-success" type="submit"
+                                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Validate & Submit'}">Validate & Submit</button>
                                         </div>
                                     </div>
                                 </form>
@@ -223,7 +227,7 @@
                         <div role="tabpanel" id="tab-2" class="tab-pane active">
                             <div class="panel-body">
                                 <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}">
-                                    <fieldset class="border p-2">
+                                    <fieldset class="border p-2" th:attr="disabled=${scoreCaptureAllowed == false ? 'disabled' : null}">
                                         <legend class="w-auto"><span th:text="${reportingPeriod.startDate +' - '+ reportingPeriod.endDate}"></span></legend>
                                         <div class="row table-responsive">
                                             <table class="table">
@@ -281,8 +285,9 @@
                                         </div>
                                         <div class="col-lg-8">
                                             <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
-                                            <button onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
-                                            <button class="btn btn-success" type="submit">Validate & Submit</button>
+                                            <button th:if="${scoreCaptureAllowed}" onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
+                                            <button th:if="${scoreCaptureAllowed}" class="btn btn-success" type="submit"
+                                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Validate & Submit'}">Validate & Submit</button>
                                         </div>
                                     </div>
                                     <div id="scoreSaveStatus" class="score-save-status" role="status" aria-live="polite" aria-atomic="true"></div>

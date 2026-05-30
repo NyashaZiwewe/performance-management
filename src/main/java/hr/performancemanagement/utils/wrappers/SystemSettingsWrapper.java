@@ -22,4 +22,16 @@ public class SystemSettingsWrapper {
     private String mailUsername;
     private String mailPassword;
     private boolean mailPasswordConfigured;
+    private String scorecardStatusNew;
+    private String scorecardStatusPendingApproval;
+    private String scorecardStatusApprovedBySupervisor;
+    private String scorecardStatusRejectedBySupervisor;
+    private String scorecardStatusApprovedByHr;
+    private String scorecardStatusRejectedByHr;
+    private String scorecardStatusScoredByEmployee;
+    private String scorecardStatusScoredBySupervisor;
+    private String scorecardStatusAgreedByTwo;
+    private String scorecardStatusModeratedByHr;
+    private String scorecardStatusClosed;
+    private String scorecardWorkflowSequence;
 }

@@ -35,6 +35,18 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     private static final String MAIL_PORT = "mail.port";
     private static final String MAIL_USERNAME = "mail.username";
     private static final String MAIL_PASSWORD = "mail.password";
+    private static final String SCORECARD_STATUS_NEW = "scorecard.status.new";
+    private static final String SCORECARD_STATUS_PENDING_APPROVAL = "scorecard.status.pendingApproval";
+    private static final String SCORECARD_STATUS_APPROVED_BY_SUPERVISOR = "scorecard.status.approvedBySupervisor";
+    private static final String SCORECARD_STATUS_REJECTED_BY_SUPERVISOR = "scorecard.status.rejectedBySupervisor";
+    private static final String SCORECARD_STATUS_APPROVED_BY_HR = "scorecard.status.approvedByHr";
+    private static final String SCORECARD_STATUS_REJECTED_BY_HR = "scorecard.status.rejectedByHr";
+    private static final String SCORECARD_STATUS_SCORED_BY_EMPLOYEE = "scorecard.status.scoredByEmployee";
+    private static final String SCORECARD_STATUS_SCORED_BY_SUPERVISOR = "scorecard.status.scoredBySupervisor";
+    private static final String SCORECARD_STATUS_AGREED_BY_TWO = "scorecard.status.agreedByTwo";
+    private static final String SCORECARD_STATUS_MODERATED_BY_HR = "scorecard.status.moderatedByHr";
+    private static final String SCORECARD_STATUS_CLOSED = "scorecard.status.closed";
+    private static final String SCORECARD_WORKFLOW_SEQUENCE = "scorecard.workflow.sequence";
     private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
 
     @Autowired
@@ -142,6 +154,66 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     }
 
     @Override
+    public String getScorecardStatusNew() {
+        return getValue(SCORECARD_STATUS_NEW);
+    }
+
+    @Override
+    public String getScorecardStatusPendingApproval() {
+        return getValue(SCORECARD_STATUS_PENDING_APPROVAL);
+    }
+
+    @Override
+    public String getScorecardStatusApprovedBySupervisor() {
+        return getValue(SCORECARD_STATUS_APPROVED_BY_SUPERVISOR);
+    }
+
+    @Override
+    public String getScorecardStatusRejectedBySupervisor() {
+        return getValue(SCORECARD_STATUS_REJECTED_BY_SUPERVISOR);
+    }
+
+    @Override
+    public String getScorecardStatusApprovedByHr() {
+        return getValue(SCORECARD_STATUS_APPROVED_BY_HR);
+    }
+
+    @Override
+    public String getScorecardStatusRejectedByHr() {
+        return getValue(SCORECARD_STATUS_REJECTED_BY_HR);
+    }
+
+    @Override
+    public String getScorecardStatusScoredByEmployee() {
+        return getValue(SCORECARD_STATUS_SCORED_BY_EMPLOYEE);
+    }
+
+    @Override
+    public String getScorecardStatusScoredBySupervisor() {
+        return getValue(SCORECARD_STATUS_SCORED_BY_SUPERVISOR);
+    }
+
+    @Override
+    public String getScorecardStatusAgreedByTwo() {
+        return getValue(SCORECARD_STATUS_AGREED_BY_TWO);
+    }
+
+    @Override
+    public String getScorecardStatusModeratedByHr() {
+        return getValue(SCORECARD_STATUS_MODERATED_BY_HR);
+    }
+
+    @Override
+    public String getScorecardStatusClosed() {
+        return getValue(SCORECARD_STATUS_CLOSED);
+    }
+
+    @Override
+    public String getScorecardWorkflowSequence() {
+        return getValue(SCORECARD_WORKFLOW_SEQUENCE);
+    }
+
+    @Override
     public boolean isMailConfigured() {
         return hasText(getMailHost())
                 && getMailPort() > 0
@@ -193,6 +265,18 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         wrapper.setMailUsername(getMailUsername());
         wrapper.setMailPassword("");
         wrapper.setMailPasswordConfigured(hasText(getMailPassword()));
+        wrapper.setScorecardStatusNew(getScorecardStatusNew());
+        wrapper.setScorecardStatusPendingApproval(getScorecardStatusPendingApproval());
+        wrapper.setScorecardStatusApprovedBySupervisor(getScorecardStatusApprovedBySupervisor());
+        wrapper.setScorecardStatusRejectedBySupervisor(getScorecardStatusRejectedBySupervisor());
+        wrapper.setScorecardStatusApprovedByHr(getScorecardStatusApprovedByHr());
+        wrapper.setScorecardStatusRejectedByHr(getScorecardStatusRejectedByHr());
+        wrapper.setScorecardStatusScoredByEmployee(getScorecardStatusScoredByEmployee());
+        wrapper.setScorecardStatusScoredBySupervisor(getScorecardStatusScoredBySupervisor());
+        wrapper.setScorecardStatusAgreedByTwo(getScorecardStatusAgreedByTwo());
+        wrapper.setScorecardStatusModeratedByHr(getScorecardStatusModeratedByHr());
+        wrapper.setScorecardStatusClosed(getScorecardStatusClosed());
+        wrapper.setScorecardWorkflowSequence(getScorecardWorkflowSequence());
         return wrapper;
     }
 
@@ -218,6 +302,18 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         saveValue(MAIL_PORT, wrapper.getMailPort());
         saveValue(MAIL_USERNAME, wrapper.getMailUsername());
         saveMailPassword(wrapper.getMailPassword());
+        saveValue(SCORECARD_STATUS_NEW, normalizeWorkflowStatus(wrapper.getScorecardStatusNew()));
+        saveValue(SCORECARD_STATUS_PENDING_APPROVAL, normalizeWorkflowStatus(wrapper.getScorecardStatusPendingApproval()));
+        saveValue(SCORECARD_STATUS_APPROVED_BY_SUPERVISOR, normalizeWorkflowStatus(wrapper.getScorecardStatusApprovedBySupervisor()));
+        saveValue(SCORECARD_STATUS_REJECTED_BY_SUPERVISOR, normalizeWorkflowStatus(wrapper.getScorecardStatusRejectedBySupervisor()));
+        saveValue(SCORECARD_STATUS_APPROVED_BY_HR, normalizeWorkflowStatus(wrapper.getScorecardStatusApprovedByHr()));
+        saveValue(SCORECARD_STATUS_REJECTED_BY_HR, normalizeWorkflowStatus(wrapper.getScorecardStatusRejectedByHr()));
+        saveValue(SCORECARD_STATUS_SCORED_BY_EMPLOYEE, normalizeWorkflowStatus(wrapper.getScorecardStatusScoredByEmployee()));
+        saveValue(SCORECARD_STATUS_SCORED_BY_SUPERVISOR, normalizeWorkflowStatus(wrapper.getScorecardStatusScoredBySupervisor()));
+        saveValue(SCORECARD_STATUS_AGREED_BY_TWO, normalizeWorkflowStatus(wrapper.getScorecardStatusAgreedByTwo()));
+        saveValue(SCORECARD_STATUS_MODERATED_BY_HR, normalizeWorkflowStatus(wrapper.getScorecardStatusModeratedByHr()));
+        saveValue(SCORECARD_STATUS_CLOSED, normalizeWorkflowStatus(wrapper.getScorecardStatusClosed()));
+        saveValue(SCORECARD_WORKFLOW_SEQUENCE, normalizeWorkflowSequence(wrapper.getScorecardWorkflowSequence()));
     }
 
     @Transactional
@@ -336,6 +432,54 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
                 "",
                 "SMTP password used to authenticate outgoing mail"
         ));
+        settings.put(SCORECARD_STATUS_NEW, new SettingDefinition(
+                "NEW",
+                "Scorecard status used immediately after scorecard creation"
+        ));
+        settings.put(SCORECARD_STATUS_PENDING_APPROVAL, new SettingDefinition(
+                "PENDING_APPROVAL",
+                "Scorecard status used after target submission for supervisor approval"
+        ));
+        settings.put(SCORECARD_STATUS_APPROVED_BY_SUPERVISOR, new SettingDefinition(
+                "APPROVED_BY_SUPERVISOR",
+                "Scorecard status used after supervisor approval"
+        ));
+        settings.put(SCORECARD_STATUS_REJECTED_BY_SUPERVISOR, new SettingDefinition(
+                "REJECTED_BY_SUPERVISOR",
+                "Scorecard status used after supervisor rejection"
+        ));
+        settings.put(SCORECARD_STATUS_APPROVED_BY_HR, new SettingDefinition(
+                "APPROVED_BY_HR",
+                "Scorecard status used after HR approval"
+        ));
+        settings.put(SCORECARD_STATUS_REJECTED_BY_HR, new SettingDefinition(
+                "REJECTED_BY_HR",
+                "Scorecard status used after HR rejection"
+        ));
+        settings.put(SCORECARD_STATUS_SCORED_BY_EMPLOYEE, new SettingDefinition(
+                "SCORED_BY_EMPLOYEE",
+                "Scorecard status used after owner sign-off and score capture"
+        ));
+        settings.put(SCORECARD_STATUS_SCORED_BY_SUPERVISOR, new SettingDefinition(
+                "SCORED_BY_SUPERVISOR",
+                "Scorecard status used after supervisor score capture"
+        ));
+        settings.put(SCORECARD_STATUS_AGREED_BY_TWO, new SettingDefinition(
+                "AGREED_BY_TWO",
+                "Scorecard status used after agreed score capture by owner and supervisor"
+        ));
+        settings.put(SCORECARD_STATUS_MODERATED_BY_HR, new SettingDefinition(
+                "MODERATED_BY_HR",
+                "Scorecard status used after HR moderation"
+        ));
+        settings.put(SCORECARD_STATUS_CLOSED, new SettingDefinition(
+                "CLOSED",
+                "Scorecard status used when scorecard is closed"
+        ));
+        settings.put(SCORECARD_WORKFLOW_SEQUENCE, new SettingDefinition(
+                "NEW,PENDING_APPROVAL,APPROVED_BY_SUPERVISOR,REJECTED_BY_SUPERVISOR,APPROVED_BY_HR,REJECTED_BY_HR,SCORED_BY_EMPLOYEE,SCORED_BY_SUPERVISOR,AGREED_BY_TWO,MODERATED_BY_HR,CLOSED",
+                "Comma-separated scorecard status order used in scorecard filters and display"
+        ));
         return settings;
     }
 
@@ -344,6 +488,32 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
             return;
         }
         saveValue(MAIL_PASSWORD, value);
+    }
+
+    private String normalizeWorkflowStatus(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toUpperCase();
+    }
+
+    private String normalizeWorkflowSequence(String value) {
+        if (value == null) {
+            return "";
+        }
+        String[] tokens = value.split("[,\\n]");
+        StringBuilder builder = new StringBuilder();
+        for (String token : tokens) {
+            String normalized = normalizeWorkflowStatus(token);
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(",");
+            }
+            builder.append(normalized);
+        }
+        return builder.toString();
     }
 
     private boolean hasText(String value) {

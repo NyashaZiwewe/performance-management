@@ -61,7 +61,8 @@
                                         <th>Reporting Period</th>
                                         <th>Status</th>
                                         <th>Lock Status</th>
-                                        <th>Approval Status</th>
+                                        <th>Stage</th>
+                                        <th>Status</th>
                                         <th>Last Updated</th>
                                         <th>Date Created</th>
                                         <th></th>
@@ -86,35 +87,30 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <div th:switch="${scorecard.approvalStatus}">
-                                                <label class="label label-primary" th:case="NEW" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-warning" th:case="PENDING_APPROVAL" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="APPROVED_BY_SUPERVISOR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-danger" th:case="REJECTED_BY_SUPERVISOR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="APPROVED_BY_HR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-danger" th:case="REJECTED_BY_HR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="SCORED_BY_EMPLOYEE" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="SCORED_BY_SUPERVISOR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="MODERATED_BY_HR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-secondary " th:case="CLOSED" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
-                                            </div>
+                                            <label th:text="${scorecard.approvalStatus != null and approvalStatusStages != null and approvalStatusStages[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusStages[#strings.toUpperCase(scorecard.approvalStatus)] : 'Workflow'}"></label>
+                                        </td>
+                                        <td>
+                                            <label th:class="${scorecard.approvalStatus != null and approvalStatusCssClasses[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusCssClasses[#strings.toUpperCase(scorecard.approvalStatus)] : 'label label-danger'}"
+                                                   th:text="${scorecard.approvalStatus != null and approvalStatusLabels != null and approvalStatusLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusLabels[#strings.toUpperCase(scorecard.approvalStatus)] : (scorecard.approvalStatus != null ? scorecard.approvalStatus : 'UNKNOWN STATUS')}"></label>
                                         </td>
                                         <td th:text="${scorecard.lastUpdate}"></td>
                                         <td th:text="${scorecard.date}"></td>
                                         <td>
                                             <span th:if="${scorecard.status == 'ACTIVE'}">
-                                                <a th:if="${loggedUserId == scorecard.owner.id && scorecard.approvalStatus == 'APPROVED_BY_HR'}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
+                                                <a th:if="${captureWindowOpen && loggedUserId == scorecard.owner.id && scorecard.approvalStatus == scorecardWorkflow.approvedByHrStatus}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
+                                                   <button class="btn btn-success btn-sm"
+                                                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</button>
                                                 </a>
-                                                 <a th:if="${loggedUserId == scorecard.owner.supervisor.id && scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE'}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
+                                                 <a th:if="${captureWindowOpen && scorecard.owner != null && scorecard.owner.supervisor != null && loggedUserId == scorecard.owner.supervisor.id && (scorecard.approvalStatus == scorecardWorkflow.approvedOwnerScoresStatus || scorecard.approvalStatus == scorecardWorkflow.scoredBySupervisorStatus)}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
+                                                   <button class="btn btn-success btn-sm"
+                                                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</button>
                                                 </a>
-                                                <a th:if="${role == 'MODERATOR' && scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
+                                                <a th:if="${captureWindowOpen && role == 'MODERATOR' && scorecard.approvalStatus == scorecardWorkflow.approvedAgreedScoresStatus}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
+                                                   <button class="btn btn-success btn-sm"
+                                                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</button>
                                                 </a>
                                                 <span th:if="${loggedUserId == scorecard.owner.id && scorecard.lockStatus == 'OPEN'}">
-                                                    <a th:if="${scorecard.approvalStatus == 'NEW' || scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR'}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
+                                                    <a th:if="${scorecard.approvalStatus == scorecardWorkflow.newStatus || scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
                                                     <button class="btn btn-success btn-sm">Edit Targets</button>
                                                 </a>
                                                 </span>
@@ -125,7 +121,7 @@
                                             <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}">
                                                 <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
                                             </a>
-                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
+                                            <a th:if="${scorecard.approvalStatus == scorecardWorkflow.moderatedByHrStatus}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
                                         </td>
                                     </tr>
 
@@ -180,23 +176,23 @@
                 {extend: 'csv',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
                 {extend: 'excel',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
                 {extend: 'pdf',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     }},
 
                 {extend: 'print',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3,4,5,6,7]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

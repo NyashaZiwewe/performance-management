@@ -52,6 +52,7 @@ public class Pages {
     public static final String VIEW_PROBATION_ASSESSMENT = "probation-assessment/viewProbationAssessment";
     public static final String CONFIG_PROBATION_ASSESSMENT = "probation-assessment/configProbationAssessment";
     public static final String VIEW_SYSTEM_SETTINGS = "settings/viewSystemSettings";
+    public static final String CONFIG_SCORECARD_WORKFLOW = "scorecard-workflow/configScorecardWorkflow";
     public static final String AUDIT_REPORTS = "audit/viewAuditLogs";
     public static final String VIEW_SCORES_SELECT_YEAR = "assessment/viewScoresSelectYear";
     public static final String VIEW_SCORECARDS_SELECT_YEAR = "scorecard/viewScoreCardsSelectYear";

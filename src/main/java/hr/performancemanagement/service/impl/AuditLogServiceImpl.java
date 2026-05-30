@@ -9,8 +9,12 @@ import hr.performancemanagement.repository.AuditLogRepository;
 import hr.performancemanagement.utils.wrappers.AuditLogFilterWrapper;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.persistence.criteria.Predicate;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -28,11 +32,9 @@ import java.util.Map;
 public class AuditLogServiceImpl implements hr.performancemanagement.service.api.AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
-    private final CommonService commonService;
 
-    public AuditLogServiceImpl(AuditLogRepository auditLogRepository, CommonService commonService) {
+    public AuditLogServiceImpl(AuditLogRepository auditLogRepository) {
         this.auditLogRepository = auditLogRepository;
-        this.commonService = commonService;
     }
 
     @Override
@@ -116,8 +118,27 @@ public class AuditLogServiceImpl implements hr.performancemanagement.service.api
     }
 
     private String resolveUserName() {
-        Account loggedUser = commonService.getLoggedUser();
+        Account loggedUser = resolveLoggedUserFromRequest();
         return loggedUser != null ? loggedUser.getFullName() : "System";
+    }
+
+    private Account resolveLoggedUserFromRequest() {
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes)) {
+            return null;
+        }
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        if (request == null) {
+            return null;
+        }
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return null;
+        }
+        Object candidate = session.getAttribute("loggedUser");
+        if (candidate instanceof Account) {
+            return (Account) candidate;
+        }
+        return null;
     }
 
     private String resolveRecordId(Object result, Object[] args) {

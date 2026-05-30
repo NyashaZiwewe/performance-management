@@ -47,7 +47,7 @@
                         <div class="ibox-title">
                             <h5>Scorecards</h5>
                             <div class="ibox-tools">
-                                <a th:href="@{/scorecards/add-scorecard}" class="btn btn-success btn-sm">Add New Scorecard</a>
+                                <a th:href="@{/scorecards/add-scorecard}"><button class="btn btn-success btn-sm">Add New Scorecard</button></a>
                             </div>
                         </div>
                         <div class="ibox-content">
@@ -77,17 +77,10 @@
                                             <label for="approvalStatus">Approval Status</label>
                                             <select id="approvalStatus" name="approvalStatus" class="select2_demo_1 form-control">
                                                 <option value="" th:selected="${approvalStatus == null or approvalStatus == ''}">All</option>
-                                                <option value="NEW" th:selected="${approvalStatus == 'NEW'}">NEW</option>
-                                                <option value="PENDING_APPROVAL" th:selected="${approvalStatus == 'PENDING_APPROVAL'}">PENDING_APPROVAL</option>
-                                                <option value="APPROVED_BY_SUPERVISOR" th:selected="${approvalStatus == 'APPROVED_BY_SUPERVISOR'}">APPROVED_BY_SUPERVISOR</option>
-                                                <option value="REJECTED_BY_SUPERVISOR" th:selected="${approvalStatus == 'REJECTED_BY_SUPERVISOR'}">REJECTED_BY_SUPERVISOR</option>
-                                                <option value="APPROVED_BY_HR" th:selected="${approvalStatus == 'APPROVED_BY_HR'}">APPROVED_BY_HR</option>
-                                                <option value="REJECTED_BY_HR" th:selected="${approvalStatus == 'REJECTED_BY_HR'}">REJECTED_BY_HR</option>
-                                                <option value="SCORED_BY_EMPLOYEE" th:selected="${approvalStatus == 'SCORED_BY_EMPLOYEE'}">SCORED_BY_EMPLOYEE</option>
-                                                <option value="SCORED_BY_SUPERVISOR" th:selected="${approvalStatus == 'SCORED_BY_SUPERVISOR'}">SCORED_BY_SUPERVISOR</option>
-                                                <option value="AGREED_BY_TWO" th:selected="${approvalStatus == 'AGREED_BY_TWO'}">AGREED_BY_TWO</option>
-                                                <option value="MODERATED_BY_HR" th:selected="${approvalStatus == 'MODERATED_BY_HR'}">MODERATED_BY_HR</option>
-                                                <option value="CLOSED" th:selected="${approvalStatus == 'CLOSED'}">CLOSED</option>
+                                                <option th:each="statusOption : ${approvalStatuses}"
+                                                        th:value="${statusOption}"
+                                                        th:text="${approvalStatusStages != null and approvalStatusStages[statusOption] != null ? approvalStatusStages[statusOption] + ' - ' + (approvalStatusLabels != null and approvalStatusLabels[statusOption] != null ? approvalStatusLabels[statusOption] : statusOption) : (approvalStatusLabels != null and approvalStatusLabels[statusOption] != null ? approvalStatusLabels[statusOption] : statusOption)}"
+                                                        th:selected="${approvalStatus == statusOption}"></option>
                                             </select>
                                         </div>
                                     </div>
@@ -108,7 +101,8 @@
                                         <th>Model</th>
                                         <th>Status</th>
                                         <th>Lock Status</th>
-                                        <th>Approval Status</th>
+                                        <th>Stage</th>
+                                        <th>Status</th>
                                         <th>Last Updated</th>
                                         <th>Date Created</th>
                                         <th>Actions</th>
@@ -134,20 +128,11 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <div th:switch="${scorecard.approvalStatus}">
-                                                <label class="label label-primary" th:case="NEW" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-warning" th:case="PENDING_APPROVAL" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="APPROVED_BY_SUPERVISOR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-danger" th:case="REJECTED_BY_SUPERVISOR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="APPROVED_BY_HR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-danger" th:case="REJECTED_BY_HR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="SCORED_BY_EMPLOYEE" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="SCORED_BY_SUPERVISOR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="AGREED_BY_TWO" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-success" th:case="MODERATED_BY_HR" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-secondary " th:case="CLOSED" th:text="${scorecard.approvalStatus}"></label>
-                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
-                                            </div>
+                                            <label th:text="${scorecard.approvalStatus != null and approvalStatusStages != null and approvalStatusStages[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusStages[#strings.toUpperCase(scorecard.approvalStatus)] : 'Workflow'}"></label>
+                                        </td>
+                                        <td>
+                                            <label th:class="${scorecard.approvalStatus != null and approvalStatusCssClasses[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusCssClasses[#strings.toUpperCase(scorecard.approvalStatus)] : 'label label-danger'}"
+                                                   th:text="${scorecard.approvalStatus != null and approvalStatusLabels != null and approvalStatusLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusLabels[#strings.toUpperCase(scorecard.approvalStatus)] : (scorecard.approvalStatus != null ? scorecard.approvalStatus : 'UNKNOWN STATUS')}"></label>
                                         </td>
                                         <td th:text="${scorecard.lastUpdate}"></td>
                                         <td th:text="${scorecard.date}"></td>
@@ -155,19 +140,20 @@
                                                 isOwner=${loggedUserId == scorecard.owner.id},
                                                 isSupervisor=${scorecard.owner != null and scorecard.owner.supervisor != null and loggedUserId == scorecard.owner.supervisor.id},
                                                 isModerator=${role == 'MODERATOR'},
-                                                canCaptureScores=${scorecard.status == 'ACTIVE' and (
-                                                    (isOwner and scorecard.approvalStatus == 'APPROVED_BY_HR') or
-                                                    (isSupervisor and (scorecard.approvalStatus == 'SCORED_BY_EMPLOYEE' or scorecard.approvalStatus == 'SCORED_BY_SUPERVISOR')) or
-                                                    (isModerator and scorecard.approvalStatus == 'AGREED_BY_TWO')
+                                                canCaptureScores=${captureWindowOpen and scorecard.status == 'ACTIVE' and (
+                                                    (isOwner and scorecard.approvalStatus == scorecardWorkflow.approvedByHrStatus) or
+                                                    (isSupervisor and (scorecard.approvalStatus == scorecardWorkflow.approvedOwnerScoresStatus or scorecard.approvalStatus == scorecardWorkflow.scoredBySupervisorStatus)) or
+                                                    (isModerator and scorecard.approvalStatus == scorecardWorkflow.approvedAgreedScoresStatus)
                                                 )},
                                                 canEditTargets=${scorecard.status == 'ACTIVE' and (isOwner or loggedUser.special == 'HAS_SPECIAL_RIGHTS')
                                                     and scorecard.lockStatus == 'OPEN'
-                                                    and (scorecard.approvalStatus == 'NEW' or scorecard.approvalStatus == 'REJECTED_BY_SUPERVISOR')}
+                                                    and (scorecard.approvalStatus == scorecardWorkflow.newStatus or scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus)}
                                             ">
                                             <span class="d-inline-block m-b-xs">
                                                 <a th:if="${canCaptureScores}"
                                                    th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}"
-                                                   class="btn btn-success btn-sm m-r-xs">Capture Scores</a>
+                                                   class="btn btn-success btn-sm m-r-xs"
+                                                   th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</a>
                                                 <a th:if="${canEditTargets}"
                                                    th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}"
                                                    class="btn btn-success btn-sm m-r-xs">Edit Targets</a>
@@ -176,7 +162,7 @@
                                                class="btn btn-success btn-sm m-r-xs m-b-xs">Clone Scorecard</a>
                                             <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}"
                                                class="btn btn-primary btn-sm m-r-xs m-b-xs">View Scorecard</a>
-                                            <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
+                                            <a th:if="${scorecard.approvalStatus == scorecardWorkflow.moderatedByHrStatus}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
                                         </td>
                                     </tr>
 
@@ -231,23 +217,23 @@
                 {extend: 'csv',
                     title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8]
                     }},
                 {extend: 'excel',
                     title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8]
                     }},
                 {extend: 'pdf',
                     title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8]
                     }},
 
                 {extend: 'print',
                     title: 'Scorecards',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

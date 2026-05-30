@@ -1,5 +1,6 @@
 package hr.performancemanagement.controllers.reportingperiod;
 
+import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.StrategicObjective;
@@ -196,12 +197,28 @@ public class ReportingPeriodController {
 
         String adminEmail = commonService.getAdminEmail();
         String hrEmail = commonService.getHREmail();
-        if (adminEmail != null && !adminEmail.trim().isEmpty()) {
+        String loggedUserEmail = loggedUserEmail();
+        if (hasText(adminEmail) && !sameEmail(adminEmail, loggedUserEmail)) {
             notificationService.sendUserMessageAsync(adminEmail.trim(), "Administrator", subject, message);
         }
-        if (hrEmail != null && !hrEmail.trim().isEmpty() && (adminEmail == null || !hrEmail.equalsIgnoreCase(adminEmail))) {
+        if (hasText(hrEmail)
+                && !sameEmail(hrEmail, adminEmail)
+                && !sameEmail(hrEmail, loggedUserEmail)) {
             notificationService.sendUserMessageAsync(hrEmail.trim(), "HR", subject, message);
         }
+    }
+
+    private String loggedUserEmail() {
+        Account loggedUser = commonService.getLoggedUser();
+        return loggedUser == null ? null : loggedUser.getEmail();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean sameEmail(String left, String right) {
+        return hasText(left) && hasText(right) && left.trim().equalsIgnoreCase(right.trim());
     }
 
     private boolean isOpenStatus(String status) {

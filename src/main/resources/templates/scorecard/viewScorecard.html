@@ -264,25 +264,41 @@
                     <div class="col-lg-2" th:if="${canApprove && isSupervisor}">
                         <form method="post" th:action="@{/scorecards/supervisor-approve}">
                             <input type="hidden" name="id" th:value="${id}">
-                            <button class="btn btn-success" type="submit">Approve Scorecard</button>
+                            <button class="btn btn-success" type="submit"
+                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Approve Scorecard'}">Approve Scorecard</button>
                         </form>
                     </div>
 
                     <div class="col-lg-2" th:if="${canApprove && !isSupervisor}">
                         <form method="post" th:action="@{/scorecards/hr-approve}">
                             <input type="hidden" name="id" th:value="${id}">
-                            <button class="btn btn-success" type="submit">Approve Scorecard</button>
+                            <button class="btn btn-success" type="submit"
+                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Approve Scorecard'}">Approve Scorecard</button>
                         </form>
                     </div>
 
 
                     <div class="col-5">
+                        <form th:if="${canApproveOwnerScores && captureWindowOpen}" method="post" th:action="@{/scorecards/supervisor-approve-owner-scores}" style="display:inline-block;">
+                            <input type="hidden" name="id" th:value="${id}">
+                            <button class="btn btn-success" type="submit"
+                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Approve Owner Scores'}">Approve Owner Scores</button>
+                        </form>
+                        <form th:if="${canApproveAgreedScores && captureWindowOpen}" method="post" th:action="@{/scorecards/moderator-approve-agreed-scores}" style="display:inline-block;">
+                            <input type="hidden" name="id" th:value="${id}">
+                            <button class="btn btn-success" type="submit"
+                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Approve Agreed Scores'}">Approve Agreed Scores</button>
+                        </form>
                         <a th:if="${canCaptureTargets}" th:href="@{/scorecards/capture-targets/} + ${id}" class="btn btn-success" type="button">Capture Targets</a>
-                        <a th:if="${canCaptureEmployeeScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Employee Scores</a>
-                        <a th:if="${canCaptureManagerScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Manager Scores</a>
-                        <a th:if="${canCaptureAgreedScoreAgreedScore}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Capture Agreed Scores</a>
-                        <a th:if="${canModerate}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button">Moderate Scores</a>
-                        <a th:if="${scorecard.approvalStatus == 'MODERATED_BY_HR'}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success" type="button">View Report</a>
+                        <a th:if="${canCaptureEmployeeScore && captureWindowOpen}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button"
+                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Employee Scores'}">Capture Employee Scores</a>
+                        <a th:if="${canCaptureManagerScore && captureWindowOpen}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button"
+                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Manager Scores'}">Capture Manager Scores</a>
+                        <a th:if="${canCaptureAgreedScoreAgreedScore && captureWindowOpen}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button"
+                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Agreed Scores'}">Capture Agreed Scores</a>
+                        <a th:if="${canModerate && captureWindowOpen}" th:href="@{/scorecards/capture-scores/} + ${id}" class="btn btn-success" type="button"
+                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Moderate Scores'}">Moderate Scores</a>
+                        <a th:if="${scorecard.approvalStatus == scorecardWorkflow.moderatedByHrStatus}" th:href="@{/performance-review/download-pdf/} + ${id}" class="btn btn-success" type="button">View Report</a>
                     </div>
                  </div>
                 <div class="form-group row">

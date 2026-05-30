@@ -7,6 +7,7 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.ReportingDateRepository;
+import hr.performancemanagement.utils.dto.ScorecardWorkflowDefinition;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,11 +33,16 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
     ReportingDateRepository repository;
     private final Environment environment;
     private final SystemSettingService systemSettingService;
+    private final ScorecardWorkflowService scorecardWorkflowService;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public CommonServiceImpl(Environment environment, SystemSettingService systemSettingService, BCryptPasswordEncoder passwordEncoder) {
+    public CommonServiceImpl(Environment environment,
+                             SystemSettingService systemSettingService,
+                             ScorecardWorkflowService scorecardWorkflowService,
+                             BCryptPasswordEncoder passwordEncoder) {
         this.environment = environment;
         this.systemSettingService = systemSettingService;
+        this.scorecardWorkflowService = scorecardWorkflowService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -90,14 +96,16 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
         String approval_status = scorecard.getApprovalStatus();
         Account owner = scorecard.getOwner();
+        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
 
 
         if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_APPROVE_SCORECARD)){
-            if(PMConstants.APPROVAL_STATUS_PENDING_APPROVAL.equalsIgnoreCase(approval_status) || PMConstants.APPROVAL_STATUS_REJECTED_BY_HR.equalsIgnoreCase(approval_status)){
+            if(matchesStatus(approval_status, workflow.getPendingApprovalStatus())
+                    || matchesStatus(approval_status, workflow.getRejectedByHrStatus())){
                 if(isSupervisor(owner)){
                     isUserAllowed = true;
                 }
-            } else if (PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR.equalsIgnoreCase(approval_status)) {
+            } else if (matchesStatus(approval_status, workflow.getApprovedBySupervisorStatus())) {
                 if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
                     isUserAllowed = true;
                 }
@@ -105,14 +113,16 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
 
         }
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_TARGETS)){
-            if(PMConstants.APPROVAL_STATUS_NEW.equalsIgnoreCase(approval_status) || PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(approval_status)){
+            if((matchesStatus(approval_status, workflow.getNewStatus())
+                    || matchesStatus(approval_status, workflow.getRejectedBySupervisorStatus()))
+                    && PMConstants.LOCK_STATUS_OPEN.equalsIgnoreCase(scorecard.getLockStatus())){
                 if(isOwner(scorecard) || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())){
                     isUserAllowed = true;
                 }
             }
         }
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES)){
-            if(PMConstants.APPROVAL_STATUS_APPROVED_BY_HR.equalsIgnoreCase(approval_status)){
+            if(matchesStatus(approval_status, workflow.getApprovedByHrStatus())){
                 if(isOwner(scorecard) || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())){
                     isUserAllowed = true;
                 }
@@ -120,7 +130,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
 
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES)){
-            if(PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE.equalsIgnoreCase(approval_status)){
+            if(matchesStatus(approval_status, workflow.getApprovedOwnerScoresStatus())){
                 if(isSupervisor(owner)){
                     isUserAllowed = true;
                 }
@@ -128,7 +138,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
 
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES)){
-            if(PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR.equalsIgnoreCase(approval_status)){
+            if(matchesStatus(approval_status, workflow.getScoredBySupervisorStatus())){
                 if(isSupervisor(owner)){
                     isUserAllowed = true;
                 }
@@ -136,7 +146,21 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
 
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES)){
-            if(PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equalsIgnoreCase(approval_status)){
+            if(matchesStatus(approval_status, workflow.getApprovedAgreedScoresStatus())){
+                if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
+                    isUserAllowed = true;
+                }
+            }
+        }
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES)){
+            if(matchesStatus(approval_status, workflow.getScoredByEmployeeStatus())){
+                if(isSupervisor(owner)){
+                    isUserAllowed = true;
+                }
+            }
+        }
+        else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES)){
+            if(matchesStatus(approval_status, workflow.getAgreedByTwoStatus())){
                 if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
                     isUserAllowed = true;
                 }
@@ -144,7 +168,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
 
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CLOSE_SCORECARD)){
-            if(PMConstants.APPROVAL_STATUS_MODERATED_BY_HR.equalsIgnoreCase(approval_status)){
+            if(matchesStatus(approval_status, workflow.getModeratedByHrStatus())){
                 if(PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin())){
                     isUserAllowed = true;
                 }
@@ -152,6 +176,10 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
 
         return isUserAllowed;
+    }
+
+    private boolean matchesStatus(String actualStatus, String expectedStatus) {
+        return scorecardWorkflowService.matches(actualStatus, expectedStatus);
     }
 
     @Override

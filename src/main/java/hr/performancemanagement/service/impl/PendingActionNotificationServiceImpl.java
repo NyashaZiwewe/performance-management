@@ -7,10 +7,12 @@ import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.PendingActionNotificationService;
 import hr.performancemanagement.service.api.ReportingDateService;
+import hr.performancemanagement.service.api.ScorecardWorkflowService;
 import hr.performancemanagement.service.api.ScorecardService;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.dto.NotificationSummary;
 import hr.performancemanagement.utils.dto.PendingActionNotification;
+import hr.performancemanagement.utils.dto.ScorecardWorkflowDefinition;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +31,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
     private final CommonService commonService;
     private final ScorecardService scorecardService;
     private final ReportingDateService reportingDateService;
+    private final ScorecardWorkflowService scorecardWorkflowService;
     private final Map<String, CacheEntry> summaryCache = new ConcurrentHashMap<>();
 
     @Override
@@ -117,12 +120,15 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         }
 
         Account owner = scorecard.getOwner();
-        String status = scorecard.getApprovalStatus().trim().toUpperCase();
+        String status = scorecard.getApprovalStatus().trim();
+        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         boolean canCaptureTargets = isAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard);
         boolean canApprove = isAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard);
         boolean canCaptureEmployeeScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
+        boolean canApproveOwnerScores = isAllowed(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES, scorecard);
         boolean canCaptureManagerScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard);
         boolean canCaptureAgreedScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
+        boolean canApproveAgreedScores = isAllowed(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES, scorecard);
         boolean canCaptureModeratedScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
         boolean canCloseScorecard = isAllowed(PMConstants.ACTIVITY_CLOSE_SCORECARD, scorecard);
 
@@ -142,7 +148,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canApprove && PMConstants.APPROVAL_STATUS_PENDING_APPROVAL.equals(status)) {
+        if (canApprove && scorecardWorkflowService.matches(status, workflow.getPendingApprovalStatus())) {
             return new PendingActionNotification(
                     "Approval",
                     "Scorecard awaiting your approval",
@@ -154,7 +160,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canApprove && PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR.equals(status)) {
+        if (canApprove && scorecardWorkflowService.matches(status, workflow.getApprovedBySupervisorStatus())) {
             return new PendingActionNotification(
                     "HR Review",
                     "Scorecard awaiting HR approval",
@@ -173,6 +179,18 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
                     ownerName + " • " + periodLabel,
                     "/scorecards/capture-scores/" + scorecard.getId(),
                     "fa fa-pencil-square-o",
+                    "warning",
+                    date
+            );
+        }
+
+        if (canApproveOwnerScores) {
+            return new PendingActionNotification(
+                    "Scores",
+                    "Owner scores awaiting your approval",
+                    ownerName + " • " + periodLabel,
+                    "/scorecards/view-scorecard/" + scorecard.getId(),
+                    "fa fa-check-square-o",
                     "warning",
                     date
             );
@@ -202,6 +220,18 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
+        if (canApproveAgreedScores) {
+            return new PendingActionNotification(
+                    "Moderation",
+                    "Agreed scores awaiting your approval",
+                    ownerName + " • " + periodLabel,
+                    "/scorecards/view-scorecard/" + scorecard.getId(),
+                    "fa fa-check-square-o",
+                    "danger",
+                    date
+            );
+        }
+
         if (canCaptureModeratedScores) {
             return new PendingActionNotification(
                     "Scores",
@@ -214,7 +244,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canCloseScorecard && PMConstants.APPROVAL_STATUS_MODERATED_BY_HR.equals(status)) {
+        if (canCloseScorecard && scorecardWorkflowService.matches(status, workflow.getModeratedByHrStatus())) {
             return new PendingActionNotification(
                     "Scorecard",
                     "Scorecard closure pending",
@@ -241,17 +271,14 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         if (scorecard == null || scorecard.getApprovalStatus() == null) {
             return false;
         }
-        String status = scorecard.getApprovalStatus().trim().toUpperCase();
-        return PMConstants.APPROVAL_STATUS_NEW.equals(status)
-                || PMConstants.APPROVAL_STATUS_PENDING_APPROVAL.equals(status)
-                || PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR.equals(status)
-                || PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR.equals(status)
-                || PMConstants.APPROVAL_STATUS_REJECTED_BY_HR.equals(status)
-                || PMConstants.APPROVAL_STATUS_APPROVED_BY_HR.equals(status)
-                || PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE.equals(status)
-                || PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR.equals(status)
-                || PMConstants.APPROVAL_STATUS_AGREED_BY_TWO.equals(status)
-                || PMConstants.APPROVAL_STATUS_MODERATED_BY_HR.equals(status);
+        String status = scorecard.getApprovalStatus().trim();
+        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
+        for (String candidate : workflow.getOrderedStatuses()) {
+            if (scorecardWorkflowService.matches(status, candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void pruneExpiredCacheEntries(long now) {

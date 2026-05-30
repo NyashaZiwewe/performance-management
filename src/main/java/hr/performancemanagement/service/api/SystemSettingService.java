@@ -25,6 +25,18 @@ public interface SystemSettingService {
     int getMailPort();
     String getMailUsername();
     String getMailPassword();
+    String getScorecardStatusNew();
+    String getScorecardStatusPendingApproval();
+    String getScorecardStatusApprovedBySupervisor();
+    String getScorecardStatusRejectedBySupervisor();
+    String getScorecardStatusApprovedByHr();
+    String getScorecardStatusRejectedByHr();
+    String getScorecardStatusScoredByEmployee();
+    String getScorecardStatusScoredBySupervisor();
+    String getScorecardStatusAgreedByTwo();
+    String getScorecardStatusModeratedByHr();
+    String getScorecardStatusClosed();
+    String getScorecardWorkflowSequence();
     boolean isMailConfigured();
     CredentialSettingsWrapper getCredentialSettings();
     void saveCredentialSettings(CredentialSettingsWrapper wrapper);

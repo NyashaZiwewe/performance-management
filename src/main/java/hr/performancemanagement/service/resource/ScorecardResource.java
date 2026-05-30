@@ -8,6 +8,7 @@ import hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreS
 import hr.performancemanagement.service.api.ScoreService.ValueBasedScoreService;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.dto.CommonResponse;
+import hr.performancemanagement.utils.dto.ScorecardWorkflowDefinition;
 import hr.performancemanagement.utils.wrappers.GoalWrapper;
 import hr.performancemanagement.utils.wrappers.StatusUpdateWrapper;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class ScorecardResource {
     private final CommonService commonService;
     private final StandardScorecardScoreService standardScorecardScoreService;
     private final ValueBasedScoreService valueBasedScoreService;
+    private final ScorecardWorkflowService scorecardWorkflowService;
 
     @GetMapping("/client/{clientId}")
     public ResponseEntity<CommonResponse<List<Scorecard>>> listByClientId(@PathVariable long clientId) {
@@ -96,12 +98,13 @@ public class ScorecardResource {
 
     @PostMapping
     public ResponseEntity<CommonResponse<Scorecard>> save(@RequestBody Scorecard scorecard) {
+        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         normalizeScorecardReferences(scorecard);
         if (!hasText(scorecard.getStatus())) {
             scorecard.setStatus(PMConstants.STATUS_ACTIVE);
         }
         if (!hasText(scorecard.getApprovalStatus())) {
-            scorecard.setApprovalStatus(PMConstants.APPROVAL_STATUS_NEW);
+            scorecard.setApprovalStatus(workflow.getNewStatus());
         }
         if (!hasText(scorecard.getLockStatus())) {
             scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
