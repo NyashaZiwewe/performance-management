@@ -29,6 +29,9 @@ public class Gear {
     private String description;
     private String graphColor;
     private String fill;
+    @ManyToOne
+    @JoinColumn(name = "reporting_period_id")
+    private ReportingPeriod reportingPeriod;
     @OneToMany(mappedBy = "gear", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Goal> goals;
     @Transient

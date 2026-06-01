@@ -122,37 +122,30 @@ public class ScorecardWorkflowStageServiceImpl implements ScorecardWorkflowStage
         saveDefaultStage(clientId, 1, PMConstants.SCORECARD_STAGE_NEW, PMConstants.APPROVAL_STATUS_NEW, "New", "New", "Start Capturing Targets", null);
 
         // Stage 2: SCORECARD_STAGE_CAPTURE_TARGETS - Capturing targets
-        saveDefaultStage(clientId, 2, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Capture Targets", "Pending", "Submit for Approval", null);
+        saveDefaultStage(clientId, 2, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Targets Capturing", "Pending", "Submit for Approval", null);
 
         // Stage 3: SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR - Supervisor approval with multiple statuses
-        saveDefaultStage(clientId, 3, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Targets Approval by Supervisor", "Pending Approval", "Approve", "Reject");
-        saveDefaultStage(clientId, 3, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR, PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR, "Targets Approval by Supervisor", "Approved", "Move to HR Approval", null);
-        saveDefaultStage(clientId, 3, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR, PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR, "Targets Approval by Supervisor", "Rejected", "Revise Targets", null);
+        saveDefaultStage(clientId, 3, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Targets Approval by Supervisor", "Pending Targets Approval", "Approve Targets", "Reject Targets");
 
         // Stage 4: SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR - HR approval with multiple statuses
-        saveDefaultStage(clientId, 4, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Targets Approval by HR", "Pending Approval", "Approve", "Reject");
-        saveDefaultStage(clientId, 4, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR, PMConstants.APPROVAL_STATUS_APPROVED_BY_HR, "Targets Approval by HR", "Approved", "Start Owner Scoring", null);
-        saveDefaultStage(clientId, 4, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR, PMConstants.APPROVAL_STATUS_REJECTED_BY_HR, "Targets Approval by HR", "Rejected", "Send Back", null);
+        saveDefaultStage(clientId, 4, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Targets Approval by HR", "Pending Targets Approval", "Approve Targets", "Reject Targets");
 
         // Stage 5: SCORECARD_STAGE_OWNER_SCORING - Employee self-assessment
-        saveDefaultStage(clientId, 5, PMConstants.SCORECARD_STAGE_OWNER_SCORING, PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE, "Owner Scoring", "Pending", "Submit Scores", null);
+        saveDefaultStage(clientId, 5, PMConstants.SCORECARD_STAGE_OWNER_SCORING, PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE, "Owner Scoring", "Pending Capturing Scores", "Submit Scores", null);
 
         // Stage 6: SCORECARD_STAGE_OWNER_SCORE_APPROVAL - Owner score approval with multiple statuses
-        saveDefaultStage(clientId, 6, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Owner Score Approval", "Pending Approval", "Approve", "Reject");
-        saveDefaultStage(clientId, 6, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL, PMConstants.APPROVAL_STATUS_APPROVED_OWNER_SCORES, "Owner Score Approval", "Approved", "Start Supervisor Scoring", null);
-
+        saveDefaultStage(clientId, 6, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Owner Score Approval", "Pending  Supervisor Approval", "Approve Scores", "Reject Scores");
         // Stage 7: SCORECARD_STAGE_SUPERVISOR_SCORING - Supervisor scoring
-        saveDefaultStage(clientId, 7, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING, PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR, "Supervisor Scoring", "Pending", "Submit Scores", null);
+        saveDefaultStage(clientId, 7, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING, PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR, "Supervisor Scoring", "Pending Supervisor Scores", "Submit Scores", null);
 
         // Stage 8: SCORECARD_STAGE_AGREED_SCORE_CAPTURING - Capturing agreed scores
-        saveDefaultStage(clientId, 8, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING, PMConstants.APPROVAL_STATUS_AGREED_BY_TWO, "Agreed Score Capturing", "Pending", "Submit Agreed Scores", null);
+        saveDefaultStage(clientId, 8, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING, PMConstants.APPROVAL_STATUS_AGREED_BY_TWO, "Agreed Score Capturing", "Pending Agreed scores", "Submit Agreed Scores", null);
 
         // Stage 9: SCORECARD_STAGE_AGREED_SCORE_APPROVAL - Agreed score approval with multiple statuses
-        saveDefaultStage(clientId, 9, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Agreed Score Approval", "Pending Approval", "Approve", "Reject");
-        saveDefaultStage(clientId, 9, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL, PMConstants.APPROVAL_STATUS_APPROVED_AGREED_SCORES, "Agreed Score Approval", "Approved", "Start Moderation", null);
+        saveDefaultStage(clientId, 9, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL, PMConstants.APPROVAL_STATUS_PENDING_APPROVAL, "Agreed Score Approval", "Pending Moderator Approval", "Approve Agreed Scores", "Reject Agreed Scores");
 
         // Stage 10: SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING - Moderator scoring
-        saveDefaultStage(clientId, 10, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING, PMConstants.APPROVAL_STATUS_MODERATED_BY_HR, "Moderator Score Capturing", "Pending", "Submit Moderated Scores", null);
+        saveDefaultStage(clientId, 10, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING, PMConstants.APPROVAL_STATUS_MODERATED_BY_HR, "Score Moderation", "Pending Score Moderation", "Submit Moderated Score", null);
 
         // Stage 11: SCORECARD_STAGE_CLOSED - Closed
         saveDefaultStage(clientId, 11, PMConstants.SCORECARD_STAGE_CLOSED, PMConstants.APPROVAL_STATUS_CLOSED, "Closed", "Closed", "Closed", null);

@@ -145,15 +145,14 @@
                                                     (isSupervisor and (scorecard.approvalStatus == scorecardWorkflow.approvedOwnerScoresStatus or scorecard.approvalStatus == scorecardWorkflow.scoredBySupervisorStatus)) or
                                                     (isModerator and scorecard.approvalStatus == scorecardWorkflow.approvedAgreedScoresStatus)
                                                 )},
-                                                canEditTargets=${scorecard.status == 'ACTIVE' and (isOwner or loggedUser.special == 'HAS_SPECIAL_RIGHTS')
+                                                canEditTargets=${scorecard.status == 'ACTIVE' and (isOwner or loggedUser.special == 'HAS_SPECIAL_RIGHTS' or loggedUser.admin == 'IS_ADMIN')
                                                     and scorecard.lockStatus == 'OPEN'
                                                     and (scorecard.approvalStatus == scorecardWorkflow.newStatus or scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus)}
                                             ">
                                             <span class="d-inline-block m-b-xs">
                                                 <a th:if="${canCaptureScores}"
                                                    th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}"
-                                                   class="btn btn-success btn-sm m-r-xs"
-                                                   th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</a>
+                                                   class="btn btn-success btn-sm m-r-xs">Capture Scores</a>
                                                 <a th:if="${canEditTargets}"
                                                    th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}"
                                                    class="btn btn-success btn-sm m-r-xs">Edit Targets</a>

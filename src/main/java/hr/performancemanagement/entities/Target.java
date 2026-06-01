@@ -51,7 +51,7 @@ public class Target {
     private StrategicObjective strategicObjective;
 
     @NotBlank(message = "Measure is required")
-    @Size(max = 500, message = "Measure cannot exceed 500 characters")
+    @Size(max = 255, message = "Measure cannot exceed 255 characters")
     private String measure;
 
     @NotBlank(message = "Unit is required")

@@ -57,10 +57,23 @@
                         </div>
                         <div class="col-sm-12">
                             <div class="form-group row">
+                                <label class="col-form-label col-lg-4 required">Reporting Period</label>
+                                <div class="col-lg-8">
+                                    <select class="form-control select2_demo_1" name="reportingPeriodId" required>
+                                        <option value="">--Select Reporting Period--</option>
+                                        <option th:each="period : ${reportingPeriodsList}"
+                                                th:value="${period.id}"
+                                                th:text="${period.startDate} + ' - ' + ${period.endDate}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-12">
+                            <div class="form-group row">
                                 <label class="col-form-label col-lg-4 required">Category</label>
                                 <div class="col-lg-8">
-                                    <select class="form-control select2_demo_1" name="category">
-                                        <option selected th:value="${gear.category}" th:text="${gear.category}"></option>
+                                    <select class="form-control select2_demo_1" th:field="*{category}" required>
+                                        <option value="">--Select Category--</option>
                                         <option value="programme">Programme</option>
                                         <option value="gear">Gear</option>
                                     </select>

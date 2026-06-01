@@ -1,6 +1,7 @@
 package hr.performancemanagement.service;
 
 import hr.performancemanagement.entities.Gear;
+import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.GearRepository;
 import org.slf4j.Logger;
@@ -38,6 +39,27 @@ public class GearService {
         return gears;
     }
 
+    public List<Gear> listGearsByReportingPeriod(long clientId, ReportingPeriod reportingPeriod)
+    {
+        List<Gear> gears = new ArrayList<>();
+        if (reportingPeriod == null) {
+            return gears;
+        }
+        gearRepository.findGearsByClientIdAndReportingPeriod(clientId, reportingPeriod).forEach(gear -> gears.add(gear));
+        return gears;
+    }
+
+    public List<Gear> listApplicableGears(long clientId, String category, ReportingPeriod reportingPeriod)
+    {
+        List<Gear> gears = new ArrayList<>();
+        if (reportingPeriod == null) {
+            return listApplicableGears(clientId, category);
+        }
+        gearRepository.findGearsByClientIdAndCategoryAndReportingPeriodOrUnassigned(clientId, category, reportingPeriod)
+                .forEach(gear -> gears.add(gear));
+        return gears;
+    }
+
     public List<Gear> listSelectedGears(Scorecard scorecard)
     {
         List<Gear> gears = new ArrayList<>();
@@ -58,7 +80,8 @@ public class GearService {
     {
         List<Gear> gears = new ArrayList<>();
         String model = getModelFromScorecard(scorecard);
-        List<Gear> allGears = listApplicableGears(1, model);
+        long clientId = getClientIdFromScorecard(scorecard);
+        List<Gear> allGears = listApplicableGears(clientId, model, scorecard == null ? null : scorecard.getReportingPeriod());
         List<Gear> remainingGears = new ArrayList<>();
 
         if("programme".equalsIgnoreCase(model)){
@@ -102,6 +125,16 @@ public class GearService {
             return scorecard.getReportingPeriod().getModel();
         }
         return "standard"; // default
+    }
+
+    private long getClientIdFromScorecard(Scorecard scorecard) {
+        if (scorecard != null && scorecard.getClientId() > 0) {
+            return scorecard.getClientId();
+        }
+        if (scorecard != null && scorecard.getOwner() != null && scorecard.getOwner().getClientId() > 0) {
+            return scorecard.getOwner().getClientId();
+        }
+        return 1L;
     }
 
 }

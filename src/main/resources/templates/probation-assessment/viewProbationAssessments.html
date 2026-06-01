@@ -24,7 +24,7 @@
                 <div class="form-group row">
                     <div class="col-lg-12 text-right">
                         <a th:href="@{/probation-assessments/config}" class="btn btn-primary">Configure</a>
-                        <a th:href="@{/probation-assessments/add-assessment}" class="btn btn-success">New Assessment</a>
+                        <a th:href="@{/probation-assessments/add-contract}" class="btn btn-success">New Contract</a>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -44,7 +44,7 @@
                         <tr th:each="assessment, stat : ${assessments}">
                             <td th:text="${stat.count}"></td>
                             <td th:text="${assessment.employee?.fullName}"></td>
-                            <td th:text="${assessment.performancePeriod}"></td>
+                            <td th:text="${#strings.isEmpty(assessment.performancePeriod) ? (assessment.startDate + ' - ' + assessment.endDate) : assessment.performancePeriod}"></td>
                             <td th:text="${assessment.status}"></td>
                             <td th:text="${assessment.currentStepName}"></td>
                             <td th:text="${assessment.date}"></td>

@@ -66,13 +66,10 @@
                                         <table class="table">
                                             <thead>
                                             <tr>
-                                                <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
-                                                <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
-                                                <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
-                                                <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
-                                                <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
-                                                <th th:unless="${model == 'gear' || model == 'programme'}"> Strategic Objective</th>
-                                                <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
+                                                <th th:text="${displayStage2Label}"></th>
+                                                <th th:if="${displayShowStage3}" th:text="${displayStage3Label}"></th>
+                                                <th th:if="${displayShowStage4}" th:text="${displayStage4Label}"></th>
+                                                <th th:if="${displayShowOutput}">Output</th>
                                                 <th>Performance Measure</th>
                                                 <th>Unit</th>
                                                 <th>Base Target</th>
@@ -80,13 +77,25 @@
                                                 <th>KPI Weight</th>
                                                 <th>Actual</th>
                                                 <th>Weighted Score</th>
+                                                <th></th>
                                             </tr>
                                             </thead>
                                             <tbody>
-                                                    <tr th:each="row, stat : ${targetRows}" th:with="target=${row.target}">
-                                                        <td th:if="${row.showPerspective}" th:text="${target.perspective?.name}" th:rowspan="${row.perspectiveRowspan}"></td>
-                                                        <td th:if="${row.showStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${row.strategicObjectiveRowspan}"></td>
-                                                        <td th:if="${row.showGoal}" th:text="${target.goal.name}" th:rowspan="${row.goalRowspan}"></td>
+                                                    <th:block th:each="section, sectionStat : ${displaySections}">
+                                                        <tr>
+                                                            <td th:attr="colspan=${captureViewTableColumnCount}">
+                                                                <strong><span th:text="${stage1}"></span>: <span th:text="${section.sectionName}"></span></strong>
+                                                                <span class="float-right">
+                                                                    Total <span th:text="${stage1}"></span> Weight:
+                                                                    <span th:text="${section.sectionWeight == null ? '0.00' : #numbers.formatDecimal(section.sectionWeight, 0, 2)} + '%'"></span>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        <tr th:each="row : ${section.rows}" th:with="target=${row.target}">
+                                                        <td th:if="${row.showStage2}" th:text="${row.stage2Value}" th:rowspan="${row.stage2Rowspan}"></td>
+                                                        <td th:if="${displayShowStage3 && row.showStage3}" th:text="${row.stage3Value}" th:rowspan="${row.stage3Rowspan}"></td>
+                                                        <td th:if="${displayShowStage4 && row.showStage4}" th:text="${row.stage4Value}" th:rowspan="${row.stage4Rowspan}"></td>
+                                                        <td th:if="${displayShowOutput && row.showOutput}" th:text="${row.outputValue}" th:rowspan="${row.outputRowspan}"></td>
                                                         <td>
                                                             <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.measure}"></a>
                                                         </td>
@@ -184,25 +193,20 @@
 
 
                                                     </tr>
+                                                        <tr th:if="${!sectionStat.last}">
+                                                            <td th:attr="colspan=${captureViewTableColumnCount}"></td>
+                                                        </tr>
+                                                    </th:block>
                                                     <tr>
-                                                        <td colspan="6"></td>
+                                                        <td th:attr="colspan=${captureViewSummaryLabelColspan}"><strong>Overall Score</strong></td>
                                                         <td>
                                                             <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                             <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                         </td>
-                                                        <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
-                                                            <h4 th:text="${averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
-                                                        </td>
-                                                        <td th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
-                                                            <h4 th:text="${averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}" th:if="${!isOwner == true}"></h4>
-                                                        </td>
-                                                        <td th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
-                                                            <h4 th:text="${averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}" th:if="${isModerator == true}"></h4>
-                                                        </td>
-                                                        <td th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
-                                                            <h4 th:text="${weightedScore <= 0.0 || weightedScore == null ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}" th:if="${isModerator == true}"></h4>
-                                                        </td>
                                                         <td></td>
+                                                        <td th:attr="class = ${totalCaptureWeightedScore < 50 ? 'fail' : 'pass' }">
+                                                            <h4 th:text="${totalCaptureWeightedScore <= 0.0 ? '' : #numbers.formatDecimal(totalCaptureWeightedScore, 0, 2) + '%'}"></h4>
+                                                        </td>
                                                         <td></td>
                                                     </tr>
                                             </tbody>
@@ -218,7 +222,7 @@
                                             <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
                                             <button th:if="${scoreCaptureAllowed}" onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
                                             <button th:if="${scoreCaptureAllowed}" class="btn btn-success" type="submit"
-                                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Validate & Submit'}">Validate & Submit</button>
+                                                    th:text="${captureSubmitLabel != null ? captureSubmitLabel : 'Validate & Submit'}">Validate & Submit</button>
                                         </div>
                                     </div>
                                 </form>
@@ -233,13 +237,10 @@
                                             <table class="table">
                                                 <thead>
                                                 <tr>
-                                                    <th th:if="${model == 'gear'}"><span th:text="${stage4}"></span></th>
-                                                    <th th:if="${model == 'programme'}"><span th:text="${stage2}"></span></th>
-                                                    <th th:if="${model == 'programme'}"><span th:text="${stage3}"></span></th>
-                                                    <th th:if="${model == 'programme'}"><span th:text="${stage4}"></span></th>
-                                                    <th th:unless="${model == 'gear' || model == 'programme'}">Key Focus Area</th>
-                                                    <th th:unless="${model == 'gear' || model == 'programme'}"> Strategic Objective</th>
-                                                    <th th:unless="${model == 'gear' || model == 'programme'}">Goal</th>
+                                                    <th th:text="${displayStage2Label}"></th>
+                                                    <th th:if="${displayShowStage3}" th:text="${displayStage3Label}"></th>
+                                                    <th th:if="${displayShowStage4}" th:text="${displayStage4Label}"></th>
+                                                    <th th:if="${displayShowOutput}">Output</th>
                                                     <th>Performance Measure</th>
                                                     <th>Unit</th>
                                                     <th>Base Target</th>
@@ -252,10 +253,21 @@
                                                 </tr>
                                                 </thead>
                                                 <tbody>
-                                                <tr th:each="row, stat : ${targetRows}" th:with="target=${row.target}">
-                                                    <td th:if="${row.showPerspective}" th:text="${target.perspective?.name}" th:rowspan="${row.perspectiveRowspan}"></td>
-                                                    <td th:if="${row.showStrategicObjective}" th:text="${target.strategicObjective?.name}" th:rowspan="${row.strategicObjectiveRowspan}"></td>
-                                                    <td th:if="${row.showGoal}" th:text="${target.goal.name}" th:rowspan="${row.goalRowspan}"></td>
+                                                <th:block th:each="section, sectionStat : ${displaySections}">
+                                                <tr>
+                                                    <td th:attr="colspan=${captureEntryTableColumnCount}">
+                                                        <strong><span th:text="${stage1}"></span>: <span th:text="${section.sectionName}"></span></strong>
+                                                        <span class="float-right">
+                                                            Total <span th:text="${stage1}"></span> Weight:
+                                                            <span th:text="${section.sectionWeight == null ? '0.00' : #numbers.formatDecimal(section.sectionWeight, 0, 2)} + '%'"></span>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr th:each="row : ${section.rows}" th:with="target=${row.target}">
+                                                    <td th:if="${row.showStage2}" th:text="${row.stage2Value}" th:rowspan="${row.stage2Rowspan}"></td>
+                                                    <td th:if="${displayShowStage3 && row.showStage3}" th:text="${row.stage3Value}" th:rowspan="${row.stage3Rowspan}"></td>
+                                                    <td th:if="${displayShowStage4 && row.showStage4}" th:text="${row.stage4Value}" th:rowspan="${row.stage4Rowspan}"></td>
+                                                    <td th:if="${displayShowOutput && row.showOutput}" th:text="${row.outputValue}" th:rowspan="${row.outputRowspan}"></td>
                                                     <td th:text="${target.measure}"></td>
                                                     <td th:text="${target.unit}"></td>
                                                     <td th:text="${target.baseTarget}"></td>
@@ -274,6 +286,23 @@
                                                         <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}" th:attr="aria-label=${'Justification for ' + target.measure}">
                                                     </td>
                                                 </tr>
+                                                <tr th:if="${!sectionStat.last}">
+                                                    <td th:attr="colspan=${captureEntryTableColumnCount}"></td>
+                                                </tr>
+                                                </th:block>
+                                                <tr>
+                                                    <td th:attr="colspan=${captureEntrySummaryLabelColspan}"><strong>Overall Score</strong></td>
+                                                    <td>
+                                                        <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
+                                                        <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
+                                                    </td>
+                                                    <td></td>
+                                                    <td th:attr="class = ${totalCaptureWeightedScore < 50 ? 'fail' : 'pass' }">
+                                                        <h4 th:text="${totalCaptureWeightedScore <= 0.0 ? '' : #numbers.formatDecimal(totalCaptureWeightedScore, 0, 2) + '%'}"></h4>
+                                                    </td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
                                                 </tbody>
 
                                             </table>
@@ -287,7 +316,7 @@
                                             <a th:href="@{/scorecards}" class="btn btn-warning" type="button">Cancel</a>
                                             <button th:if="${scoreCaptureAllowed}" onclick="location.reload()" class="btn btn-success" type="button">Calculate Scores</button>
                                             <button th:if="${scoreCaptureAllowed}" class="btn btn-success" type="submit"
-                                                    th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Validate & Submit'}">Validate & Submit</button>
+                                                    th:text="${captureSubmitLabel != null ? captureSubmitLabel : 'Validate & Submit'}">Validate & Submit</button>
                                         </div>
                                     </div>
                                     <div id="scoreSaveStatus" class="score-save-status" role="status" aria-live="polite" aria-atomic="true"></div>

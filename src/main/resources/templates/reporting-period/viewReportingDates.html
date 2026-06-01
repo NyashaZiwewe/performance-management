@@ -50,8 +50,8 @@
                 <a class="btn btn-default btn-sm" th:href="@{/reporting-periods}">
                   <i class="fa fa-arrow-left"></i> Reporting Periods
                 </a>
-                <a class="btn btn-default btn-sm" th:href="@{/reporting-periods/strategic-goals/} + ${reportingPeriod.id}">
-                  <i class="fa fa-bullseye"></i> Strategic Objectives
+                <a class="btn btn-default btn-sm" th:href="@{/gears(reportingPeriodId=${reportingPeriod.id})}">
+                  <i class="fa fa-bullseye"></i> Metrics / Goals
                 </a>
                 <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addModal">Add New Reporting Date</button>
               </div>

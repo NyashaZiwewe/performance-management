@@ -33,7 +33,7 @@ public class ProbationAssessment {
     private String employeeComment;
     @Column(length = 3000)
     private String supervisorComment;
-    @Column(length = 3000)
+    @Column(length = 255)
     private String status;
     private Integer currentStepOrder;
     private String currentStepName;

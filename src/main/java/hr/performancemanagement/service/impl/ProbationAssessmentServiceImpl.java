@@ -24,6 +24,8 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
     @Autowired
     private ProbationKpiRepository probationKpiRepository;
     @Autowired
+    private ProbationKpiCommentRepository probationKpiCommentRepository;
+    @Autowired
     private ProbationAssessmentApprovalRepository approvalRepository;
     @Autowired
     private ProbationConfigService probationConfigService;
@@ -31,6 +33,8 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
     private CommonService commonService;
     @Autowired
     private AccountService accountService;
+    @Autowired
+    private PerformanceImprovementPlanRepository performanceImprovementPlanRepository;
 
     @Override
     public List<ProbationAssessment> listVisibleAssessments() {
@@ -67,7 +71,16 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
         }
         assessment.setEmployee(selectedEmployee);
         assessment.setClientId(loggedUser.getClientId());
-        assessment.setStatus(PMConstants.PROBATION_STATUS_DRAFT);
+        if (assessment.getPerformancePeriod() == null || assessment.getPerformancePeriod().trim().isEmpty()) {
+            String startDate = assessment.getStartDate() == null ? "" : assessment.getStartDate().trim();
+            String endDate = assessment.getEndDate() == null ? "" : assessment.getEndDate().trim();
+            if (!startDate.isEmpty() && !endDate.isEmpty()) {
+                assessment.setPerformancePeriod(startDate + " - " + endDate);
+            }
+        }
+        if (assessment.getStatus() == null || assessment.getStatus().trim().isEmpty()) {
+            assessment.setStatus(PMConstants.PROBATION_STATUS_DRAFT);
+        }
         assessment.setCurrentStepOrder(null);
         assessment.setCurrentStepName(null);
         ProbationAssessment savedAssessment = assessmentRepository.save(assessment);
@@ -91,12 +104,27 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             existingAssessment.setEmployeeComment(updatedAssessment.getEmployeeComment());
         }
         if (isSupervisor(existingAssessment, loggedUser)) {
+            existingAssessment.setGeneralObservations(updatedAssessment.getGeneralObservations());
             existingAssessment.setSupervisorComment(updatedAssessment.getSupervisorComment());
         }
         if (!isOwner(existingAssessment, loggedUser) && !isSupervisor(existingAssessment, loggedUser)) {
             return null;
         }
         return assessmentRepository.save(existingAssessment);
+    }
+
+    @Override
+    public ProbationAssessment updateAssessmentStatus(long assessmentId, String status) {
+        ProbationAssessment assessment = getAssessmentById(assessmentId);
+        if (assessment == null) {
+            return null;
+        }
+        Account loggedUser = commonService.getLoggedUser();
+        if (!isOwner(assessment, loggedUser) && !isSupervisor(assessment, loggedUser) && !isHrOrAdmin(loggedUser)) {
+            return null;
+        }
+        assessment.setStatus(status);
+        return assessmentRepository.save(assessment);
     }
 
     @Override
@@ -109,7 +137,11 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
     }
 
     @Override
-    public ProbationAssessmentDimension saveDimensionResponse(long assessmentId, long dimensionTemplateId, String strengths, String areasForImprovement) {
+    public ProbationAssessmentDimension saveDimensionResponse(long assessmentId,
+                                                              long dimensionTemplateId,
+                                                              String strengths,
+                                                              String areasForImprovement,
+                                                              Long performanceImprovementPlanId) {
         ProbationAssessment assessment = getAssessmentById(assessmentId);
         ProbationDimensionTemplate template = probationConfigService.getDimensionTemplateById(dimensionTemplateId);
         Account loggedUser = commonService.getLoggedUser();
@@ -124,7 +156,18 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
         }
         dimension.setStrengths(strengths);
         dimension.setAreasForImprovement(areasForImprovement);
+        if (performanceImprovementPlanId != null && performanceImprovementPlanId > 0) {
+            PerformanceImprovementPlan plan = performanceImprovementPlanRepository.findPerformanceImprovementPlanById(performanceImprovementPlanId);
+            if (plan != null && plan.getClientId() == loggedUser.getClientId()) {
+                dimension.setPerformanceImprovementPlan(plan);
+            }
+        }
         return assessmentDimensionRepository.save(dimension);
+    }
+
+    @Override
+    public ProbationAssessmentDimension getAssessmentDimensionById(long dimensionId) {
+        return assessmentDimensionRepository.findProbationAssessmentDimensionById(dimensionId);
     }
 
     @Override
@@ -134,6 +177,11 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             return Collections.emptyList();
         }
         return probationKpiRepository.findProbationKpisByAssessmentOrderByIdAsc(assessment);
+    }
+
+    @Override
+    public ProbationKpi getKpiById(long kpiId) {
+        return probationKpiRepository.findProbationKpiById(kpiId);
     }
 
     @Override
@@ -156,12 +204,61 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             return null;
         }
         existingKpi.setName(newKpi.getName());
+        existingKpi.setMeasureOfSuccess(newKpi.getMeasureOfSuccess());
         existingKpi.setTarget(newKpi.getTarget());
+        existingKpi.setIncumbentMark(newKpi.getIncumbentMark());
+        existingKpi.setSupervisorMark(newKpi.getSupervisorMark());
         existingKpi.setProgressPercent(newKpi.getProgressPercent());
         existingKpi.setProgressComment(newKpi.getProgressComment());
         existingKpi.setIncumbentComment(newKpi.getIncumbentComment());
         existingKpi.setSupervisorComment(newKpi.getSupervisorComment());
+        existingKpi.setAttachmentPath(newKpi.getAttachmentPath());
+        existingKpi.setFlag(newKpi.getFlag());
         return probationKpiRepository.save(existingKpi);
+    }
+
+    @Override
+    public ProbationKpi saveKpiFlag(long kpiId, String flagReason) {
+        ProbationKpi kpi = probationKpiRepository.findProbationKpiById(kpiId);
+        if (kpi == null || !isAssessmentAccessible(kpi.getAssessment())) {
+            return null;
+        }
+        Account loggedUser = commonService.getLoggedUser();
+        if (!canUserAnnotateKpiContract(kpi.getAssessment(), loggedUser)) {
+            return null;
+        }
+        String normalizedFlag = flagReason == null ? null : flagReason.trim();
+        kpi.setFlag((normalizedFlag == null || normalizedFlag.isEmpty()) ? null : normalizedFlag);
+        return probationKpiRepository.save(kpi);
+    }
+
+    @Override
+    public List<ProbationKpiComment> listKpiComments(long kpiId) {
+        ProbationKpi kpi = probationKpiRepository.findProbationKpiById(kpiId);
+        if (kpi == null || !isAssessmentAccessible(kpi.getAssessment())) {
+            return Collections.emptyList();
+        }
+        return probationKpiCommentRepository.findProbationKpiCommentsByProbationKpiOrderByDateAsc(kpi);
+    }
+
+    @Override
+    public ProbationKpiComment saveKpiComment(long kpiId, String message) {
+        ProbationKpi kpi = probationKpiRepository.findProbationKpiById(kpiId);
+        if (kpi == null || !isAssessmentAccessible(kpi.getAssessment())) {
+            return null;
+        }
+        Account loggedUser = commonService.getLoggedUser();
+        if (!canUserAnnotateKpiContract(kpi.getAssessment(), loggedUser)) {
+            return null;
+        }
+        if (message == null || message.trim().isEmpty()) {
+            return null;
+        }
+        ProbationKpiComment comment = new ProbationKpiComment();
+        comment.setProbationKpi(kpi);
+        comment.setSender(loggedUser);
+        comment.setMessage(message.trim());
+        return probationKpiCommentRepository.save(comment);
     }
 
     @Override
@@ -392,5 +489,30 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
 
     private boolean isSameClientAccount(Account account, long clientId) {
         return account != null && account.getClientId() == clientId;
+    }
+
+    private boolean canUserAnnotateKpiContract(ProbationAssessment assessment, Account user) {
+        if (assessment == null || user == null) {
+            return false;
+        }
+        if (PMConstants.PROBATION_STATUS_KPI_PENDING_SUPERVISOR_APPROVAL.equalsIgnoreCase(assessment.getStatus())) {
+            return isSupervisor(assessment, user);
+        }
+        if (PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_HR.equalsIgnoreCase(assessment.getStatus())) {
+            return isSupervisor(assessment, user);
+        }
+        if (PMConstants.PROBATION_STATUS_KPI_PENDING_HR_APPROVAL.equalsIgnoreCase(assessment.getStatus())) {
+            return isHrOrAdmin(user);
+        }
+        return false;
+    }
+
+    private boolean isHrOrAdmin(Account user) {
+        if (user == null) {
+            return false;
+        }
+        return "HR".equalsIgnoreCase(user.getRole()) ||
+                PMConstants.IS_ADMIN.equalsIgnoreCase(user.getAdmin()) ||
+                PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(user.getSpecial());
     }
 }

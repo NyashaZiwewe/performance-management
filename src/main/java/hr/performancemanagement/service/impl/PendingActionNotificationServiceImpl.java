@@ -81,12 +81,40 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         if (loggedUser == null || notifications == null) {
             return;
         }
+        boolean hasReportingDateConflict = loggedUser.getClientId() > 0
+                && reportingDateService.hasMultipleOpenOrActiveReportingDates(loggedUser.getClientId());
+        boolean canOperateDates = commonService.isAdmin() || commonService.hasSpecialRights();
+
+        if (hasReportingDateConflict) {
+            if (canOperateDates) {
+                notifications.add(new PendingActionNotification(
+                        "Reporting Date",
+                        "Multiple active reporting dates detected",
+                        "Score capture is blocked for all users until exactly one reporting date remains OPEN.",
+                        "/reporting-periods",
+                        "fa fa-exclamation-triangle",
+                        "danger",
+                        new Date()
+                ));
+            } else {
+                notifications.add(new PendingActionNotification(
+                        "Score Capture",
+                        "Capture window paused",
+                        "Score capture is temporarily blocked due to reporting date configuration. Contact an administrator.",
+                        "/",
+                        "fa fa-pause-circle",
+                        "warning",
+                        new Date()
+                ));
+            }
+            return;
+        }
+
         ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         boolean open = reportingDateService.isReportingDateOpen(reportingDate)
                 || (reportingDate != null
                 && reportingDate.getStatus() != null
                 && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(reportingDate.getStatus().trim()));
-        boolean canOperateDates = commonService.isAdmin() || commonService.hasSpecialRights();
 
         if (canOperateDates && !open) {
             notifications.add(new PendingActionNotification(

@@ -122,7 +122,8 @@ public class ProbationAssessmentResource {
                 id,
                 wrapper.getDimensionTemplateId(),
                 wrapper.getStrengths(),
-                wrapper.getAreasForImprovement());
+                wrapper.getAreasForImprovement(),
+                null);
         if (savedResponse == null) {
             throw new ResourceNotFoundException("Dimension response could not be saved. Check access rights and ids.");
         }

@@ -9,6 +9,7 @@ import java.util.List;
 public interface TargetService {
     List<Target> getAllTargetsByScorecard(long scorecardId);
     List<Target> getAllTargetsByGoal(Goal goal);
+    List<String> listAllUnits();
     Target getTargetById(long id);
     boolean checkIfGoalHasTargets(Goal goal);
     boolean checkIfOutputHasTargets(Output output);

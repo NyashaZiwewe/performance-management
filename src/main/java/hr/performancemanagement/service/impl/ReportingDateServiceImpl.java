@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -31,13 +33,37 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
 
     @Override
     public ReportingDate getActiveReportingDate(){
-
         Account loggedUser = cs.getLoggedUser();
-        ReportingDate reportingDate = reportingDateRepository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.REPORTING_DATE_STATUS_OPEN, loggedUser.getClientId());
-        if (reportingDate == null) {
-            reportingDate = reportingDateRepository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
+        if (loggedUser == null || loggedUser.getClientId() <= 0) {
+            return null;
         }
-        return reportingDate;
+        List<ReportingDate> activeReportingDates = listOpenOrActiveReportingDates(loggedUser.getClientId());
+        if (activeReportingDates.isEmpty()) {
+            return null;
+        }
+        return activeReportingDates.get(0);
+    }
+
+    @Override
+    public List<ReportingDate> listOpenOrActiveReportingDates(long clientId) {
+        if (clientId <= 0) {
+            return Collections.emptyList();
+        }
+        return reportingDateRepository.findReportingDatesByReportingPeriod_ClientIdAndStatusInOrderByDateDescIdDesc(
+                clientId,
+                Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
+        );
+    }
+
+    @Override
+    public boolean hasMultipleOpenOrActiveReportingDates(long clientId) {
+        if (clientId <= 0) {
+            return false;
+        }
+        return reportingDateRepository.countByReportingPeriod_ClientIdAndStatusIn(
+                clientId,
+                Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
+        ) > 1;
     }
 
     @Override

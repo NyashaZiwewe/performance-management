@@ -27,7 +27,7 @@
                             <h3 th:text="${assessment.employee?.fullName}"></h3>
                             <p>
                                 <strong>Performance Period:</strong>
-                                <span th:text="${assessment.performancePeriod}"></span>
+                                <span th:text="${#strings.isEmpty(assessment.performancePeriod) ? (assessment.startDate + ' - ' + assessment.endDate) : assessment.performancePeriod}"></span>
                                 |
                                 <strong>Start:</strong>
                                 <span th:text="${assessment.startDate}"></span>

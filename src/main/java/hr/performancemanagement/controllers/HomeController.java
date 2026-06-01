@@ -9,6 +9,7 @@ import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.entities.StrategicObjective;
 import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
+import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.wrappers.ChangePasswordWrapper;
 import hr.performancemanagement.utils.wrappers.LoginWrapper;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -41,6 +42,7 @@ import static hr.performancemanagement.utils.PortletUtils.PortletUtils.ERROR_MSG
 @RequestMapping("/")
 public class HomeController {
     private static final Logger log = LoggerFactory.getLogger(HomeController.class);
+    private static final String REPORTING_DATE_CONFLICT_ALERT_SHOWN = "REPORTING_DATE_CONFLICT_ALERT_SHOWN";
 
     @ModelAttribute("loginWrapper")
     public LoginWrapper getLoginWrapper(){
@@ -86,6 +88,7 @@ public class HomeController {
 
         Account loggedUser = commonService.getLoggedUser();
         boolean adminOrSpecial = commonService.isAdmin() || commonService.hasSpecialRights();
+        addReportingDateConflictAlertForAdmin(loggedUser, request);
         modelAndView.addObject("dashboardAdminOrSpecial", adminOrSpecial);
         modelAndView.addObject("dashboardLoggedUser", loggedUser);
 
@@ -375,6 +378,30 @@ public class HomeController {
         PortletUtils.addMessagesToPage(modelAndView, request);
         modelAndView.addObject("localDate", LocalDate.now());
         return modelAndView;
+    }
+
+    private void addReportingDateConflictAlertForAdmin(Account loggedUser, HttpServletRequest request) {
+        if (loggedUser == null || request == null) {
+            return;
+        }
+        HttpSession session = request.getSession();
+        boolean admin = PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin());
+        if (!admin || loggedUser.getClientId() <= 0) {
+            session.removeAttribute(REPORTING_DATE_CONFLICT_ALERT_SHOWN);
+            return;
+        }
+
+        boolean hasConflict = reportingDateService.hasMultipleOpenOrActiveReportingDates(loggedUser.getClientId());
+        if (!hasConflict) {
+            session.removeAttribute(REPORTING_DATE_CONFLICT_ALERT_SHOWN);
+            return;
+        }
+
+        boolean alreadyShown = Boolean.TRUE.equals(session.getAttribute(REPORTING_DATE_CONFLICT_ALERT_SHOWN));
+        if (!alreadyShown) {
+            PortletUtils.addErrorMsg("More than one reporting date is OPEN/ACTIVE. Score capture is blocked for all users until this is fixed.", request);
+            session.setAttribute(REPORTING_DATE_CONFLICT_ALERT_SHOWN, Boolean.TRUE);
+        }
     }
 
     @RequestMapping("/change-password/{reset}")

@@ -162,6 +162,9 @@
                         <li class="nav-item">
                             <a href="#" th:href="@{/reporting-periods}"><i class="fa fa-calendar"></i> Reporting Periods</a>
                         </li>
+                        <li class="nav-item" th:if="${session.loggedUser != null and (session.loggedUser.admin == 'IS_ADMIN' or session.loggedUser.special == 'HAS_SPECIAL_RIGHTS')}">
+                            <a href="#" th:href="@{/gears}"><i class="fa fa-sitemap"></i> Predefine Outputs / Outcomes</a>
+                        </li>
                         <li class="nav-item">
                             <a href="#" th:href="@{/scorecard-models}"><i class="fa fa-th-large"></i> Scorecard Models</a>
                         </li>

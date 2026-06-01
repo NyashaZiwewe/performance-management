@@ -4,14 +4,13 @@ import org.springframework.stereotype.Service;
 import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Perspective;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,7 +55,13 @@ public class ReportingPeriodServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public void saveReportingPeriod(ReportingPeriod reportingPeriod) {
-
+        if (reportingPeriod != null) {
+            if (!StringUtils.hasText(reportingPeriod.getModel())) {
+                reportingPeriod.setModel("standard");
+            } else {
+                reportingPeriod.setModel(reportingPeriod.getModel().trim().toLowerCase());
+            }
+        }
         reportingPeriodRepository.save(reportingPeriod);
     }
 

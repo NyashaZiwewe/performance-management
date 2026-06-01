@@ -491,6 +491,7 @@ public class ScorecardResource {
             throw new ResourceNotFoundException("Target not found with id " + score.getTarget().getId());
         }
         score.setTarget(target);
+        ensureNoReportingDateConflict(target);
 
         ReportingDate reportingDate;
         if (score.getReportingDate() != null && score.getReportingDate().getId() > 0) {
@@ -506,6 +507,27 @@ public class ScorecardResource {
             throw new BadRequestException("Scores can only be captured for an open reporting date");
         }
         score.setReportingDate(reportingDate);
+    }
+
+    private void ensureNoReportingDateConflict(Target target) {
+        if (target == null || target.getGoal() == null) {
+            return;
+        }
+        long scorecardId = target.getGoal().getScorecardId();
+        if (scorecardId <= 0) {
+            return;
+        }
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (scorecard == null) {
+            return;
+        }
+        long clientId = scorecard.getClientId();
+        if (clientId <= 0 && scorecard.getOwner() != null) {
+            clientId = scorecard.getOwner().getClientId();
+        }
+        if (clientId > 0 && reportingDateService.hasMultipleOpenOrActiveReportingDates(clientId)) {
+            throw new BadRequestException("Score capture is blocked: multiple OPEN/ACTIVE reporting dates exist. Contact an administrator.");
+        }
     }
 
     private ResponseEntity<CommonResponse<Scorecard>> updateSingleStatusField(

@@ -45,6 +45,18 @@
                 <div class="col-lg-12 ">
                     <div class="ibox ">
                         <div class="ibox-title">
+                            <form th:action="@{/gears}" method="get" class="form-inline">
+                                <label class="mr-2">Reporting Period</label>
+                                <select class="form-control input-sm mr-2 select2_demo_1" name="reportingPeriodId" style="min-width: 260px;">
+                                    <option value="">All</option>
+                                    <option th:each="period : ${reportingPeriodsList}"
+                                            th:value="${period.id}"
+                                            th:selected="${selectedReportingPeriodId != null and selectedReportingPeriodId == period.id}"
+                                            th:text="${period.startDate} + ' - ' + ${period.endDate}"></option>
+                                </select>
+                                <button class="btn btn-default btn-sm mr-2" type="submit">Filter</button>
+                                <a class="btn btn-default btn-sm" th:href="@{/gears}">Clear</a>
+                            </form>
                             <div class="ibox-tools">
                                 <a th:href="@{/gears/add-gear}"><button class="btn btn-success btn-sm">Add New Metric</button></a>
                             </div>
@@ -57,6 +69,7 @@
                                     <thead>
                                     <tr>
                                         <th>Metric Name</th>
+                                        <th>Reporting Period</th>
                                         <th>Category</th>
                                         <th>Description</th>
 <!--                                        <th>Graph Color</th>-->
@@ -67,6 +80,7 @@
                                     <tbody>
                                     <tr th:each="gear :${gears}">
                                         <td th:text="${gear.name}"></td>
+                                        <td th:text="${gear.reportingPeriod != null ? gear.reportingPeriod.startDate + ' - ' + gear.reportingPeriod.endDate : ''}"></td>
                                         <td th:text="${gear.category}"></td>
                                         <td th:text="${gear.description}"></td>
 <!--                                        <td th:text="${perspective.graphColor}"></td>-->
@@ -143,23 +157,23 @@
                 {extend: 'csv',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3]
                     }},
                 {extend: 'excel',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3]
                     }},
                 {extend: 'pdf',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3]
                     }},
 
                 {extend: 'print',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5]
+                        columns: [0,1,2,3]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

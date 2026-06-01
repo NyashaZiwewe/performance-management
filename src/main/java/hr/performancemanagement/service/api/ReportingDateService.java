@@ -11,6 +11,8 @@ import java.util.List;
 public interface ReportingDateService {
     ReportingDate getReportingDateById(long id);
     ReportingDate getActiveReportingDate();
+    List<ReportingDate> listOpenOrActiveReportingDates(long clientId);
+    boolean hasMultipleOpenOrActiveReportingDates(long clientId);
     boolean isReportingDateOpen(ReportingDate reportingDate);
     List<ReportingDate> listAllReportingDates(ReportingPeriod reportingPeriod);
     long countReportingDates(long reportingPeriodId);

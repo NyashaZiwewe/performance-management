@@ -61,7 +61,7 @@
                                         <th>Hierarchy Model</th>
 <!--                                        <th>Assessment Status</th>-->
                                         <th>Status</th>
-                                        <th>Strategic Objectives</th>
+                                        <th>Metrics / Goals</th>
                                         <th>Reporting Dates</th>
                                         <th></th>
                                         <th></th>
@@ -93,8 +93,8 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <a th:href="@{/reporting-periods/strategic-goals/} + ${period.id}">
-                                                <span th:text="'View (' + ${strategicObjectiveCounts[period.id]} + ')'">View (0)</span>
+                                            <a th:href="@{/gears(reportingPeriodId=${period.id})}">
+                                                <span>Manage</span>
                                             </a>
                                         </td>
                                         <td>

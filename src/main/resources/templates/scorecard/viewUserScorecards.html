@@ -98,18 +98,15 @@
                                         <td>
                                             <span th:if="${scorecard.status == 'ACTIVE'}">
                                                 <a th:if="${captureWindowOpen && loggedUserId == scorecard.owner.id && scorecard.approvalStatus == scorecardWorkflow.approvedByHrStatus}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm"
-                                                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</button>
+                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
                                                  <a th:if="${captureWindowOpen && scorecard.owner != null && scorecard.owner.supervisor != null && loggedUserId == scorecard.owner.supervisor.id && (scorecard.approvalStatus == scorecardWorkflow.approvedOwnerScoresStatus || scorecard.approvalStatus == scorecardWorkflow.scoredBySupervisorStatus)}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm"
-                                                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</button>
+                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
                                                 <a th:if="${captureWindowOpen && role == 'MODERATOR' && scorecard.approvalStatus == scorecardWorkflow.approvedAgreedScoresStatus}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm"
-                                                           th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Capture Scores'}">Capture Scores</button>
+                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
-                                                <span th:if="${loggedUserId == scorecard.owner.id && scorecard.lockStatus == 'OPEN'}">
+                                                <span th:if="${(loggedUserId == scorecard.owner.id || loggedUser.special == 'HAS_SPECIAL_RIGHTS' || loggedUser.admin == 'IS_ADMIN') && scorecard.lockStatus == 'OPEN'}">
                                                     <a th:if="${scorecard.approvalStatus == scorecardWorkflow.newStatus || scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
                                                     <button class="btn btn-success btn-sm">Edit Targets</button>
                                                 </a>

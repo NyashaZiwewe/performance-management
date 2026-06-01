@@ -21,6 +21,8 @@ import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.List;
 
 
 @Service
@@ -63,23 +65,33 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
 
     @Override
     public ReportingDate getActiveReportingDate(HttpServletRequest request){
-        try {
-            return getActiveReportingDate();
-        }catch (Exception ignored){
-            PortletUtils.addErrorMsg("There is no active reporting Date", request);
+        Account loggedUser = getLoggedUser();
+        if (loggedUser != null && hasMultipleOpenOrActiveReportingDates(loggedUser.getClientId())) {
+            PortletUtils.addErrorMsg("Multiple OPEN/ACTIVE reporting dates were detected. Score capture is blocked until this is corrected.", request);
             return null;
         }
+
+        ReportingDate reportingDate = getActiveReportingDate();
+        if (reportingDate == null) {
+            PortletUtils.addErrorMsg("There is no active reporting Date", request);
+        }
+        return reportingDate;
     }
 
     @Override
     public ReportingDate getActiveReportingDate(){
-
         Account loggedUser = getLoggedUser();
-        ReportingDate reportingDate = repository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.REPORTING_DATE_STATUS_OPEN, loggedUser.getClientId());
-        if (reportingDate == null) {
-            reportingDate = repository.findReportingDateByStatusAndAndReportingPeriod_ClientId(PMConstants.STATUS_ACTIVE, loggedUser.getClientId());
+        if (loggedUser == null || loggedUser.getClientId() <= 0) {
+            return null;
         }
-        return reportingDate;
+        List<ReportingDate> reportingDates = repository.findReportingDatesByReportingPeriod_ClientIdAndStatusInOrderByDateDescIdDesc(
+                loggedUser.getClientId(),
+                Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
+        );
+        if (reportingDates == null || reportingDates.isEmpty()) {
+            return null;
+        }
+        return reportingDates.get(0);
     }
 
     @Override
@@ -92,6 +104,9 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         boolean isUserAllowed = false;
         Account loggedUser = getLoggedUser();
         if (loggedUser == null) {
+            return false;
+        }
+        if (isScoreCaptureActivity(activity) && hasMultipleOpenOrActiveReportingDates(loggedUser.getClientId())) {
             return false;
         }
         String approval_status = scorecard.getApprovalStatus();
@@ -116,7 +131,9 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
             if((matchesStatus(approval_status, workflow.getNewStatus())
                     || matchesStatus(approval_status, workflow.getRejectedBySupervisorStatus()))
                     && PMConstants.LOCK_STATUS_OPEN.equalsIgnoreCase(scorecard.getLockStatus())){
-                if(isOwner(scorecard) || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())){
+                if(isOwner(scorecard)
+                        || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())
+                        || PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin())){
                     isUserAllowed = true;
                 }
             }
@@ -176,6 +193,23 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         }
 
         return isUserAllowed;
+    }
+
+    private boolean isScoreCaptureActivity(String activity) {
+        return PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES.equalsIgnoreCase(activity);
+    }
+
+    private boolean hasMultipleOpenOrActiveReportingDates(long clientId) {
+        if (clientId <= 0) {
+            return false;
+        }
+        return repository.countByReportingPeriod_ClientIdAndStatusIn(
+                clientId,
+                Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
+        ) > 1;
     }
 
     private boolean matchesStatus(String actualStatus, String expectedStatus) {

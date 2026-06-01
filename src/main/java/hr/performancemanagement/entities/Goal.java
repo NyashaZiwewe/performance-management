@@ -28,7 +28,7 @@ public class Goal implements Serializable {
     @JoinColumn(name = "gear_id")
     private Gear gear;
 
-    @Positive(message = "Scorecard ID must be positive")
+    @PositiveOrZero(message = "Scorecard ID cannot be negative")
     private long scorecardId;
 
     @ManyToOne
@@ -40,7 +40,7 @@ public class Goal implements Serializable {
     private StrategicObjective strategicObjective;
 
     @NotBlank(message = "Goal name is required")
-    @Size(min = 3, max = 500, message = "Goal name must be between 3 and 500 characters")
+    @Size(min = 3, max = 255, message = "Goal name must be between 3 and 255 characters")
     private String name;
 
     @OneToMany(mappedBy = "goal", fetch = FetchType.LAZY, cascade = CascadeType.ALL)

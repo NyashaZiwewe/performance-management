@@ -112,16 +112,9 @@ public class ReportingPeriodController {
     }
 
     @RequestMapping("/strategic-goals/{id}")
-    public ModelAndView viewStrategicObjectives(@PathVariable("id") long id, HttpServletRequest request) {
-        ModelAndView modelAndView = new ModelAndView(Pages.VIEW_STRATEGIC_OBJECTIVES);
-        modelAndView.addObject("pageTitle", "View Strategic Objectives");
-        List<StrategicObjective> strategicObjectivesList = strategicObjectiveService.listAllStrategicObjectives(id);
-        modelAndView.addObject("goalsList", strategicObjectivesList);
-        modelAndView.addObject("reportingPeriod", reportingPeriodService.getReportingPeriodById(id));
-        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
-        modelAndView.addObject("strategicObjective", new StrategicObjective());
-        preparePage(modelAndView, request);
-        return modelAndView;
+    public String viewStrategicObjectives(@PathVariable("id") long id, HttpServletRequest request) {
+        PortletUtils.addInfoMsg("Manage strategic goals under predefined metrics for the selected reporting period.", request);
+        return "redirect:/gears?reportingPeriodId=" + id;
     }
 
     @RequestMapping("/reporting-dates/{id}")
@@ -143,7 +136,7 @@ public class ReportingPeriodController {
 
         strategicObjectiveService.addStrategicObjective(newStrategicObjective);
         PortletUtils.addInfoMsg("Strategic goal successfully added.", request);
-        return "redirect:/reporting-periods/strategic-goals/" + newStrategicObjective.getReportingPeriod().getId();
+        return "redirect:/gears?reportingPeriodId=" + newStrategicObjective.getReportingPeriod().getId();
     }
 
     @RequestMapping(value = "/save-strategic-objective", method = RequestMethod.POST)
@@ -151,7 +144,7 @@ public class ReportingPeriodController {
 
         strategicObjectiveService.saveStrategicObjective(strategicObjective);
         PortletUtils.addInfoMsg("Strategic goal successfully updated.", request);
-        return "redirect:/reporting-periods/strategic-goals/" + strategicObjective.getReportingPeriod().getId();
+        return "redirect:/gears?reportingPeriodId=" + strategicObjective.getReportingPeriod().getId();
     }
 
     @RequestMapping(value = "/add-reporting-date", method = RequestMethod.POST)

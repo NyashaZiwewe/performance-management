@@ -24,7 +24,11 @@ public class ProbationKpi {
     private ProbationAssessment assessment;
     private String name;
     @Column(length = 1000)
+    private String measureOfSuccess;
+    @Column(length = 1000)
     private String target;
+    private Double incumbentMark;
+    private Double supervisorMark;
     private Double progressPercent;
     @Column(length = 3000)
     private String progressComment;
@@ -32,6 +36,10 @@ public class ProbationKpi {
     private String incumbentComment;
     @Column(length = 3000)
     private String supervisorComment;
+    @Column(length = 1000)
+    private String attachmentPath;
+    @Column(length = 2000)
+    private String flag;
     private String status;
 
     @CreationTimestamp

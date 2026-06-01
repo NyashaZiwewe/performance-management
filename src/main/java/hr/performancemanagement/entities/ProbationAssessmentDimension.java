@@ -29,6 +29,9 @@ public class ProbationAssessmentDimension {
     private String strengths;
     @Column(length = 3000)
     private String areasForImprovement;
+    @ManyToOne
+    @JoinColumn(name = "performance_improvement_plan_id")
+    private PerformanceImprovementPlan performanceImprovementPlan;
 
     @CreationTimestamp
     @Column(updatable = false)

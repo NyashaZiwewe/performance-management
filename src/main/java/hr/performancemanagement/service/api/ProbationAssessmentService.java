@@ -13,11 +13,17 @@ public interface ProbationAssessmentService {
     ProbationAssessment getAssessmentById(long id);
     ProbationAssessment createAssessment(ProbationAssessment assessment);
     ProbationAssessment updateAssessmentCore(ProbationAssessment updatedAssessment);
+    ProbationAssessment updateAssessmentStatus(long assessmentId, String status);
     List<ProbationAssessmentDimension> listAssessmentDimensions(long assessmentId);
-    ProbationAssessmentDimension saveDimensionResponse(long assessmentId, long dimensionTemplateId, String strengths, String areasForImprovement);
+    ProbationAssessmentDimension saveDimensionResponse(long assessmentId, long dimensionTemplateId, String strengths, String areasForImprovement, Long performanceImprovementPlanId);
+    ProbationAssessmentDimension getAssessmentDimensionById(long dimensionId);
     List<ProbationKpi> listKpis(long assessmentId);
+    ProbationKpi getKpiById(long kpiId);
     ProbationKpi addKpi(long assessmentId, ProbationKpi kpi);
     ProbationKpi updateKpi(ProbationKpi newKpi);
+    ProbationKpi saveKpiFlag(long kpiId, String flagReason);
+    List<ProbationKpiComment> listKpiComments(long kpiId);
+    ProbationKpiComment saveKpiComment(long kpiId, String message);
     void deleteKpi(long kpiId);
     List<ProbationAssessmentApproval> listApprovalHistory(long assessmentId);
     boolean submitAssessment(long assessmentId, String remarks);

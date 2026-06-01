@@ -26,12 +26,10 @@ public class ReportingPeriod {
     @Positive(message = "Client ID must be positive")
     private long clientId;
 
-    @Column(unique = true)
     @NotBlank(message = "Start date is required")
     @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}", message = "Start date must be in format YYYY-MM-DD")
     private String startDate;
 
-    @Column(unique = true)
     @NotBlank(message = "End date is required")
     @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}", message = "End date must be in format YYYY-MM-DD")
     private String endDate;

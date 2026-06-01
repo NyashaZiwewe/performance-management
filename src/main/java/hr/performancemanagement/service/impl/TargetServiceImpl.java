@@ -55,6 +55,12 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
         List<Target> targets = targetRepository.findTargetsByGoalId(goal.getId());
         return targets;
     }
+
+    @Override
+    public List<String> listAllUnits() {
+        return targetRepository.listAllUnits();
+    }
+
     @Override
     public Target getTargetById(long id){
         Target target = targetRepository.findTargetById(id);
