@@ -9,8 +9,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class GearService {
@@ -29,6 +35,9 @@ public class GearService {
     {
         List<Gear> gears = new ArrayList<>();
         gearRepository.findGearsByClientId(clientId).forEach(gear ->  gears.add(gear));
+        if (gears.isEmpty()) {
+            gearRepository.findAll().forEach(gears::add);
+        }
         return gears;
     }
 
@@ -36,17 +45,67 @@ public class GearService {
     {
         List<Gear> gears = new ArrayList<>();
         gearRepository.findGearsByClientIdAndCategory(clientId, category).forEach(gear ->  gears.add(gear));
+        if (gears.isEmpty()) {
+            gearRepository.findGearsByCategory(category).forEach(gears::add);
+        }
         return gears;
     }
 
     public List<Gear> listGearsByReportingPeriod(long clientId, ReportingPeriod reportingPeriod)
     {
-        List<Gear> gears = new ArrayList<>();
-        if (reportingPeriod == null) {
-            return gears;
+        Map<Long, Gear> byId = new LinkedHashMap<>();
+        if (reportingPeriod == null || reportingPeriod.getId() <= 0) {
+            return new ArrayList<>(byId.values());
         }
-        gearRepository.findGearsByClientIdAndReportingPeriod(clientId, reportingPeriod).forEach(gear -> gears.add(gear));
-        return gears;
+
+        long reportingPeriodId = reportingPeriod.getId();
+        if (clientId > 0) {
+            for (Gear gear : gearRepository.findGearsByClientIdAndReportingPeriod_Id(clientId, reportingPeriodId)) {
+                if (gear != null && gear.getId() > 0) {
+                    byId.put(gear.getId(), gear);
+                }
+            }
+        } else {
+            for (Gear gear : gearRepository.findGearsByReportingPeriod_Id(reportingPeriodId)) {
+                if (gear != null && gear.getId() > 0) {
+                    byId.put(gear.getId(), gear);
+                }
+            }
+        }
+
+        // Legacy fallback: support rows with nullable client_id or without a reporting_period_id.
+        if (byId.isEmpty()) {
+            for (Gear gear : gearRepository.findGearsByReportingPeriod_Id(reportingPeriodId)) {
+                if (gear == null || gear.getId() <= 0) {
+                    continue;
+                }
+                if (belongsToClientOrUnassigned(gear, clientId)) {
+                    byId.put(gear.getId(), gear);
+                }
+            }
+        }
+
+        if (byId.isEmpty()) {
+            LocalDate periodStart = parseDate(reportingPeriod.getStartDate());
+            LocalDate periodEnd = parseDate(reportingPeriod.getEndDate());
+            for (Gear gear : gearRepository.findGearsByClientId(clientId)) {
+                if (gear == null || gear.getId() <= 0) {
+                    continue;
+                }
+                if (gear.getReportingPeriod() != null) {
+                    continue;
+                }
+                if (periodStart == null || periodEnd == null || gear.getDate() == null) {
+                    continue;
+                }
+                LocalDate gearDate = gear.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                if ((gearDate.isEqual(periodStart) || gearDate.isAfter(periodStart))
+                        && (gearDate.isEqual(periodEnd) || gearDate.isBefore(periodEnd))) {
+                    byId.put(gear.getId(), gear);
+                }
+            }
+        }
+        return new ArrayList<>(byId.values());
     }
 
     public List<Gear> listApplicableGears(long clientId, String category, ReportingPeriod reportingPeriod)
@@ -57,6 +116,10 @@ public class GearService {
         }
         gearRepository.findGearsByClientIdAndCategoryAndReportingPeriodOrUnassigned(clientId, category, reportingPeriod)
                 .forEach(gear -> gears.add(gear));
+        if (gears.isEmpty()) {
+            gearRepository.findGearsByCategoryAndReportingPeriodOrUnassigned(category, reportingPeriod)
+                    .forEach(gears::add);
+        }
         return gears;
     }
 
@@ -104,8 +167,8 @@ public class GearService {
 
     public double getGearTotalAllocatedWeight(long scorecardId, Gear gear){
         try {
-            double total = gearRepository.sumGearAllocatedWeight(scorecardId, gear);
-            return total;
+            Double total = gearRepository.sumGearAllocatedWeight(scorecardId, gear);
+            return total == null ? 0.0 : total;
         }catch (Exception e){
             return 0.0;
         }
@@ -135,6 +198,32 @@ public class GearService {
             return scorecard.getOwner().getClientId();
         }
         return 1L;
+    }
+
+    private boolean belongsToClientOrUnassigned(Gear gear, long clientId) {
+        if (gear == null) {
+            return false;
+        }
+        if (clientId <= 0) {
+            return true;
+        }
+        return gear.getClientId() == clientId || gear.getClientId() <= 0;
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalDate.parse(trimmed);
+        } catch (DateTimeParseException ignored) {
+            try {
+                return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+            } catch (DateTimeParseException ignoredAgain) {
+                return null;
+            }
+        }
     }
 
 }

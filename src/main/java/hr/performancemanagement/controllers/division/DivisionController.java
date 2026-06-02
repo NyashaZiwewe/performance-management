@@ -5,7 +5,6 @@ import hr.performancemanagement.entities.Division;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.DivisionService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -46,8 +45,7 @@ public class DivisionController {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_DIVISIONS);
         modelAndView.addObject("pageTitle", "View All Divisions");
 
-        Account loggedUser = commonService.getLoggedUser();
-        long clientId = loggedUser != null ? loggedUser.getClientId() : Client.CLIENT_ID;
+        long clientId = commonService.getConfiguredClientId();
         List<Division> divisions = divisionService.listAllDivisions(clientId);
 
         modelAndView.addObject("divisions", divisions);
@@ -67,8 +65,7 @@ public class DivisionController {
             return "redirect:/divisions";
         }
 
-        Account loggedUser = commonService.getLoggedUser();
-        long clientId = loggedUser != null ? loggedUser.getClientId() : Client.CLIENT_ID;
+        long clientId = commonService.getConfiguredClientId();
         newDivision.setClientId(clientId);
         normalizeDivisionFields(newDivision);
 
@@ -103,8 +100,7 @@ public class DivisionController {
             existingDivision.setWebsite(updatedDivision.getWebsite());
             existingDivision.setColorCode(updatedDivision.getColorCode());
             if (existingDivision.getClientId() <= 0) {
-                Account loggedUser = commonService.getLoggedUser();
-                existingDivision.setClientId(loggedUser != null ? loggedUser.getClientId() : Client.CLIENT_ID);
+                existingDivision.setClientId(commonService.getConfiguredClientId());
             }
             normalizeDivisionFields(existingDivision);
             divisionService.saveDivision(existingDivision);

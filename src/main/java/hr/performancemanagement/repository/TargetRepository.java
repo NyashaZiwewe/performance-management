@@ -14,8 +14,16 @@ import java.util.List;
 @Repository
 public interface TargetRepository extends JpaRepository<Target, Long> {
     List<Target> findTargetsByGoalId(long goalId);
-    @Query("SELECT t FROM Target t LEFT JOIN FETCH t.goal g WHERE g.scorecardId = :scorecardId " +
-            "ORDER BY g.perspective.id, g.strategicObjective.id, g.id, t.id")
+    @Query("SELECT t FROM Target t " +
+            "LEFT JOIN FETCH t.output o " +
+            "LEFT JOIN FETCH o.outcome oc " +
+            "LEFT JOIN FETCH oc.goal g " +
+            "LEFT JOIN FETCH oc.pillar p " +
+            "LEFT JOIN FETCH p.goal pg " +
+            "WHERE o.scorecard.id = :scorecardId " +
+            "ORDER BY COALESCE(g.perspective.id, pg.perspective.id), " +
+            "COALESCE(g.strategicObjective.id, pg.strategicObjective.id), " +
+            "COALESCE(g.id, pg.id), t.id")
     List<Target> findTargetsByScorecardId(@Param("scorecardId") long scorecardId);
     int countTargetsByGoal(Goal goal);
     List<Target> findTargetsByOutput(Output output);

@@ -4,7 +4,6 @@ import hr.performancemanagement.entities.*;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.ScorecardModelService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -42,7 +41,8 @@ public class ScorecardModelController {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARD_MODELS);
         modelAndView.addObject("pageTitle", "View Scorecard Models");
         Account loggedUser = cs.getLoggedUser();
-        List<ScorecardModel> scorecardModelList = scorecardModelService.getAllScorecardModels(loggedUser.getClientId());
+        long clientId = cs.getConfiguredClientId();
+        List<ScorecardModel> scorecardModelList = scorecardModelService.getAllScorecardModels(clientId);
         modelAndView.addObject("scorecardModelList", scorecardModelList);
         modelAndView.addObject("loggedUser", loggedUser);
         preparePage(modelAndView, request, session);
@@ -62,13 +62,13 @@ public class ScorecardModelController {
     @RequestMapping(value = "/save-scorecard-model", method = RequestMethod.POST)
     public String saveScorecardModel(HttpServletRequest request, ScorecardModel scorecardModel) throws UnsupportedEncodingException {
 
-        Account loggedUser = cs.getLoggedUser();
-        boolean modelExists = scorecardModelService.checkIfClientModelExits(loggedUser.getClientId(), scorecardModel.getName());
+        long clientId = cs.getConfiguredClientId();
+        boolean modelExists = scorecardModelService.checkIfClientModelExits(clientId, scorecardModel.getName());
         if(modelExists){
             PortletUtils.addErrorMsg("You already have "+ scorecardModel.getName() + " As a model for your organisation", request);
             return "redirect:/scorecard-models/add-scorecard-model";
         }else{
-            scorecardModel.setClientId(loggedUser.getClientId());
+            scorecardModel.setClientId(clientId);
             scorecardModelService.saveScorecardModel(scorecardModel);
             PortletUtils.addInfoMsg("You have successfully added "+ scorecardModel.getName() + " ss a model for your organisation", request);
             return "redirect:/scorecard-models/add-scorecard-model";

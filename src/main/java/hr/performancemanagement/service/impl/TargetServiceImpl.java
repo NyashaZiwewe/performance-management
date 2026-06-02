@@ -5,6 +5,7 @@ import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.GoalRepository;
+import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,30 +21,21 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Autowired
     GoalRepository goalRepository;
     @Autowired
+    ScoreRepository scoreRepository;
+    @Autowired
     ReportingDateService reportingDateService;
 
     @Override
     public List<Target> getAllTargetsByScorecard(long scorecardId){
         List<Target> targetList = new ArrayList<>();
         List<Target> targets = targetRepository.findTargetsByScorecardId(scorecardId);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
         for (Target target : targets) {
             if (target == null) {
                 continue;
             }
-            Goal goal = target.getGoal();
-            if (goal != null) {
-                target.setPerspective(goal.getPerspective());
-                target.setStrategicObjective(goal.getStrategicObjective());
-            }
-//          ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-//          target.setCurrentActual(targetRepository.currentActual(target, reportingDate));
-//          target.setCurrentEmployeeScore(targetRepository.currentEmployeeScore(target,reportingDate));
-//          target.setCurrentManagerScore(targetRepository.currentManagerScore(target,reportingDate));
-//          target.setCurrentAgreedScore(targetRepository.currentAgreedScore(target,reportingDate));
-//          target.setCurrentModeratedScore(targetRepository.currentModeratedScore(target,reportingDate));
-//          target.setCurrentEvidence(targetRepository.currentEvidence(target, reportingDate));
-//          target.setCurrentJustification(targetRepository.currentJustification(target, reportingDate));
-//          target.setCurrentWeightedScore(targetRepository.currentWeightedScore(target,reportingDate));
+            populateTargetHierarchy(target);
+            hydrateScoreSnapshot(target, reportingDate);
             targetList.add(target);
         }
 
@@ -64,6 +56,7 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Override
     public Target getTargetById(long id){
         Target target = targetRepository.findTargetById(id);
+        populateTargetHierarchy(target);
         return target;
     }
 
@@ -138,6 +131,7 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Override
     @Transactional
     public Target saveTarget(Target target) {
+        normalizePersistedScores(target);
         Target savedTarget = targetRepository.save(target);
         return savedTarget;
     }
@@ -146,5 +140,217 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Override
     public void deleteTarget(Target target){
         targetRepository.delete(target);
+    }
+
+    private void normalizePersistedScores(Target target) {
+        if (target == null) {
+            return;
+        }
+        target.setEmployeeScore(clamp(target.getEmployeeScore(), 0.0, 5.0));
+        target.setManagerScore(clamp(target.getManagerScore(), 0.0, 5.0));
+        target.setAgreedScore(clamp(target.getAgreedScore(), 0.0, 5.0));
+        target.setModeratedScore(clamp(target.getModeratedScore(), 0.0, 5.0));
+        target.setCurrentEmployeeScore(clamp(target.getCurrentEmployeeScore(), 0.0, 5.0));
+        target.setCurrentManagerScore(clamp(target.getCurrentManagerScore(), 0.0, 5.0));
+        target.setCurrentAgreedScore(clamp(target.getCurrentAgreedScore(), 0.0, 5.0));
+        target.setCurrentModeratedScore(clamp(target.getCurrentModeratedScore(), 0.0, 5.0));
+        target.setWeightedScore(clamp(target.getWeightedScore(), 0.0, 100.0));
+        target.setCurrentWeightedScore(clamp(target.getCurrentWeightedScore(), 0.0, 100.0));
+    }
+
+    private Double clamp(Double value, double minimum, double maximum) {
+        if (value == null) {
+            return null;
+        }
+        if (value < minimum) {
+            return minimum;
+        }
+        if (value > maximum) {
+            return maximum;
+        }
+        return value;
+    }
+
+    private void populateTargetHierarchy(Target target) {
+        if (target == null) {
+            return;
+        }
+        Goal goal = resolveGoalFromTarget(target);
+        if (goal != null) {
+            target.setGoal(goal);
+            target.setPerspective(goal.getPerspective());
+            target.setStrategicObjective(goal.getStrategicObjective());
+        }
+        if (target.getOutput() != null) {
+            target.setOutcome(target.getOutput().getOutcome());
+        }
+    }
+
+    private Goal resolveGoalFromTarget(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getGoal() != null) {
+            return target.getGoal();
+        }
+        if (target.getOutput() == null) {
+            return null;
+        }
+        Outcome outcome = target.getOutput().getOutcome();
+        if (outcome == null) {
+            return null;
+        }
+        if (outcome.getGoal() != null) {
+            return outcome.getGoal();
+        }
+        if (outcome.getPillar() != null) {
+            return outcome.getPillar().getGoal();
+        }
+        return null;
+    }
+
+    private void hydrateScoreSnapshot(Target target, ReportingDate reportingDate) {
+        if (target == null) {
+            return;
+        }
+
+        Output output = target.getOutput();
+
+        Object[] standardAggregates = scoreRepository.aggregateStandardTargetScores(target, output);
+        double weightedScore = toDouble(aggregateValue(standardAggregates, 0));
+        double averageActual = toDouble(aggregateValue(standardAggregates, 1));
+        double sumActual = toDouble(aggregateValue(standardAggregates, 2));
+        target.setWeightedScore(weightedScore);
+        if ("%".equalsIgnoreCase(target.getUnit())) {
+            target.setActual(averageActual);
+        } else {
+            target.setActual(sumActual);
+        }
+
+        Object[] valueBasedAggregates = scoreRepository.aggregateValueBasedTargetScores(target, output);
+        target.setEmployeeScore(toDouble(aggregateValue(valueBasedAggregates, 1)));
+        target.setManagerScore(toDouble(aggregateValue(valueBasedAggregates, 2)));
+        target.setAgreedScore(toDouble(aggregateValue(valueBasedAggregates, 3)));
+        target.setModeratedScore(toDouble(aggregateValue(valueBasedAggregates, 4)));
+
+        Score currentScore = resolveCurrentScore(target, output, reportingDate);
+        if (currentScore == null) {
+            target.setCurrentActual(null);
+            target.setCurrentEmployeeScore(null);
+            target.setCurrentManagerScore(null);
+            target.setCurrentAgreedScore(null);
+            target.setCurrentModeratedScore(null);
+            target.setCurrentWeightedScore(null);
+            target.setCurrentEvidence(null);
+            target.setCurrentAttachmentName(null);
+            target.setCurrentJustification(null);
+        } else {
+            target.setCurrentActual(currentScore.getActual());
+            target.setCurrentEmployeeScore(currentScore.getEmployeeScore());
+            target.setCurrentManagerScore(currentScore.getManagerScore());
+            target.setCurrentAgreedScore(currentScore.getAgreedScore());
+            target.setCurrentModeratedScore(currentScore.getModeratedScore());
+            target.setCurrentWeightedScore(currentScore.getWeightedScore());
+            target.setCurrentEvidence(currentScore.getEvidence());
+            target.setCurrentAttachmentName(currentScore.getAttachmentName());
+            target.setCurrentJustification(currentScore.getJustification());
+        }
+
+        List<Score> history = resolveScoreHistory(target, output);
+        target.setScores(history);
+    }
+
+    private Score resolveCurrentScore(Target target, Output output, ReportingDate reportingDate) {
+        if (reportingDate == null) {
+            return null;
+        }
+
+        if (target != null) {
+            List<Score> targetScores = scoreRepository.findScoresByTargetAndReportingDateOrderByIdDesc(target, reportingDate);
+            if (targetScores != null && !targetScores.isEmpty()) {
+                return targetScores.get(0);
+            }
+        }
+
+        if (output == null) {
+            return null;
+        }
+
+        List<Score> outputScores = scoreRepository.findScoresByOutputAndReportingDateOrderByIdDesc(output, reportingDate);
+        if (outputScores == null || outputScores.isEmpty()) {
+            return null;
+        }
+
+        if (target != null) {
+            for (Score score : outputScores) {
+                if (score != null && score.getTarget() != null && score.getTarget().getId() == target.getId()) {
+                    return score;
+                }
+            }
+            for (Score score : outputScores) {
+                if (score != null && score.getTarget() == null) {
+                    return score;
+                }
+            }
+        }
+        return outputScores.get(0);
+    }
+
+    private List<Score> resolveScoreHistory(Target target, Output output) {
+        if (target != null) {
+            List<Score> targetHistory = scoreRepository.findScoresByTargetOrderByReportingDate_DateDescIdDesc(target);
+            if (targetHistory != null && !targetHistory.isEmpty()) {
+                return targetHistory;
+            }
+        }
+
+        if (output == null) {
+            return new ArrayList<Score>();
+        }
+
+        List<Score> outputHistory = scoreRepository.findScoresByOutputOrderByReportingDate_DateDescIdDesc(output);
+        if (outputHistory == null) {
+            return new ArrayList<Score>();
+        }
+        if (target != null) {
+            List<Score> filteredHistory = new ArrayList<Score>();
+            for (Score score : outputHistory) {
+                if (score == null) {
+                    continue;
+                }
+                if (score.getTarget() == null || score.getTarget().getId() == target.getId()) {
+                    filteredHistory.add(score);
+                }
+            }
+            if (!filteredHistory.isEmpty()) {
+                return filteredHistory;
+            }
+        }
+        return outputHistory;
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return 0.0;
+    }
+
+    private Object aggregateValue(Object[] aggregates, int index) {
+        Object[] row = unwrapAggregateRow(aggregates);
+        if (row == null || index < 0 || index >= row.length) {
+            return null;
+        }
+        return row[index];
+    }
+
+    private Object[] unwrapAggregateRow(Object[] aggregates) {
+        if (aggregates == null) {
+            return null;
+        }
+        if (aggregates.length == 1 && aggregates[0] instanceof Object[]) {
+            return (Object[]) aggregates[0];
+        }
+        return aggregates;
     }
 }

@@ -22,11 +22,11 @@ public class Score implements Serializable {
     private long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "output_id")
+    @JoinColumn(name = "output_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Output output;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "target_id")
+    @JoinColumn(name = "target_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Target target;
 
     @ManyToOne

@@ -5,7 +5,9 @@ import org.springframework.transaction.annotation.Transactional;
 import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.repository.ScoreCardRepository;
+import hr.performancemanagement.repository.ScorecardWorkflowStageRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -16,6 +18,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 
@@ -34,6 +37,13 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
     @Autowired
     StrategicObjectiveService strategicObjectiveService;
+
+    @Autowired
+    ScorecardWorkflowStageRepository scorecardWorkflowStageRepository;
+
+    @Autowired
+    ReportingDateRepository reportingDateRepository;
+
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
 
@@ -43,17 +53,17 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
     @Override
     public List<Scorecard> listAllScorecards(long clientId){
-        return scoreCardRepository.findScorecardsByClientId(clientId);
+        return scoreCardRepository.findScorecardsByClient_ClientId(clientId);
     }
 
     @Override
     public List<Scorecard> listAllScorecards(long clientId, long reportingPeriodId) {
-        return scoreCardRepository.findScorecardsByClientIdAndReportingPeriod_Id(clientId, reportingPeriodId);
+        return scoreCardRepository.findScorecardsByClient_ClientIdAndReportingPeriod_Id(clientId, reportingPeriodId);
     }
 
     @Override
     public List<Scorecard> listActiveScorecards(long clientId) {
-        return scoreCardRepository.findScorecardsByClientIdAndStatus(clientId, PMConstants.STATUS_ACTIVE);
+        return scoreCardRepository.findScorecardsByClient_ClientIdAndStatus(clientId, PMConstants.STATUS_ACTIVE);
     }
 
     @Override
@@ -74,15 +84,90 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
     @Override
     public List<Scorecard> getScorecardsByReportingPeriodId(ReportingPeriod reportingPeriod){
+        return getAccessibleScorecardsByReportingPeriod(reportingPeriod);
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Scorecard> searchScorecards(Long reportingPeriodId, Long reportingDateId, Long departmentId, Long employeeId, String approvalStatus) {
+        Long normalizedReportingPeriodId = normalizeSearchId(reportingPeriodId);
+        Long normalizedReportingDateId = normalizeSearchId(reportingDateId);
+        Long normalizedDepartmentId = normalizeSearchId(departmentId);
+        Long normalizedEmployeeId = normalizeSearchId(employeeId);
+        String normalizedApprovalStatus = normalizeSearchText(approvalStatus);
+
+        ReportingPeriod reportingPeriod = normalizedReportingPeriodId == null
+                ? null
+                : reportingPeriodService.getReportingPeriodById(normalizedReportingPeriodId);
+        ReportingDate reportingDate = normalizedReportingDateId == null
+                ? null
+                : reportingDateRepository.findReportingDateById(normalizedReportingDateId);
+
+        if (normalizedReportingPeriodId != null && reportingPeriod == null) {
+            return new ArrayList<>();
+        }
+        if (normalizedReportingDateId != null && reportingDate == null) {
+            return new ArrayList<>();
+        }
+        if (reportingDate != null && reportingDate.getReportingPeriod() == null) {
+            return new ArrayList<>();
+        }
+        if (reportingPeriod != null && reportingDate != null
+                && reportingDate.getReportingPeriod().getId() != reportingPeriod.getId()) {
+            return new ArrayList<>();
+        }
+        if (reportingPeriod == null && reportingDate != null) {
+            reportingPeriod = reportingDate.getReportingPeriod();
+        }
+
+        List<Scorecard> scorecards;
+        if (reportingPeriod != null) {
+            scorecards = getAccessibleScorecardsByReportingPeriod(reportingPeriod);
+        } else {
+            scorecards = new ArrayList<>();
+            List<ReportingPeriod> reportingPeriods = reportingPeriodService.listAllReportingPeriods();
+            if (reportingPeriods != null) {
+                for (ReportingPeriod period : reportingPeriods) {
+                    scorecards.addAll(getAccessibleScorecardsByReportingPeriod(period));
+                }
+            }
+        }
+
+        return filterScorecardSearchResults(
+                deduplicateScorecards(scorecards),
+                normalizedDepartmentId,
+                normalizedEmployeeId,
+                normalizedApprovalStatus
+        );
+    }
+
+    private Long normalizeSearchId(Long value) {
+        if (value == null || value <= 0) {
+            return null;
+        }
+        return value;
+    }
+
+    private String normalizeSearchText(String value) {
+        if (value == null || value.trim().isEmpty() || "ALL".equalsIgnoreCase(value.trim())) {
+            return null;
+        }
+        return value.trim().toUpperCase(Locale.ENGLISH);
+    }
+
+    private List<Scorecard> getAccessibleScorecardsByReportingPeriod(ReportingPeriod reportingPeriod) {
         List<Scorecard> scorecardList = new ArrayList<>();
         Account loggedUser = cs.getLoggedUser();
         if (reportingPeriod == null || loggedUser == null) {
             return scorecardList;
         }
+        long configuredClientId = cs.getConfiguredClientId();
 
         if(cs.isAdmin() || cs.hasSpecialRights()){
-            scoreCardRepository.findScorecardsByReportingPeriodAndClientId(reportingPeriod, loggedUser.getClientId()).forEach(scorecard -> scorecardList.add(scorecard));
+            scoreCardRepository.findScorecardsByReportingPeriodAndClient_ClientId(reportingPeriod, configuredClientId).forEach(scorecardList::add);
+            if (scorecardList.isEmpty()) {
+                scoreCardRepository.findScorecardsByReportingPeriod(reportingPeriod).forEach(scorecardList::add);
+            }
         }
         else if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){
 
@@ -99,12 +184,58 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
         }else if(loggedUser.getAccountType().equalsIgnoreCase("ACTING_CEO") || loggedUser.getAccountType().equalsIgnoreCase("CEO") ){
 
-            scoreCardRepository.findScorecardsByReportingPeriodAndClientId(reportingPeriod, loggedUser.getClientId()).forEach(scorecard -> scorecardList.add(scorecard));
-
-        }else{
+            scoreCardRepository.findScorecardsByReportingPeriodAndClient_ClientId(reportingPeriod, configuredClientId).forEach(scorecardList::add);
+            if (scorecardList.isEmpty()) {
+                scoreCardRepository.findScorecardsByReportingPeriod(reportingPeriod).forEach(scorecardList::add);
+            }
 
         }
         return deduplicateScorecards(scorecardList);
+    }
+
+    private List<Scorecard> filterScorecardSearchResults(List<Scorecard> scorecards, Long departmentId, Long employeeId, String approvalStatus) {
+        if (scorecards == null || scorecards.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Scorecard> filteredScorecards = new ArrayList<>();
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null) {
+                continue;
+            }
+            if (departmentId != null && !scorecardDepartmentMatches(scorecard, departmentId)) {
+                continue;
+            }
+            if (employeeId != null && !scorecardOwnerMatches(scorecard, employeeId)) {
+                continue;
+            }
+            if (approvalStatus != null && !scorecardApprovalStatusMatches(scorecard, approvalStatus)) {
+                continue;
+            }
+            filteredScorecards.add(scorecard);
+        }
+        return filteredScorecards;
+    }
+
+    private boolean scorecardDepartmentMatches(Scorecard scorecard, Long departmentId) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && scorecard.getOwner().getDepartment() != null
+                && departmentId != null
+                && scorecard.getOwner().getDepartment().getId() == departmentId;
+    }
+
+    private boolean scorecardOwnerMatches(Scorecard scorecard, Long employeeId) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && employeeId != null
+                && scorecard.getOwner().getId() == employeeId;
+    }
+
+    private boolean scorecardApprovalStatusMatches(Scorecard scorecard, String approvalStatus) {
+        return scorecard != null
+                && scorecard.getApprovalStatus() != null
+                && approvalStatus != null
+                && scorecard.getApprovalStatus().equalsIgnoreCase(approvalStatus);
     }
 
     @Override
@@ -314,13 +445,14 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     @Override
     @Transactional
     public void addScorecard(Scorecard scorecard) {
-
+        alignApprovalStage(scorecard);
         scoreCardRepository.save(scorecard);
     }
 
     @Override
     @Transactional
     public Scorecard saveScorecard(Scorecard scorecard){
+        alignApprovalStage(scorecard);
         Scorecard savedScorecard = scoreCardRepository.save(scorecard);
         return savedScorecard;
     }
@@ -410,6 +542,212 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             return ((Number) value).doubleValue();
         }
         return 0.0;
+    }
+
+    private void alignApprovalStage(Scorecard scorecard) {
+        if (scorecard == null) {
+            return;
+        }
+
+        long clientId = resolveClientId(scorecard);
+        if (clientId > 0 && (scorecard.getClient() == null || scorecard.getClient().getClientId() <= 0)) {
+            if (scorecard.getOwner() != null
+                    && scorecard.getOwner().getClient() != null
+                    && scorecard.getOwner().getClient().getClientId() == clientId) {
+                scorecard.setClient(scorecard.getOwner().getClient());
+            } else {
+                scorecard.setClientId(clientId);
+            }
+        }
+
+        List<ScorecardWorkflowStage> activeStages = loadActiveStages(clientId);
+        ScorecardWorkflowStage resolvedStage = resolveStageFromReference(scorecard.getApprovalStage(), clientId, activeStages);
+        String requestedStatus = normalizeStatus(scorecard.getApprovalStatus());
+
+        if (resolvedStage == null && requestedStatus != null) {
+            resolvedStage = resolveStageByStatus(clientId, activeStages, requestedStatus);
+        }
+
+        if (resolvedStage == null && scorecard.getId() > 0) {
+            Scorecard existing = scoreCardRepository.findScorecardById(scorecard.getId());
+            if (existing != null) {
+                resolvedStage = resolveStageFromReference(existing.getApprovalStage(), clientId, activeStages);
+                if (requestedStatus == null) {
+                    requestedStatus = normalizeStatus(existing.getApprovalStatus());
+                }
+            }
+        }
+
+        if (resolvedStage == null) {
+            String fallbackStatus = requestedStatus == null ? PMConstants.APPROVAL_STATUS_NEW : requestedStatus;
+            resolvedStage = resolveStageByStatus(clientId, activeStages, fallbackStatus);
+        }
+
+        if (resolvedStage != null) {
+            scorecard.setApprovalStage(resolvedStage);
+            scorecard.setApprovalStatus(resolvedStage.getStatusCode());
+        } else if (requestedStatus != null) {
+            scorecard.setApprovalStatus(requestedStatus);
+        }
+    }
+
+    private List<ScorecardWorkflowStage> loadActiveStages(long clientId) {
+        if (clientId <= 0) {
+            return new ArrayList<ScorecardWorkflowStage>();
+        }
+        List<ScorecardWorkflowStage> stages =
+                scorecardWorkflowStageRepository.findScorecardWorkflowStagesByClientIdAndStatusOrderByStageOrderAsc(
+                        clientId, PMConstants.STATUS_ACTIVE
+                );
+        return stages == null ? new ArrayList<ScorecardWorkflowStage>() : stages;
+    }
+
+    private ScorecardWorkflowStage resolveStageByStatus(long clientId,
+                                                        List<ScorecardWorkflowStage> activeStages,
+                                                        String statusCode) {
+        if (statusCode == null) {
+            return null;
+        }
+        ScorecardWorkflowStage direct = findStageByStatus(activeStages, statusCode);
+        if (direct != null) {
+            return direct;
+        }
+        ScorecardWorkflowStage byStatusRole = findStageByRoleKey(activeStages, statusCode);
+        if (byStatusRole != null) {
+            return byStatusRole;
+        }
+        String roleKey = mapStatusToStageRole(statusCode);
+        if (roleKey == null) {
+            return null;
+        }
+        return findStageByRoleKey(activeStages, roleKey);
+    }
+
+    private ScorecardWorkflowStage resolveStageFromReference(ScorecardWorkflowStage reference,
+                                                             long clientId,
+                                                             List<ScorecardWorkflowStage> activeStages) {
+        if (reference == null) {
+            return null;
+        }
+        if (reference.getId() > 0) {
+            if (clientId > 0) {
+                ScorecardWorkflowStage byClient =
+                        scorecardWorkflowStageRepository.findScorecardWorkflowStageByIdAndClientId(reference.getId(), clientId);
+                if (byClient != null) {
+                    return byClient;
+                }
+            }
+            return scorecardWorkflowStageRepository.findById(reference.getId()).orElse(null);
+        }
+        String statusCode = normalizeStatus(reference.getStatusCode());
+        if (statusCode != null) {
+            return resolveStageByStatus(clientId, activeStages, statusCode);
+        }
+        return null;
+    }
+
+    private ScorecardWorkflowStage findStageByStatus(List<ScorecardWorkflowStage> stages, String statusCode) {
+        if (stages == null || stages.isEmpty() || statusCode == null) {
+            return null;
+        }
+        for (ScorecardWorkflowStage stage : stages) {
+            if (stage == null) {
+                continue;
+            }
+            if (statusCode.equalsIgnoreCase(normalizeStatus(stage.getStatusCode()))) {
+                return stage;
+            }
+            String statusCodes = stage.getStatusCodes();
+            if (statusCodes == null || statusCodes.trim().isEmpty()) {
+                continue;
+            }
+            String[] values = statusCodes.split(",");
+            for (String value : values) {
+                if (statusCode.equalsIgnoreCase(normalizeStatus(value))) {
+                    return stage;
+                }
+            }
+        }
+        return null;
+    }
+
+    private ScorecardWorkflowStage findStageByRoleKey(List<ScorecardWorkflowStage> stages, String roleKey) {
+        if (stages == null || stages.isEmpty() || roleKey == null) {
+            return null;
+        }
+        for (ScorecardWorkflowStage stage : stages) {
+            if (stage == null) {
+                continue;
+            }
+            String candidateRoleKey = normalizeStatus(stage.getRoleKey());
+            if (roleKey.equalsIgnoreCase(candidateRoleKey)) {
+                return stage;
+            }
+        }
+        return null;
+    }
+
+    private String mapStatusToStageRole(String statusCode) {
+        if (statusCode == null) {
+            return null;
+        }
+        String status = statusCode.toUpperCase(Locale.ENGLISH);
+        switch (status) {
+            case PMConstants.APPROVAL_STATUS_NEW:
+                return PMConstants.SCORECARD_STAGE_NEW;
+            case PMConstants.APPROVAL_STATUS_PENDING_APPROVAL:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR;
+            case PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR;
+            case PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS;
+            case PMConstants.APPROVAL_STATUS_APPROVED_BY_HR:
+                return PMConstants.SCORECARD_STAGE_OWNER_SCORING;
+            case PMConstants.APPROVAL_STATUS_REJECTED_BY_HR:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR;
+            case PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE:
+                return PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL;
+            case PMConstants.APPROVAL_STATUS_APPROVED_OWNER_SCORES:
+                return PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING;
+            case PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING;
+            case PMConstants.APPROVAL_STATUS_AGREED_BY_TWO:
+                return PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL;
+            case PMConstants.APPROVAL_STATUS_APPROVED_AGREED_SCORES:
+                return PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING;
+            case PMConstants.APPROVAL_STATUS_MODERATED_BY_HR:
+            case PMConstants.APPROVAL_STATUS_CLOSED:
+                return PMConstants.SCORECARD_STAGE_CLOSED;
+            case "PENDING":
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR;
+            case "APPROVED":
+                return PMConstants.SCORECARD_STAGE_OWNER_SCORING;
+            case "REJECTED":
+            case "RETURNED":
+                return PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS;
+            default:
+                return null;
+        }
+    }
+
+    private long resolveClientId(Scorecard scorecard) {
+        if (scorecard == null) {
+            return 0;
+        }
+        if (scorecard.getClientId() > 0) {
+            return scorecard.getClientId();
+        }
+        if (scorecard.getOwner() != null && scorecard.getOwner().getClientId() > 0) {
+            return scorecard.getOwner().getClientId();
+        }
+        return 0;
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+        return status.trim().toUpperCase(Locale.ENGLISH);
     }
 
     private double safeScore(Double value) {

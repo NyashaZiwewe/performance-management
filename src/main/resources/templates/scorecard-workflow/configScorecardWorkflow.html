@@ -46,24 +46,23 @@
                             <input class="form-control" type="text" th:field="*{name}" required>
                         </div>
                         <div class="form-group">
+                            <label>Primary Status Code</label>
+                            <select class="form-control select2_statuses_single" th:field="*{statusCode}" required style="width: 100%">
+                                <option th:each="statusCode : ${approvalStatusCodes}"
+                                        th:value="${statusCode}"
+                                        th:text="${statusCode}"></option>
+                            </select>
+                            <small class="form-text text-muted">This is the main status emitted when this stage action is completed.</small>
+                        </div>
+                        <div class="form-group">
                             <label>Status Codes (Multiple)</label>
                             <select name="statusCodes" class="form-control select2_statuses" multiple style="width: 100%">
-                                <option value="PENDING_APPROVAL"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'PENDING_APPROVAL')}">Pending Approval</option>
-                                <option value="APPROVED"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'APPROVED')}">Approved</option>
-                                <option value="REJECTED"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'REJECTED')}">Rejected</option>
-                                <option value="PENDING"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'PENDING')}">Pending</option>
-                                <option value="CAPTURED"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'CAPTURED')}">Captured</option>
-                                <option value="NEW"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'NEW')}">New</option>
-                                <option value="CLOSED"
-                                        th:selected="${workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, 'CLOSED')}">Closed</option>
+                                <option th:each="statusCode : ${approvalStatusCodes}"
+                                        th:value="${statusCode}"
+                                        th:text="${statusCode}"
+                                        th:selected="${(workflowStage.statusCodes != null and #strings.contains(workflowStage.statusCodes, statusCode)) or (workflowStage.statusCode != null and workflowStage.statusCode == statusCode)}"></option>
                             </select>
-                            <small class="form-text text-muted">Select all applicable statuses for this stage (e.g., Pending, Approved, Rejected)</small>
+                            <small class="form-text text-muted">Optional additional statuses that should share this same stage label and button labels.</small>
                         </div>
                         <div class="form-group">
                             <label>Action Button Label</label>
@@ -97,7 +96,8 @@
                         <tr>
                             <th>Stage Seq</th>
                             <th>Stage</th>
-                            <th>Statuses</th>
+                            <th>Primary Status</th>
+                            <th>Additional Statuses</th>
                             <th>Action Button</th>
                             <th>Rejection Button</th>
                             <th>Role</th>
@@ -107,16 +107,16 @@
                         </thead>
                         <tbody>
                         <tr th:if="${workflowStages == null || workflowStages.isEmpty()}">
-                            <td colspan="8">No stages configured.</td>
+                            <td colspan="9">No stages configured.</td>
                         </tr>
                         <tr th:each="stage : ${workflowStages}">
                             <td th:text="${stage.stageOrder}"></td>
                             <td th:text="${stage.name}"></td>
+                            <td th:text="${stage.statusCode}"></td>
                             <td>
                                 <span th:if="${stage.statusCodes != null and !stage.statusCodes.isEmpty()}"
                                       th:text="${#strings.replace(stage.statusCodes, ',', ', ')}"></span>
-                                <span th:if="${stage.statusCodes == null or stage.statusCodes.isEmpty()}"
-                                      th:text="${stage.statusLabel}"></span>
+                                <span th:if="${stage.statusCodes == null or stage.statusCodes.isEmpty()}">-</span>
                             </td>
                             <td th:text="${stage.actionButtonLabel}"></td>
                             <td th:text="${stage.rejectionButtonLabel != null ? stage.rejectionButtonLabel : '-'}"></td>
@@ -163,6 +163,12 @@
         });
 
         // Initialize Select2 for Status Codes (multi-select)
+        $('.select2_statuses_single').select2({
+            placeholder: "Select primary status",
+            allowClear: false,
+            tags: false
+        });
+
         $('.select2_statuses').select2({
             placeholder: "Select statuses",
             allowClear: true,

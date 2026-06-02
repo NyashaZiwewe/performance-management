@@ -67,12 +67,12 @@
                                     <th>Agreed</th>
                                     <th>Moderated</th>
                                 </tr>
-                                <tr th:each="date : ${reportingPeriod.reportingDates}">
-                                    <th th:text="${date.endDate}"></th>
-                                    <td th:text="${date.overallScore?.employeeOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.employeeOverall, 0, 2)}" th:attr="style = ${date.overallScore?.employeeOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
-                                    <td th:text="${date.overallScore?.managerOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.managerOverall, 0, 2)}" th:attr="style = ${date.overallScore?.managerOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
-                                    <td th:text="${date.overallScore?.agreedOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.agreedOverall, 0, 2)}" th:attr="style = ${date.overallScore?.agreedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
-                                    <td th:text="${date.overallScore?.moderatedOverall == null ? '' : #numbers.formatDecimal(date.overallScore?.moderatedOverall, 0, 2)}" th:attr="style = ${date.overallScore?.moderatedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                <tr>
+                                    <th th:text="${finalReportingDate == null ? '' : finalReportingDate.endDate}"></th>
+                                    <td th:text="${finalOverallScore == null || finalOverallScore.employeeOverall == null ? '' : #numbers.formatDecimal(finalOverallScore.employeeOverall, 0, 2)}" th:attr="style = ${finalOverallScore != null and finalOverallScore.employeeOverall != null and finalOverallScore.employeeOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${finalOverallScore == null || finalOverallScore.managerOverall == null ? '' : #numbers.formatDecimal(finalOverallScore.managerOverall, 0, 2)}" th:attr="style = ${finalOverallScore != null and finalOverallScore.managerOverall != null and finalOverallScore.managerOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${finalOverallScore == null || finalOverallScore.agreedOverall == null ? '' : #numbers.formatDecimal(finalOverallScore.agreedOverall, 0, 2)}" th:attr="style = ${finalOverallScore != null and finalOverallScore.agreedOverall != null and finalOverallScore.agreedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
+                                    <td th:text="${finalOverallScore == null || finalOverallScore.moderatedOverall == null ? '' : #numbers.formatDecimal(finalOverallScore.moderatedOverall, 0, 2)}" th:attr="style = ${finalOverallScore != null and finalOverallScore.moderatedOverall != null and finalOverallScore.moderatedOverall < 2.5 ? 'color:red; text-align: center;' : 'color:green; text-align: center;'}"></td>
                                 </tr>
                             </table>
                         </div>

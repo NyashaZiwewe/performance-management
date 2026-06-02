@@ -14,6 +14,7 @@ public interface ScorecardService {
     List<Scorecard> getScorecardsByOwner(Account owner);
     List<Scorecard> getScorecardsByIds(List<Long> scorecardIds);
     List<Scorecard> getScorecardsByReportingPeriodId(ReportingPeriod reportingPeriod);
+    List<Scorecard> searchScorecards(Long reportingPeriodId, Long reportingDateId, Long departmentId, Long employeeId, String approvalStatus);
     List<Scorecard> getScoresByPeriodId(ReportingPeriod reportingPeriod);
     Double getScoresByReportingDateAndScorecardId(ReportingDate date, Scorecard scorecard);
     Map<Long, Double> getScoresByReportingDateAndScorecardIds(ReportingDate date, List<Scorecard> scorecards);

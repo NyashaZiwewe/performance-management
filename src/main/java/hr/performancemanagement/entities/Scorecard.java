@@ -1,4 +1,5 @@
 package hr.performancemanagement.entities;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import javax.persistence.*;
 import javax.validation.constraints.*;
 import java.sql.Date;
+import java.util.Locale;
 
 
 @Entity
@@ -22,9 +24,9 @@ public class Scorecard {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(updatable = false)
-    @Positive(message = "Client ID must be positive")
-    private long clientId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "client_id", referencedColumnName = "client_id")
+    private Client client;
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
@@ -65,13 +67,16 @@ public class Scorecard {
     @DecimalMax(value = "100.0", message = "Weighted score cannot exceed 100")
     private double weightedScore;
 
-    @Column(columnDefinition = "varchar(50) default 'NEW'")
-    @NotBlank(message = "Approval status is required")
-    @Pattern(
-            regexp = "NEW|PENDING_APPROVAL|APPROVED_BY_SUPERVISOR|REJECTED_BY_SUPERVISOR|APPROVED_BY_HR|REJECTED_BY_HR|SCORED_BY_EMPLOYEE|SCORED_BY_SUPERVISOR|AGREED_BY_TWO|MODERATED_BY_HR|CLOSED|PENDING|APPROVED|REJECTED|RETURNED",
-            message = "Invalid approval status"
-    )
+    @ManyToOne
+    @JoinColumn(name = "approval_stage_id")
+    private ScorecardWorkflowStage approvalStage;
+
+    @Transient
     private String approvalStatus;
+
+    @Column(name = "approval_status", insertable = false, updatable = false)
+    @JsonIgnore
+    private String legacyApprovalStatus;
 
     @Size(max = 1000, message = "Owner comment cannot exceed 1000 characters")
     private String ownerComment;
@@ -93,4 +98,70 @@ public class Scorecard {
 
     @Transient
     private OverallScore overallScore;
+
+    public String getApprovalStatus() {
+        if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
+            return approvalStage.getStatusCode();
+        }
+        if (hasText(approvalStatus)) {
+            return approvalStatus;
+        }
+        return legacyApprovalStatus;
+    }
+
+    public void setApprovalStatus(String approvalStatus) {
+        this.approvalStatus = normalizeApprovalStatus(approvalStatus);
+    }
+
+    public void setApprovalStage(ScorecardWorkflowStage approvalStage) {
+        this.approvalStage = approvalStage;
+        if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
+            this.approvalStatus = normalizeApprovalStatus(approvalStage.getStatusCode());
+        }
+    }
+
+    @PostLoad
+    private void syncApprovalStatus() {
+        if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
+            approvalStatus = normalizeApprovalStatus(approvalStage.getStatusCode());
+            return;
+        }
+        if (!hasText(approvalStatus) && hasText(legacyApprovalStatus)) {
+            approvalStatus = normalizeApprovalStatus(legacyApprovalStatus);
+        }
+    }
+
+    private String normalizeApprovalStatus(String value) {
+        if (!hasText(value)) {
+            return null;
+        }
+        return value.trim().toUpperCase(Locale.ENGLISH);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    public long getClientId() {
+        if (client != null && client.getClientId() > 0) {
+            return client.getClientId();
+        }
+        if (owner != null && owner.getClientId() > 0) {
+            return owner.getClientId();
+        }
+        return 0L;
+    }
+
+    public void setClientId(long clientId) {
+        if (clientId <= 0) {
+            this.client = null;
+            return;
+        }
+        if (this.client != null && this.client.getClientId() == clientId) {
+            return;
+        }
+        Client clientRef = new Client();
+        clientRef.setClientId(clientId);
+        this.client = clientRef;
+    }
 }

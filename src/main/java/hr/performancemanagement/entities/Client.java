@@ -1,18 +1,28 @@
 package hr.performancemanagement.entities;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Table;
 
 @Entity
+@Table(name = "client")
 public class Client {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "client_id")
     private long clientId;
+
+    @Column(name = "client")
     private String client;
+
+    @Column(name = "profile")
     private String profile;
+
+    @Column(name = "is_mandatory")
     private boolean isMandatory;
 
     public Client(long clientId, String client, String profile, boolean isMandatory) {

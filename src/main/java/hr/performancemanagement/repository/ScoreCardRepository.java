@@ -11,11 +11,12 @@ import java.util.List;
 
 @Repository
 public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
-    List<Scorecard> findScorecardsByClientId(long clientId);
-    List<Scorecard> findScorecardsByClientIdAndReportingPeriod_Id(long clientId, long reportingPeriodId);
-    List<Scorecard> findScorecardsByClientIdAndStatus(long clientId, String status);
+    List<Scorecard> findScorecardsByClient_ClientId(long clientId);
+    List<Scorecard> findScorecardsByClient_ClientIdAndReportingPeriod_Id(long clientId, long reportingPeriodId);
+    List<Scorecard> findScorecardsByClient_ClientIdAndStatus(long clientId, String status);
     List<Scorecard> findScorecardsByOwner(Account owner);
-    List<Scorecard> findScorecardsByReportingPeriodAndClientId(ReportingPeriod reportingPeriod, long clientId);
+    List<Scorecard> findScorecardsByReportingPeriod(ReportingPeriod reportingPeriod);
+    List<Scorecard> findScorecardsByReportingPeriodAndClient_ClientId(ReportingPeriod reportingPeriod, long clientId);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner(ReportingPeriod reportingPeriod, Account account);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner_Supervisor(ReportingPeriod reportingPeriod, Account account);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner_Department(ReportingPeriod reportingPeriod, Department department);

@@ -3,7 +3,10 @@ package hr.performancemanagement.service.impl;
 import org.springframework.stereotype.Service;
 import hr.performancemanagement.service.api.*;
 
+import hr.performancemanagement.entities.Client;
 import hr.performancemanagement.entities.SystemSetting;
+import hr.performancemanagement.repository.AccountRepository;
+import hr.performancemanagement.repository.ClientRepository;
 import hr.performancemanagement.repository.SystemSettingRepository;
 import hr.performancemanagement.utils.wrappers.CredentialSettingsWrapper;
 import hr.performancemanagement.utils.wrappers.SystemSettingsWrapper;
@@ -51,6 +54,10 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
 
     @Autowired
     private SystemSettingRepository repository;
+    @Autowired
+    private ClientRepository clientRepository;
+    @Autowired
+    private AccountRepository accountRepository;
     private final Object settingsMonitor = new Object();
     private volatile boolean defaultsInitialized = false;
     private volatile Map<String, String> cachedSettings = Collections.emptyMap();
@@ -286,7 +293,8 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         String multipartLocation = hasText(wrapper.getMultipartLocation())
                 ? wrapper.getMultipartLocation()
                 : getMultipartLocation();
-        saveValue(COMPANY_NAME, wrapper.getCompanyName());
+        String companyName = normalizeClientName(wrapper.getCompanyName());
+        saveValue(COMPANY_NAME, companyName);
         saveValue(COMPANY_LOGO, wrapper.getCompanyLogo());
         saveValue(SYSTEM_NAME, wrapper.getSystemName());
         saveValue(HOST_URL, wrapper.getHostUrl());
@@ -314,6 +322,7 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         saveValue(SCORECARD_STATUS_MODERATED_BY_HR, normalizeWorkflowStatus(wrapper.getScorecardStatusModeratedByHr()));
         saveValue(SCORECARD_STATUS_CLOSED, normalizeWorkflowStatus(wrapper.getScorecardStatusClosed()));
         saveValue(SCORECARD_WORKFLOW_SEQUENCE, normalizeWorkflowSequence(wrapper.getScorecardWorkflowSequence()));
+        syncClientFromCompanyName(companyName);
     }
 
     @Transactional
@@ -553,6 +562,52 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     private void invalidateSettingsCache() {
         cacheLoadedAt = 0L;
         cachedSettings = Collections.emptyMap();
+    }
+
+    private void syncClientFromCompanyName(String companyName) {
+        String normalizedName = normalizeClientName(companyName);
+        if (!hasText(normalizedName)) {
+            return;
+        }
+
+        Client mandatoryClient = clientRepository.findFirstByIsMandatoryTrueOrderByClientIdAsc();
+        Client resolvedClient;
+
+        if (mandatoryClient != null && mandatoryClient.getClientId() > 0) {
+            mandatoryClient.setClient(normalizedName);
+            if (!hasText(mandatoryClient.getProfile())) {
+                mandatoryClient.setProfile(normalizedName);
+            }
+            mandatoryClient.setMandatory(true);
+            resolvedClient = clientRepository.save(mandatoryClient);
+        } else {
+            Client existingByName = clientRepository.findClientByClientIgnoreCase(normalizedName);
+            if (existingByName != null && existingByName.getClientId() > 0) {
+                existingByName.setClient(normalizedName);
+                if (!hasText(existingByName.getProfile())) {
+                    existingByName.setProfile(normalizedName);
+                }
+                existingByName.setMandatory(true);
+                resolvedClient = clientRepository.save(existingByName);
+            } else {
+                Client newClient = new Client();
+                newClient.setClient(normalizedName);
+                newClient.setProfile(normalizedName);
+                newClient.setMandatory(true);
+                resolvedClient = clientRepository.save(newClient);
+            }
+        }
+
+        if (resolvedClient != null && resolvedClient.getClientId() > 0) {
+            accountRepository.assignAllAccountsToClient(resolvedClient.getClientId());
+        }
+    }
+
+    private String normalizeClientName(String value) {
+        if (!hasText(value)) {
+            return "";
+        }
+        return value.trim();
     }
 
     private static class SettingDefinition {

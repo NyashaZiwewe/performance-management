@@ -5,13 +5,14 @@ import hr.performancemanagement.entities.Department;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Long> {
-    List<Account> findAccountsByClientId(long id);
+    List<Account> findAccountsByClient_ClientId(long id);
     List<Account> findAccountsByAccountType(String accountType);
     List<Account> findAccountsBySupervisor(Account account);
     List<Account> findAccountsByDepartment(Department department);
@@ -28,5 +29,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @Modifying
     @Query("update Account a set a.password = :password where a.id = :accountId")
     void updatePasswordById(long accountId, String password);
+
+    @Modifying
+    @Query(value = "update account set client_id = :clientId", nativeQuery = true)
+    void assignAllAccountsToClient(@Param("clientId") long clientId);
 
 }

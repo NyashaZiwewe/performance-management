@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -57,11 +58,15 @@ public class ScorecardWorkflowController {
         modelAndView.addObject("workflowStage", stageForm);
 
         // Stream stage names to produce List<String>
-        List<String> workflowRoles = stages.stream()
-                .map(ScorecardWorkflowStage::getRoleKey)
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
+        List<String> workflowRoles = scorecardWorkflowStageService.listWorkflowStages();
+        if (workflowRoles == null || workflowRoles.isEmpty()) {
+            workflowRoles = stages.stream()
+                    .map(ScorecardWorkflowStage::getRoleKey)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+        }
         modelAndView.addObject("workflowRoles", workflowRoles);
+        modelAndView.addObject("approvalStatusCodes", listApprovalStatusCodes());
 
         PortletUtils.addMessagesToPage(modelAndView, request);
         return modelAndView;
@@ -78,7 +83,13 @@ public class ScorecardWorkflowController {
         try {
             // Convert array to comma-separated string
             if (statusCodesArray != null && statusCodesArray.length > 0) {
-                workflowStage.setStatusCodes(String.join(",", statusCodesArray));
+                String joined = String.join(",", statusCodesArray);
+                workflowStage.setStatusCodes(joined);
+                if (workflowStage.getStatusCode() == null || workflowStage.getStatusCode().trim().isEmpty()) {
+                    workflowStage.setStatusCode(statusCodesArray[0]);
+                }
+            } else if (workflowStage.getStatusCode() != null && !workflowStage.getStatusCode().trim().isEmpty()) {
+                workflowStage.setStatusCodes(workflowStage.getStatusCode().trim());
             }
             scorecardWorkflowStageService.saveWorkflowStage(workflowStage);
             PortletUtils.addInfoMsg("Workflow stage saved successfully.", request);
@@ -118,6 +129,24 @@ public class ScorecardWorkflowController {
         return "redirect:/scorecard-workflow-stages";
     }
 
+    private List<String> listApprovalStatusCodes() {
+        return Arrays.asList(
+                PMConstants.APPROVAL_STATUS_NEW,
+                PMConstants.APPROVAL_STATUS_PENDING_APPROVAL,
+                PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR,
+                PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR,
+                PMConstants.APPROVAL_STATUS_APPROVED_BY_HR,
+                PMConstants.APPROVAL_STATUS_REJECTED_BY_HR,
+                PMConstants.APPROVAL_STATUS_SCORED_BY_EMPLOYEE,
+                PMConstants.APPROVAL_STATUS_APPROVED_OWNER_SCORES,
+                PMConstants.APPROVAL_STATUS_SCORED_BY_SUPERVISOR,
+                PMConstants.APPROVAL_STATUS_AGREED_BY_TWO,
+                PMConstants.APPROVAL_STATUS_APPROVED_AGREED_SCORES,
+                PMConstants.APPROVAL_STATUS_MODERATED_BY_HR,
+                PMConstants.APPROVAL_STATUS_CLOSED
+        );
+    }
+
     private boolean hasAccess(HttpServletRequest request) {
         if (commonService.isAdmin() || commonService.hasSpecialRights()) {
             return true;
@@ -140,8 +169,12 @@ public class ScorecardWorkflowController {
         }
         stage.setStageOrder(nextOrder);
         stage.setStatus(PMConstants.STATUS_ACTIVE);
-        stage.setRoleKey(PMConstants.SCORECARD_WORKFLOW_ROLE_NONE);
-        stage.setStatusCode("");
+        List<String> workflowRoles = scorecardWorkflowStageService.listWorkflowStages();
+        stage.setRoleKey(workflowRoles == null || workflowRoles.isEmpty()
+                ? PMConstants.SCORECARD_WORKFLOW_ROLE_NONE
+                : workflowRoles.get(0));
+        stage.setStatusCode(PMConstants.APPROVAL_STATUS_NEW);
+        stage.setStatusCodes(PMConstants.APPROVAL_STATUS_NEW);
         stage.setStatusLabel("");
         stage.setActionButtonLabel("");
         stage.setName("");

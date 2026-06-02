@@ -1,6 +1,7 @@
 package hr.performancemanagement.service.api;
 
 import hr.performancemanagement.entities.Account;
+import hr.performancemanagement.entities.Client;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.ReportingDateRepository;
@@ -18,6 +19,8 @@ import java.security.NoSuchAlgorithmException;
 public interface CommonService {
     String getInitials(String fullName);
     Account getLoggedUser();
+    Client getConfiguredClient();
+    long getConfiguredClientId();
     ReportingDate getActiveReportingDate(HttpServletRequest request);
     ReportingDate getActiveReportingDate();
     boolean isUserAllowed(String activity, Scorecard scorecard);

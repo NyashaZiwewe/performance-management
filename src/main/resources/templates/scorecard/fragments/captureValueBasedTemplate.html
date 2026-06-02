@@ -28,9 +28,25 @@
                 saveValueBasedScore(targetId, "managerScore", "managerScore", "/scorecards/save-value-based-manager-score");
             } else if (stage === "AGREED") {
                 saveValueBasedScore(targetId, "agreedScore", "agreedScore", "/scorecards/save-value-based-agreed-score");
-            } else if (stage === "MODERATED") {
-                saveValueBasedScore(targetId, "moderatedScore", "moderatedScore", "/scorecards/save-value-based-moderated-score");
             }
+        }
+
+        function saveOverallScore(score) {
+            if (Number(score) < 0 || Number(score) > 5) {
+                alert("Score must be between 0 and 5 inclusive.");
+                document.getElementById("overallScore").value = "";
+                return false;
+            }
+            const scorecardId = document.getElementById("id").value;
+            const userType = "MODERATOR";
+            $.ajax({
+                url: "/scorecards/save-overall-score",
+                method: "POST",
+                data: {scorecardId, userType, score},
+                success: function (data) {
+                    console.log(data);
+                }
+            });
         }
     </script>
 
@@ -51,14 +67,16 @@
             <div class="ibox-content m-b-sm border-bottom">
                 <div class="tabs-container">
                     <ul class="nav nav-tabs" role="tablist">
-                        <li><a class="nav-link" data-toggle="tab" href="#tab-1"> View Scores</a></li>
+                        <li th:each="date : ${reportingDates}">
+                            <a class="nav-link" data-toggle="tab" th:href="${'#tab-' + date.id}" th:text="${date.endDate}">View Scores</a>
+                        </li>
                         <li><a class="nav-link active" data-toggle="tab" href="#tab-2">Capture Scores [<span th:text="${reportingDateLabel}"></span>]</a></li>
                     </ul>
                     <div th:if="${scoreCaptureAllowed == false}" class="alert alert-warning m-t-sm" th:text="${scoreCaptureBlockedMessage}">
                         Score capture is currently unavailable.
                     </div>
                     <div class="tab-content">
-                        <div role="tabpanel" id="tab-1" class="tab-pane">
+                        <div role="tabpanel" th:each="date : ${reportingDates}" th:id="${'tab-' + date.id}" class="tab-pane">
                             <div class="panel-body">
                                 <div class="row table-responsive">
                                     <table class="table">
@@ -75,8 +93,8 @@
                                             <th>Employee Score</th>
                                             <th th:if="${captureStage != 'EMPLOYEE'}">Manager Score</th>
                                             <th th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}">Agreed Score</th>
-                                            <th th:if="${captureStage == 'MODERATED'}">Moderated Score</th>
-                                            <th th:if="${captureStage == 'MODERATED'}">Weighted Score</th>
+                                            <th>Evidence</th>
+                                            <th>Justification</th>
                                             <th></th>
                                         </tr>
                                         </thead>
@@ -91,7 +109,11 @@
                                                 </span>
                                             </td>
                                         </tr>
-                                        <tr th:each="row : ${section.rows}" th:with="target=${row.target}">
+                                        <tr th:each="row : ${section.rows}"
+                                            th:with="target=${row.target},
+                                                     score=${row.scoresByReportingDate[date.id]},
+                                                     evidence=${row.evidenceByReportingDate[date.id]},
+                                                     rowWeight=${displayShowOutput && target.output != null && target.output.allocatedWeight != null ? target.output.allocatedWeight : target.allocatedWeight}">
                                             <td th:if="${row.showStage2}" th:text="${row.stage2Value}" th:rowspan="${row.stage2Rowspan}"></td>
                                             <td th:if="${displayShowStage3 && row.showStage3}" th:text="${row.stage3Value}" th:rowspan="${row.stage3Rowspan}"></td>
                                             <td th:if="${displayShowStage4 && row.showStage4}" th:text="${row.stage4Value}" th:rowspan="${row.stage4Rowspan}"></td>
@@ -106,24 +128,47 @@
                                                 <a th:if="${#strings.contains(target.normalTarget,'E')}" th:text="${T(java.lang.String).format('%.2f', target.normalTarget)}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"></a>
                                                 <a th:unless="${#strings.contains(target.normalTarget,'E')}" th:text="${target.normalTarget}" data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"></a>
                                             </td>
-                                            <td>
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.allocatedWeight}"></a>
+                                            <td th:if="${!displayShowOutput || row.showOutput}"
+                                                th:rowspan="${displayShowOutput ? row.outputRowspan : 1}"
+                                                style="vertical-align: middle; text-align: center;">
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${rowWeight == null ? '' : #numbers.formatDecimal(rowWeight, 0, 2)}"></a>
+                                            </td>
+                                            <td th:if="${!displayShowOutput || row.showOutput}"
+                                                th:rowspan="${displayShowOutput ? row.outputRowspan : 1}"
+                                                style="vertical-align: middle; text-align: center;">
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"
+                                                   th:class="${score == null ? '' : (score.employeeScore < 2.5 ? 'fail' : 'pass')}"
+                                                   th:text="${score == null || score.employeeScore <= 0.0 ? ' ' : #numbers.formatDecimal(score.employeeScore, 0, 2)}"></a>
+                                            </td>
+                                            <td th:if="${captureStage != 'EMPLOYEE' && (!displayShowOutput || row.showOutput)}"
+                                                th:rowspan="${displayShowOutput ? row.outputRowspan : 1}"
+                                                style="vertical-align: middle; text-align: center;">
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"
+                                                   th:class="${score == null ? '' : (score.managerScore < 2.5 ? 'fail' : 'pass')}"
+                                                   th:text="${score == null || score.managerScore <= 0.0 ? ' ' : #numbers.formatDecimal(score.managerScore, 0, 2)}"></a>
+                                            </td>
+                                            <td th:if="${(captureStage == 'AGREED' || captureStage == 'MODERATED') && (!displayShowOutput || row.showOutput)}"
+                                                th:rowspan="${displayShowOutput ? row.outputRowspan : 1}"
+                                                style="vertical-align: middle; text-align: center;">
+                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}"
+                                                   th:class="${score == null ? '' : (score.agreedScore < 2.5 ? 'fail' : 'pass')}"
+                                                   th:text="${score == null || score.agreedScore <= 0.0 ? ' ' : #numbers.formatDecimal(score.agreedScore, 0, 2)}"></a>
                                             </td>
                                             <td>
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.employeeScore == null ? ' ' : target.employeeScore}"></a>
+                                                <a th:if="${evidence != null && evidence.evidence != null && !#strings.isEmpty(evidence.evidence)}" th:href="${evidence.evidence}" target="_blank">
+                                                    <i class="fa fa-link"></i>
+                                                </a>
+                                                <a th:if="${evidence != null && evidence.attachmentName != null && !#strings.isEmpty(evidence.attachmentName)}" th:href="@{/scorecards/view-evidence/} + ${evidence.attachmentName}" target="_blank">
+                                                    <i class="fa fa-paperclip"></i>
+                                                </a>
+                                                <a th:if="${evidence == null && score != null && score.evidence != null && !#strings.isEmpty(score.evidence)}" th:href="${score.evidence}" target="_blank">
+                                                    <i class="fa fa-link"></i>
+                                                </a>
+                                                <a th:if="${evidence == null && score != null && score.attachmentName != null && !#strings.isEmpty(score.attachmentName)}" th:href="@{/scorecards/view-evidence/} + ${score.attachmentName}" target="_blank">
+                                                    <i class="fa fa-paperclip"></i>
+                                                </a>
                                             </td>
-                                            <td th:if="${captureStage != 'EMPLOYEE'}">
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.managerScore == null ? ' ' : target.managerScore}"></a>
-                                            </td>
-                                            <td th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}">
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.agreedScore == null ? ' ' : target.agreedScore}"></a>
-                                            </td>
-                                            <td th:if="${captureStage == 'MODERATED'}">
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.moderatedScore == null ? ' ' : target.moderatedScore}"></a>
-                                            </td>
-                                            <td th:if="${captureStage == 'MODERATED'}">
-                                                <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${target.weightedScore == null ? ' ' : #numbers.formatDecimal(target.weightedScore, 0, 2) + '%'}" th:attr="class = ${target.weightedScore > 0 ? 'pass' : 'fail' }"></a>
-                                            </td>
+                                            <td th:text="${evidence != null && evidence.justification != null ? evidence.justification : (score == null ? '' : score.justification)}"></td>
 
                                             <td>
                                                 <div class="modal fade" th:id="'scoreModal'+ ${target.id}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -181,28 +226,26 @@
                                             <td th:attr="colspan=${captureViewTableColumnCount}"></td>
                                         </tr>
                                         </th:block>
-                                        <tr>
+                                        <tr th:with="overallScore=${overallScoresByReportingDate[date.id]}, weightedTotal=${displayWeightedScoreTotalsByReportingDate[date.id]}">
                                             <td th:attr="colspan=${captureViewSummaryLabelColspan}"><strong>Overall Score</strong></td>
                                             <td>
                                                 <h4 th:if="${totalAllocatedWeight == 100.0}" class="text-green" th:text="${totalAllocatedWeight} + '%'"></h4>
                                                 <h4 th:unless="${totalAllocatedWeight == 100.0}" class="text-danger" th:text="${totalAllocatedWeight} + '%'"></h4>
                                             </td>
-                                            <td th:attr="class = ${averageEmployeeScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageEmployeeScore == null ? '' : #numbers.formatDecimal(averageEmployeeScore, 0, 2)}"></h4>
+                                            <td th:attr="class = ${overallScore == null ? '' : (overallScore.employeeOverall < 2.5 ? 'fail' : 'pass') }">
+                                                <h4 th:text="${overallScore == null || overallScore.employeeOverall == null ? '' : #numbers.formatDecimal(overallScore.employeeOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:if="${captureStage != 'EMPLOYEE'}" th:attr="class = ${averageManagerScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageManagerScore == null ? '' : #numbers.formatDecimal(averageManagerScore, 0, 2)}"></h4>
+                                            <td th:if="${captureStage != 'EMPLOYEE'}" th:attr="class = ${overallScore == null ? '' : (overallScore.managerOverall < 2.5 ? 'fail' : 'pass') }">
+                                                <h4 th:text="${overallScore == null || overallScore.managerOverall == null ? '' : #numbers.formatDecimal(overallScore.managerOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}" th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>
+                                            <td th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}" th:attr="class = ${overallScore == null ? '' : (overallScore.agreedOverall < 2.5 ? 'fail' : 'pass') }">
+                                                <h4 th:text="${overallScore == null || overallScore.agreedOverall == null ? '' : #numbers.formatDecimal(overallScore.agreedOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:if="${captureStage == 'MODERATED'}" th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
+                                            <td th:if="${captureStage == 'MODERATED'}" colspan="2"><strong>Moderator's Score</strong></td>
+                                            <td th:if="${captureStage == 'MODERATED'}" th:attr="class = ${overallScore == null ? '' : (overallScore.moderatedOverall < 2.5 ? 'fail' : 'pass') }">
+                                                <h4 th:text="${overallScore == null || overallScore.moderatedOverall == null ? '' : #numbers.formatDecimal(overallScore.moderatedOverall, 0, 2)}"></h4>
                                             </td>
-                                            <td th:if="${captureStage == 'MODERATED'}" th:attr="class = ${weightedScore < 50 ? 'fail' : 'pass' }">
-                                                <h4 th:text="${weightedScore <= 0.0 ? '' : #numbers.formatDecimal(weightedScore, 0, 2) + '%'}"></h4>
-                                            </td>
-                                            <td></td>
+                                            <td th:unless="${captureStage == 'MODERATED'}" colspan="3"></td>
                                         </tr>
                                         </tbody>
                                     </table>
@@ -241,8 +284,7 @@
                                                 <th>Employee Score</th>
                                                 <th th:if="${captureStage != 'EMPLOYEE'}">Manager Score</th>
                                                 <th th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}">Agreed Score</th>
-                                                <th th:if="${captureStage == 'MODERATED'}">Moderated Score</th>
-                                                <th th:if="${captureStage != 'EMPLOYEE'}">Weighted Score</th>
+                                                <th th:if="${captureStage != 'EMPLOYEE' && captureStage != 'MODERATED'}">Weighted Score</th>
                                                 <th>Evidence</th>
                                                 <th th:if="${captureStage == 'EMPLOYEE'}">Attachment</th>
                                                 <th>Justification</th>
@@ -286,11 +328,7 @@
                                                 </td>
                                                 <td th:if="${captureStage == 'MODERATED'}" th:text="${target.currentAgreedScore}"></td>
 
-                                                <td th:if="${captureStage == 'MODERATED'}">
-                                                    <input type="number" step="any" min="1" max="5" th:id="'moderatedScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentModeratedScore}" required>
-                                                </td>
-
-                                                <td th:if="${captureStage != 'EMPLOYEE'}" th:text="${target.currentWeightedScore == null ? '' : #numbers.formatDecimal(target.currentWeightedScore, 0, 2) + '%'}"></td>
+                                                <td th:if="${captureStage != 'EMPLOYEE' && captureStage != 'MODERATED'}" th:text="${target.currentWeightedScore == null ? '' : #numbers.formatDecimal(target.currentWeightedScore, 0, 2) + '%'}"></td>
 
                                                 <td th:if="${captureStage == 'EMPLOYEE'}">
                                                     <input type="text" readonly data-toggle="modal" th:data-target="'#evidenceModal'+ ${target.id}" th:value="${target.currentEvidence}">
@@ -366,16 +404,15 @@
                                                 <td th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}" th:attr="class = ${averageAgreedScore < 2.5 ? 'fail' : 'pass' }">
                                                     <h4 th:text="${averageAgreedScore == null ? '' : #numbers.formatDecimal(averageAgreedScore, 0, 2)}"></h4>
                                                 </td>
-                                                <td th:if="${captureStage == 'MODERATED'}" th:attr="class = ${averageModeratedScore < 2.5 ? 'fail' : 'pass' }">
-                                                    <h4 th:text="${averageModeratedScore == null ? '' : #numbers.formatDecimal(averageModeratedScore, 0, 2)}"></h4>
+                                                <td th:if="${captureStage == 'MODERATED'}" colspan="2"><strong>Moderator's Score</strong></td>
+                                                <td th:if="${captureStage == 'MODERATED'}" th:attr="class = ${overallScore == null || overallScore.moderatedOverall == null || overallScore.moderatedOverall < 2.5 ? 'fail' : 'pass' }">
+                                                    <input type="number" class="validate" step="0.1" min="0" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore?.moderatedOverall}" style="width: 5em">
                                                 </td>
-                                                <td th:if="${captureStage != 'EMPLOYEE'}" th:attr="class = ${totalCaptureWeightedScore < 50 ? 'fail' : 'pass' }">
+                                                <td th:if="${captureStage != 'EMPLOYEE' && captureStage != 'MODERATED'}" th:attr="class = ${totalCaptureWeightedScore < 50 ? 'fail' : 'pass' }">
                                                     <h4 th:text="${totalCaptureWeightedScore <= 0.0 ? '' : #numbers.formatDecimal(totalCaptureWeightedScore, 0, 2) + '%'}"></h4>
                                                 </td>
-                                                <td></td>
-                                                <td th:if="${captureStage == 'EMPLOYEE'}"></td>
-                                                <td></td>
-                                                <td></td>
+                                                <td th:if="${captureStage == 'EMPLOYEE'}" colspan="4"></td>
+                                                <td th:if="${captureStage == 'MANAGER' || captureStage == 'AGREED'}" colspan="3"></td>
                                             </tr>
                                             </tbody>
                                         </table>

@@ -7,7 +7,6 @@ import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.GoalService;
 import hr.performancemanagement.service.api.ReportingPeriodService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.constants.Pages;
 import org.json.JSONObject;
@@ -79,7 +78,7 @@ public class GearController {
         }
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_GEARS);
         modelAndView.addObject("pageTitle", "View Metrics");
-        long clientId = commonService.getLoggedUser().getClientId();
+        long clientId = commonService.getConfiguredClientId();
         List<Gear> gears;
         if (reportingPeriodId != null && reportingPeriodId > 0) {
             ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
@@ -108,7 +107,7 @@ public class GearController {
         ModelAndView modelAndView = new ModelAndView(Pages.ADD_GEAR);
         modelAndView.addObject("pageTitle", "New Metric");
         modelAndView.addObject("gear", new Gear());
-        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods(commonService.getLoggedUser().getClientId()));
+        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods(commonService.getConfiguredClientId()));
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -131,9 +130,7 @@ public class GearController {
         }
 
         newGear.setReportingPeriod(reportingPeriod);
-        Account loggedUser = commonService.getLoggedUser();
-        long clientId = (loggedUser != null && loggedUser.getClientId() > 0) ? loggedUser.getClientId() : Client.CLIENT_ID;
-        newGear.setClientId(clientId);
+        newGear.setClientId(commonService.getConfiguredClientId());
         gearService.addGear(newGear);
         PortletUtils.addInfoMsg("Metric was successfully created or updated.", request);
         return "redirect:/gears";
@@ -159,7 +156,7 @@ public class GearController {
         modelAndView.addObject("pageTitle", "Update Metric");
         Gear gear = gearService.getGearById(id);
         modelAndView.addObject("gear", gear);
-        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods(commonService.getLoggedUser().getClientId()));
+        modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods(commonService.getConfiguredClientId()));
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -173,7 +170,7 @@ public class GearController {
         modelAndView.addObject("pageTitle", "Update Metric");
         Gear gear = gearService.getGearById(id);
         modelAndView.addObject("gear", gear);
-        modelAndView.addObject("gears", gearService.listAllGears(commonService.getLoggedUser().getClientId()));
+        modelAndView.addObject("gears", gearService.listAllGears(commonService.getConfiguredClientId()));
         preparePage(modelAndView, request);
         return modelAndView;
     }

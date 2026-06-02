@@ -97,17 +97,11 @@
                                         <td th:text="${scorecard.date}"></td>
                                         <td>
                                             <span th:if="${scorecard.status == 'ACTIVE'}">
-                                                <a th:if="${captureWindowOpen && loggedUserId == scorecard.owner.id && scorecard.approvalStatus == scorecardWorkflow.approvedByHrStatus}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
+                                                <a th:if="${scorecardCaptureScoresAllowed != null and scorecardCaptureScoresAllowed[scorecard.id]}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
                                                    <button class="btn btn-success btn-sm">Capture Scores</button>
                                                 </a>
-                                                 <a th:if="${captureWindowOpen && scorecard.owner != null && scorecard.owner.supervisor != null && loggedUserId == scorecard.owner.supervisor.id && (scorecard.approvalStatus == scorecardWorkflow.approvedOwnerScoresStatus || scorecard.approvalStatus == scorecardWorkflow.scoredBySupervisorStatus)}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <a th:if="${captureWindowOpen && role == 'MODERATOR' && scorecard.approvalStatus == scorecardWorkflow.approvedAgreedScoresStatus}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <span th:if="${(loggedUserId == scorecard.owner.id || loggedUser.special == 'HAS_SPECIAL_RIGHTS' || loggedUser.admin == 'IS_ADMIN') && scorecard.lockStatus == 'OPEN'}">
-                                                    <a th:if="${scorecard.approvalStatus == scorecardWorkflow.newStatus || scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
+                                                <span>
+                                                    <a th:if="${scorecardEditTargetsAllowed != null and scorecardEditTargetsAllowed[scorecard.id]}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
                                                     <button class="btn btn-success btn-sm">Edit Targets</button>
                                                 </a>
                                                 </span>
@@ -118,7 +112,7 @@
                                             <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}">
                                                 <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
                                             </a>
-                                            <a th:if="${scorecard.approvalStatus == scorecardWorkflow.moderatedByHrStatus}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
+                                            <a th:if="${scorecardViewReportAllowed != null and scorecardViewReportAllowed[scorecard.id]}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
                                         </td>
                                     </tr>
 

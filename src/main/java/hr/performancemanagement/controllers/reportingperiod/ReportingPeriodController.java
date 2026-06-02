@@ -10,7 +10,6 @@ import hr.performancemanagement.service.api.ReportingDateService;
 import hr.performancemanagement.service.api.ReportingPeriodService;
 import hr.performancemanagement.service.api.StrategicObjectiveService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -84,10 +83,15 @@ public class ReportingPeriodController {
     @RequestMapping(value = "/add-reporting-period", method = RequestMethod.POST)
     public String addReportingPeriod(HttpServletRequest request, ReportingPeriod newReportingPeriod) {
 
-        newReportingPeriod.setClientId(Client.CLIENT_ID);
-        newReportingPeriod.setStatus("ACTIVE");
-        reportingPeriodService.saveReportingPeriod(newReportingPeriod);
-        PortletUtils.addInfoMsg("A new reporting period was successfully created and activated", request);
+        try {
+            newReportingPeriod.setClientId(commonService.getConfiguredClientId());
+            newReportingPeriod.setStatus("ACTIVE");
+            reportingPeriodService.saveReportingPeriod(newReportingPeriod);
+            PortletUtils.addInfoMsg("A new reporting period was successfully created and activated", request);
+        } catch (IllegalArgumentException exception) {
+            PortletUtils.addErrorMsg(exception.getMessage(), request);
+            return "redirect:/reporting-periods/add-reporting-period";
+        }
         return "redirect:/reporting-periods";
     }
 
@@ -105,9 +109,16 @@ public class ReportingPeriodController {
     @RequestMapping(value = "/save-reporting-period", method = RequestMethod.POST)
     public String saveReportingPeriod(HttpServletRequest request, ReportingPeriod reportingPeriod) {
 
-        reportingPeriod.setClientId(Client.CLIENT_ID);
-        reportingPeriodService.saveReportingPeriod(reportingPeriod);
-        PortletUtils.addInfoMsg("Reporting period successfully updated.", request);
+        try {
+            reportingPeriod.setClientId(commonService.getConfiguredClientId());
+            reportingPeriodService.saveReportingPeriod(reportingPeriod);
+            PortletUtils.addInfoMsg("Reporting period successfully updated.", request);
+        } catch (IllegalArgumentException exception) {
+            PortletUtils.addErrorMsg(exception.getMessage(), request);
+            if (reportingPeriod != null && reportingPeriod.getId() > 0) {
+                return "redirect:/reporting-periods/edit-reporting-period/" + reportingPeriod.getId();
+            }
+        }
         return "redirect:/reporting-periods";
     }
 
@@ -150,19 +161,45 @@ public class ReportingPeriodController {
     @RequestMapping(value = "/add-reporting-date", method = RequestMethod.POST)
     public String addReportingDate(HttpServletRequest request, ReportingDate newReportingDate) {
 
-        reportingDateService.saveReportingDate(newReportingDate);
-        sendReportingDateActivationNotice(request, newReportingDate, "created");
-        PortletUtils.addInfoMsg("Reporting Date successfully added.", request);
-        return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
+        Long reportingPeriodId = resolveReportingPeriodId(newReportingDate);
+        try {
+            reportingDateService.saveReportingDate(newReportingDate);
+            sendReportingDateActivationNotice(request, newReportingDate, "created");
+            PortletUtils.addInfoMsg("Reporting Date successfully added.", request);
+            reportingPeriodId = resolveReportingPeriodId(newReportingDate);
+        } catch (IllegalArgumentException exception) {
+            PortletUtils.addErrorMsg(exception.getMessage(), request);
+        }
+        return reportingDatesRedirect(reportingPeriodId);
     }
 
     @RequestMapping(value = "/save-reporting-date", method = RequestMethod.POST)
     public String saveReportingDate( HttpServletRequest request, ReportingDate newReportingDate) {
 
-        reportingDateService.saveReportingDate(newReportingDate);
-        sendReportingDateActivationNotice(request, newReportingDate, "updated");
-        PortletUtils.addInfoMsg("Reporting Date successfully updated.", request);
-        return "redirect:/reporting-periods/reporting-dates/" + newReportingDate.getReportingPeriod().getId();
+        Long reportingPeriodId = resolveReportingPeriodId(newReportingDate);
+        try {
+            reportingDateService.saveReportingDate(newReportingDate);
+            sendReportingDateActivationNotice(request, newReportingDate, "updated");
+            PortletUtils.addInfoMsg("Reporting Date successfully updated.", request);
+            reportingPeriodId = resolveReportingPeriodId(newReportingDate);
+        } catch (IllegalArgumentException exception) {
+            PortletUtils.addErrorMsg(exception.getMessage(), request);
+        }
+        return reportingDatesRedirect(reportingPeriodId);
+    }
+
+    private Long resolveReportingPeriodId(ReportingDate reportingDate) {
+        if (reportingDate == null || reportingDate.getReportingPeriod() == null || reportingDate.getReportingPeriod().getId() <= 0) {
+            return null;
+        }
+        return reportingDate.getReportingPeriod().getId();
+    }
+
+    private String reportingDatesRedirect(Long reportingPeriodId) {
+        if (reportingPeriodId == null || reportingPeriodId <= 0) {
+            return "redirect:/reporting-periods";
+        }
+        return "redirect:/reporting-periods/reporting-dates/" + reportingPeriodId;
     }
 
     private void sendReportingDateActivationNotice(HttpServletRequest request, ReportingDate reportingDate, String action) {

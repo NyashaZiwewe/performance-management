@@ -29,6 +29,9 @@ public class ScorecardWorkflowDefinition {
     private final Map<String, String> statusDisplayLabels;
     private final Map<String, String> statusStageNames;
     private final Map<String, String> statusActionButtonLabels;
+    private final Map<String, String> roleStageNames;
+    private final Map<String, String> roleActionButtonLabels;
+    private final Map<String, String> roleRejectionButtonLabels;
 
     public ScorecardWorkflowDefinition(String newStatus,
                                        String pendingApprovalStatus,
@@ -47,7 +50,10 @@ public class ScorecardWorkflowDefinition {
                                        Map<String, String> statusCssClasses,
                                        Map<String, String> statusDisplayLabels,
                                        Map<String, String> statusStageNames,
-                                       Map<String, String> statusActionButtonLabels) {
+                                       Map<String, String> statusActionButtonLabels,
+                                       Map<String, String> roleStageNames,
+                                       Map<String, String> roleActionButtonLabels,
+                                       Map<String, String> roleRejectionButtonLabels) {
         this.newStatus = newStatus;
         this.pendingApprovalStatus = pendingApprovalStatus;
         this.approvedBySupervisorStatus = approvedBySupervisorStatus;
@@ -66,5 +72,8 @@ public class ScorecardWorkflowDefinition {
         this.statusDisplayLabels = Collections.unmodifiableMap(new LinkedHashMap<String, String>(statusDisplayLabels));
         this.statusStageNames = Collections.unmodifiableMap(new LinkedHashMap<String, String>(statusStageNames));
         this.statusActionButtonLabels = Collections.unmodifiableMap(new LinkedHashMap<String, String>(statusActionButtonLabels));
+        this.roleStageNames = Collections.unmodifiableMap(new LinkedHashMap<String, String>(roleStageNames));
+        this.roleActionButtonLabels = Collections.unmodifiableMap(new LinkedHashMap<String, String>(roleActionButtonLabels));
+        this.roleRejectionButtonLabels = Collections.unmodifiableMap(new LinkedHashMap<String, String>(roleRejectionButtonLabels));
     }
 }

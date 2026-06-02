@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Management</title>
+
+    <link href="../../../static/css/bootstrap.min.css" rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    <link href="../../../static/font-awesome/css/font-awesome.css" rel="stylesheet" th:href="@{/font-awesome/css/font-awesome.css}">
+    <link href="../../../static/css/animate.css" rel="stylesheet" th:href="@{/css/animate.css}">
+    <link href="../../../static/css/style.css" rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
+</head>
+<body class="fixed-nav">
+<div id="wrapper">
+    <div th:replace="fragments/template :: side-menu"></div>
+    <div id="page-wrapper" class="gray-bg">
+        <div th:replace="fragments/template :: top-navbar"></div>
+        <div th:replace="fragments/template :: page-heading"></div>
+        <div th:replace="fragments/template :: alerts"></div>
+
+        <div class="wrapper wrapper-content animated fadeInRight ecommerce">
+            <div class="ibox-content m-b-sm border-bottom">
+                <div class="row m-b-sm">
+                    <div class="col-lg-8">
+                        <h3>Personal Dimensions</h3>
+                        <p class="m-b-0">
+                            <strong>Incumbent:</strong> <span th:text="${assessment.employee.fullName}"></span>
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-right">
+                        <span class="badge badge-info" th:text="${assessment.status}"></span>
+                    </div>
+                </div>
+
+                <div class="progress m-b-sm">
+                    <div class="progress-bar progress-bar-info"
+                         th:style="'width:' + ${(stepIndex + 1) * 100 / totalSteps} + '%'"
+                         th:text="${'Step ' + (stepIndex + 1) + ' of ' + totalSteps}">
+                    </div>
+                </div>
+
+                <form th:action="@{/probation-assessments/save-dimension-step/{assessmentId}(assessmentId=${assessment.id})}" method="post">
+                    <input type="hidden" name="stepIndex" th:value="${stepIndex}">
+                    <input type="hidden" name="dimensionId" th:value="${currentDimension.id}">
+
+                    <div class="form-group">
+                        <label>Dimension</label>
+                        <div class="form-control" style="height:auto;">
+                            <strong th:text="${currentDimension.dimensionTemplate.code}"></strong>
+                            <span>-</span>
+                            <span th:text="${currentDimension.dimensionTemplate.title}"></span>
+                            <p class="m-t-xs m-b-0" th:text="${currentDimension.dimensionTemplate.description}"></p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label>Strengths</label>
+                                <textarea class="form-control" rows="4" name="strengths"
+                                          th:text="${currentDimension.strengths}"
+                                          th:readonly="${!canEditDimension}"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label>Areas for Improvement</label>
+                                <textarea class="form-control" rows="4" name="areasForImprovement"
+                                          th:text="${currentDimension.areasForImprovement}"
+                                          th:readonly="${!canEditDimension}"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" th:if="${canEditDimension}">
+                        <div class="col-lg-7">
+                            <div class="form-group">
+                                <label>Link to Existing Performance Improvement Plan</label>
+                                <select class="form-control" name="linkedPlanId">
+                                    <option value="">Select plan</option>
+                                    <option th:each="plan : ${pipPlans}"
+                                            th:value="${plan.id}"
+                                            th:text="${plan.targetArea + ' | ' + plan.status}"
+                                            th:selected="${currentDimension.performanceImprovementPlan != null && currentDimension.performanceImprovementPlan.id == plan.id}">
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="createNewPlan" value="yes"> Create a new Performance Improvement Plan from this area
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="form-group">
+                                <label>Actions</label>
+                                <div>
+                                    <button type="submit" class="btn btn-default" name="action" value="previous" th:disabled="${firstStep}">Previous</button>
+                                    <button type="submit" class="btn btn-success" name="action" value="save">Save</button>
+                                    <button type="submit" class="btn btn-primary" name="action" value="next" th:disabled="${lastStep}">Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" th:if="${currentDimension.performanceImprovementPlan != null}">
+                        <a class="btn btn-xs btn-default"
+                           th:href="@{/performance-improvement-plans/view-plan/{id}(id=${currentDimension.performanceImprovementPlan.id})}">
+                            Open Linked Improvement Plan
+                        </a>
+                    </div>
+
+                </form>
+
+                <div class="m-t-md" th:if="${stepIndex == totalSteps - 1}">
+                    <h4>General Observation</h4>
+                    <form th:action="@{/probation-assessments/submit-dimensions/{assessmentId}(assessmentId=${assessment.id})}" method="post" th:if="${canSubmitToHr}">
+                        <div class="form-group">
+                            <textarea class="form-control" rows="4" name="generalObservations" th:text="${assessment.generalObservations}" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit to HR for Final Approval</button>
+                    </form>
+                    <div class="form-control" style="height:auto;" th:if="${!canSubmitToHr}" th:text="${assessment.generalObservations}"></div>
+                </div>
+
+                <div class="m-t-md" th:if="${showHrActions}">
+                    <h4>HR Final Approval</h4>
+                    <form th:action="@{/probation-assessments/approve-evaluation-hr/{assessmentId}(assessmentId=${assessment.id})}" method="post" style="display:inline-block;">
+                        <button type="submit" class="btn btn-success">Approve Final Evaluation</button>
+                    </form>
+                    <form th:action="@{/probation-assessments/reject-evaluation-hr/{assessmentId}(assessmentId=${assessment.id})}" method="post" style="display:inline-block;" class="m-l-sm">
+                        <input type="text" class="form-control m-b-xs" name="remarks" placeholder="Reason for rejection" required>
+                        <button type="submit" class="btn btn-warning">Reject and Return</button>
+                    </form>
+                </div>
+
+                <div class="alert alert-success m-t-md" th:if="${isCompleted}">
+                    Final probation evaluation has been approved by HR.
+                </div>
+
+            </div>
+        </div>
+
+        <div th:replace="fragments/template :: footer"></div>
+    </div>
+</div>
+
+<script src="../../../static/js/jquery-3.6.0.min.js" th:src="@{/js/jquery-3.6.0.min.js}"></script>
+<script src="../../../static/js/popper.min.js" th:src="@{/js/popper.min.js}"></script>
+<script src="../../../static./js/bootstrap.js" th:src="@{/js/bootstrap.js}"></script>
+<script src="../../../static/js/plugins/metisMenu/jquery.metisMenu.js" th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+<script src="../../../static/js/inspinia.js" th:src="@{/js/inspinia.js}"></script>
+<script src="../../../static/js/plugins/pace/pace.min.js" th:src="@{/js/plugins/pace/pace.min.js}"></script>
+</body>
+</html>

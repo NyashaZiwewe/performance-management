@@ -32,6 +32,9 @@ public class ScorecardWorkflowServiceImpl implements ScorecardWorkflowService {
     public ScorecardWorkflowDefinition getWorkflowDefinition() {
         List<ScorecardWorkflowStage> stages = scorecardWorkflowStageService.listActiveWorkflowStages();
         Map<String, String> roleToStatus = mapRolesToStatuses(stages);
+        Map<String, String> roleStageNames = mapRoleStageNames(stages);
+        Map<String, String> roleActionButtons = mapRoleActionButtons(stages);
+        Map<String, String> roleRejectionButtons = mapRoleRejectionButtons(stages);
         Map<String, String> statusLabels = mapStatusLabels(stages);
         Map<String, String> statusStages = mapStatusStages(stages);
         Map<String, String> statusActionButtons = mapStatusActionButtons(stages);
@@ -49,6 +52,36 @@ public class ScorecardWorkflowServiceImpl implements ScorecardWorkflowService {
         String approvedAgreedScoresStatus = configuredStatus(roleToStatus, PMConstants.SCORECARD_WORKFLOW_ROLE_APPROVED_AGREED_SCORES, null, PMConstants.APPROVAL_STATUS_APPROVED_AGREED_SCORES);
         String moderatedByHrStatus = configuredStatus(roleToStatus, PMConstants.SCORECARD_WORKFLOW_ROLE_MODERATED_BY_HR, systemSettingService.getScorecardStatusModeratedByHr(), PMConstants.APPROVAL_STATUS_MODERATED_BY_HR);
         String closedStatus = configuredStatus(roleToStatus, PMConstants.SCORECARD_WORKFLOW_ROLE_CLOSED, systemSettingService.getScorecardStatusClosed(), PMConstants.APPROVAL_STATUS_CLOSED);
+
+        applyRoleDrivenStatusStages(statusStages, roleStageNames,
+                newStatus,
+                pendingApprovalStatus,
+                approvedBySupervisorStatus,
+                rejectedBySupervisorStatus,
+                approvedByHrStatus,
+                rejectedByHrStatus,
+                scoredByEmployeeStatus,
+                approvedOwnerScoresStatus,
+                scoredBySupervisorStatus,
+                agreedByTwoStatus,
+                approvedAgreedScoresStatus,
+                moderatedByHrStatus,
+                closedStatus);
+
+        applyRoleDrivenStatusActions(statusActionButtons, roleActionButtons,
+                newStatus,
+                pendingApprovalStatus,
+                approvedBySupervisorStatus,
+                rejectedBySupervisorStatus,
+                approvedByHrStatus,
+                rejectedByHrStatus,
+                scoredByEmployeeStatus,
+                approvedOwnerScoresStatus,
+                scoredBySupervisorStatus,
+                agreedByTwoStatus,
+                approvedAgreedScoresStatus,
+                moderatedByHrStatus,
+                closedStatus);
 
         List<String> defaults = Arrays.asList(newStatus, pendingApprovalStatus, approvedBySupervisorStatus, rejectedBySupervisorStatus,
                 approvedByHrStatus, rejectedByHrStatus, scoredByEmployeeStatus, approvedOwnerScoresStatus, scoredBySupervisorStatus, agreedByTwoStatus,
@@ -102,7 +135,10 @@ public class ScorecardWorkflowServiceImpl implements ScorecardWorkflowService {
                 cssByStatus,
                 statusLabels,
                 statusStages,
-                statusActionButtons
+                statusActionButtons,
+                roleStageNames,
+                roleActionButtons,
+                roleRejectionButtons
         );
     }
 
@@ -172,18 +208,17 @@ public class ScorecardWorkflowServiceImpl implements ScorecardWorkflowService {
             return map;
         }
         for (ScorecardWorkflowStage stage : stages) {
-            if (stage == null || stage.getStatusCode() == null) {
-                continue;
-            }
-            String statusCode = sanitize(stage.getStatusCode(), null);
-            if (statusCode == null) {
+            if (stage == null) {
                 continue;
             }
             String statusLabel = stage.getStatusLabel() == null ? "" : stage.getStatusLabel().trim();
-            if (statusLabel.isEmpty()) {
-                statusLabel = defaultStatusLabel(statusCode);
+            for (String statusCode : extractStageStatusCodes(stage)) {
+                if (statusCode == null || map.containsKey(statusCode)) {
+                    continue;
+                }
+                String resolvedLabel = statusLabel.isEmpty() ? defaultStatusLabel(statusCode) : statusLabel;
+                map.put(statusCode, resolvedLabel);
             }
-            map.put(statusCode, statusLabel);
         }
         return map;
     }
@@ -194,18 +229,19 @@ public class ScorecardWorkflowServiceImpl implements ScorecardWorkflowService {
             return map;
         }
         for (ScorecardWorkflowStage stage : stages) {
-            if (stage == null || stage.getStatusCode() == null) {
-                continue;
-            }
-            String statusCode = sanitize(stage.getStatusCode(), null);
-            if (statusCode == null) {
+            if (stage == null) {
                 continue;
             }
             String stageName = stage.getName() == null ? "" : stage.getName().trim();
             if (stageName.isEmpty()) {
                 stageName = "Workflow";
             }
-            map.put(statusCode, stageName);
+            for (String statusCode : extractStageStatusCodes(stage)) {
+                if (statusCode == null || map.containsKey(statusCode)) {
+                    continue;
+                }
+                map.put(statusCode, stageName);
+            }
         }
         return map;
     }
@@ -216,20 +252,197 @@ public class ScorecardWorkflowServiceImpl implements ScorecardWorkflowService {
             return map;
         }
         for (ScorecardWorkflowStage stage : stages) {
-            if (stage == null || stage.getStatusCode() == null) {
-                continue;
-            }
-            String statusCode = sanitize(stage.getStatusCode(), null);
-            if (statusCode == null) {
+            if (stage == null) {
                 continue;
             }
             String buttonLabel = stage.getActionButtonLabel() == null ? "" : stage.getActionButtonLabel().trim();
-            if (buttonLabel.isEmpty()) {
-                buttonLabel = defaultStatusLabel(statusCode);
+            for (String statusCode : extractStageStatusCodes(stage)) {
+                if (statusCode == null || map.containsKey(statusCode)) {
+                    continue;
+                }
+                String resolvedButtonLabel = buttonLabel.isEmpty() ? defaultStatusLabel(statusCode) : buttonLabel;
+                map.put(statusCode, resolvedButtonLabel);
             }
-            map.put(statusCode, buttonLabel);
         }
         return map;
+    }
+
+    private Map<String, String> mapRoleStageNames(List<ScorecardWorkflowStage> stages) {
+        Map<String, String> map = new LinkedHashMap<String, String>();
+        if (stages == null) {
+            return map;
+        }
+        for (ScorecardWorkflowStage stage : stages) {
+            if (stage == null) {
+                continue;
+            }
+            String roleKey = sanitize(stage.getRoleKey(), null);
+            if (roleKey == null || map.containsKey(roleKey)) {
+                continue;
+            }
+            String stageName = stage.getName() == null ? "" : stage.getName().trim();
+            map.put(roleKey, stageName.isEmpty() ? "Workflow" : stageName);
+        }
+        return map;
+    }
+
+    private Map<String, String> mapRoleActionButtons(List<ScorecardWorkflowStage> stages) {
+        Map<String, String> map = new LinkedHashMap<String, String>();
+        if (stages == null) {
+            return map;
+        }
+        for (ScorecardWorkflowStage stage : stages) {
+            if (stage == null) {
+                continue;
+            }
+            String roleKey = sanitize(stage.getRoleKey(), null);
+            if (roleKey == null || map.containsKey(roleKey)) {
+                continue;
+            }
+            String actionLabel = stage.getActionButtonLabel() == null ? "" : stage.getActionButtonLabel().trim();
+            if (!actionLabel.isEmpty()) {
+                map.put(roleKey, actionLabel);
+            }
+        }
+        return map;
+    }
+
+    private Map<String, String> mapRoleRejectionButtons(List<ScorecardWorkflowStage> stages) {
+        Map<String, String> map = new LinkedHashMap<String, String>();
+        if (stages == null) {
+            return map;
+        }
+        for (ScorecardWorkflowStage stage : stages) {
+            if (stage == null) {
+                continue;
+            }
+            String roleKey = sanitize(stage.getRoleKey(), null);
+            if (roleKey == null || map.containsKey(roleKey)) {
+                continue;
+            }
+            String rejectionLabel = stage.getRejectionButtonLabel() == null ? "" : stage.getRejectionButtonLabel().trim();
+            if (!rejectionLabel.isEmpty()) {
+                map.put(roleKey, rejectionLabel);
+            }
+        }
+        return map;
+    }
+
+    private List<String> extractStageStatusCodes(ScorecardWorkflowStage stage) {
+        List<String> statuses = new ArrayList<String>();
+        if (stage == null) {
+            return statuses;
+        }
+        String primary = sanitize(stage.getStatusCode(), null);
+        if (primary != null && !containsIgnoreCase(statuses, primary)) {
+            statuses.add(primary);
+        }
+        if (stage.getStatusCodes() != null) {
+            String[] extraCodes = stage.getStatusCodes().split(",");
+            for (String code : extraCodes) {
+                String cleaned = sanitize(code, null);
+                if (cleaned != null && !containsIgnoreCase(statuses, cleaned)) {
+                    statuses.add(cleaned);
+                }
+            }
+        }
+        return statuses;
+    }
+
+    private void applyRoleDrivenStatusStages(Map<String, String> statusStages,
+                                             Map<String, String> roleStageNames,
+                                             String newStatus,
+                                             String pendingApprovalStatus,
+                                             String approvedBySupervisorStatus,
+                                             String rejectedBySupervisorStatus,
+                                             String approvedByHrStatus,
+                                             String rejectedByHrStatus,
+                                             String scoredByEmployeeStatus,
+                                             String approvedOwnerScoresStatus,
+                                             String scoredBySupervisorStatus,
+                                             String agreedByTwoStatus,
+                                             String approvedAgreedScoresStatus,
+                                             String moderatedByHrStatus,
+                                             String closedStatus) {
+        applyRoleStage(statusStages, roleStageNames, newStatus, PMConstants.SCORECARD_STAGE_NEW);
+        applyRoleStage(statusStages, roleStageNames, pendingApprovalStatus, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+        applyRoleStage(statusStages, roleStageNames, approvedBySupervisorStatus, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR);
+        applyRoleStage(statusStages, roleStageNames, rejectedBySupervisorStatus, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS);
+        applyRoleStage(statusStages, roleStageNames, approvedByHrStatus, PMConstants.SCORECARD_STAGE_OWNER_SCORING);
+        applyRoleStage(statusStages, roleStageNames, rejectedByHrStatus, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+        applyRoleStage(statusStages, roleStageNames, scoredByEmployeeStatus, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL);
+        applyRoleStage(statusStages, roleStageNames, approvedOwnerScoresStatus, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING);
+        applyRoleStage(statusStages, roleStageNames, scoredBySupervisorStatus, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING);
+        applyRoleStage(statusStages, roleStageNames, agreedByTwoStatus, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL);
+        applyRoleStage(statusStages, roleStageNames, approvedAgreedScoresStatus, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING);
+        applyRoleStage(statusStages, roleStageNames, moderatedByHrStatus, PMConstants.SCORECARD_STAGE_CLOSED);
+        applyRoleStage(statusStages, roleStageNames, closedStatus, PMConstants.SCORECARD_STAGE_CLOSED);
+    }
+
+    private void applyRoleDrivenStatusActions(Map<String, String> statusActions,
+                                              Map<String, String> roleActionButtons,
+                                              String newStatus,
+                                              String pendingApprovalStatus,
+                                              String approvedBySupervisorStatus,
+                                              String rejectedBySupervisorStatus,
+                                              String approvedByHrStatus,
+                                              String rejectedByHrStatus,
+                                              String scoredByEmployeeStatus,
+                                              String approvedOwnerScoresStatus,
+                                              String scoredBySupervisorStatus,
+                                              String agreedByTwoStatus,
+                                              String approvedAgreedScoresStatus,
+                                              String moderatedByHrStatus,
+                                              String closedStatus) {
+        applyRoleAction(statusActions, roleActionButtons, newStatus, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS);
+        applyRoleAction(statusActions, roleActionButtons, pendingApprovalStatus, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+        applyRoleAction(statusActions, roleActionButtons, approvedBySupervisorStatus, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR);
+        applyRoleAction(statusActions, roleActionButtons, rejectedBySupervisorStatus, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS);
+        applyRoleAction(statusActions, roleActionButtons, approvedByHrStatus, PMConstants.SCORECARD_STAGE_OWNER_SCORING);
+        applyRoleAction(statusActions, roleActionButtons, rejectedByHrStatus, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+        applyRoleAction(statusActions, roleActionButtons, scoredByEmployeeStatus, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL);
+        applyRoleAction(statusActions, roleActionButtons, approvedOwnerScoresStatus, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL);
+        applyRoleAction(statusActions, roleActionButtons, scoredBySupervisorStatus, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING);
+        applyRoleAction(statusActions, roleActionButtons, agreedByTwoStatus, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL);
+        applyRoleAction(statusActions, roleActionButtons, approvedAgreedScoresStatus, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL);
+        applyRoleAction(statusActions, roleActionButtons, moderatedByHrStatus, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING);
+        applyRoleAction(statusActions, roleActionButtons, closedStatus, PMConstants.SCORECARD_STAGE_CLOSED);
+    }
+
+    private void applyRoleStage(Map<String, String> statusStages,
+                                Map<String, String> roleStageNames,
+                                String status,
+                                String roleKey) {
+        if (statusStages == null || roleStageNames == null || status == null || roleKey == null) {
+            return;
+        }
+        String cleanedStatus = sanitize(status, null);
+        String cleanedRole = sanitize(roleKey, null);
+        if (cleanedStatus == null || cleanedRole == null) {
+            return;
+        }
+        String roleStage = roleStageNames.get(cleanedRole);
+        if (roleStage != null && !roleStage.trim().isEmpty()) {
+            statusStages.put(cleanedStatus, roleStage.trim());
+        }
+    }
+
+    private void applyRoleAction(Map<String, String> statusActions,
+                                 Map<String, String> roleActionButtons,
+                                 String status,
+                                 String roleKey) {
+        if (statusActions == null || roleActionButtons == null || status == null || roleKey == null) {
+            return;
+        }
+        String cleanedStatus = sanitize(status, null);
+        String cleanedRole = sanitize(roleKey, null);
+        if (cleanedStatus == null || cleanedRole == null) {
+            return;
+        }
+        String roleAction = roleActionButtons.get(cleanedRole);
+        if (roleAction != null && !roleAction.trim().isEmpty()) {
+            statusActions.put(cleanedStatus, roleAction.trim());
+        }
     }
 
     private String defaultStatusLabel(String statusCode) {

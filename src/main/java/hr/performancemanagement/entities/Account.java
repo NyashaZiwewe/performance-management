@@ -24,9 +24,9 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(updatable = false)
-    @Positive(message = "Client ID must be positive")
-    private long clientId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "client_id", referencedColumnName = "client_id")
+    private Client client;
 
     @NotBlank(message = "Full name is required")
     @Size(min = 2, max = 100, message = "Full name must be between 2 and 100 characters")
@@ -93,5 +93,29 @@ public class Account {
     private String status;
     @CreationTimestamp()
     private Date date;
+
+    public long getClientId() {
+        if (client != null && client.getClientId() > 0) {
+            return client.getClientId();
+        }
+        return 0L;
+    }
+
+    public void setClientId(long clientId) {
+        if (clientId <= 0) {
+            this.client = null;
+            return;
+        }
+        if (this.client != null && this.client.getClientId() == clientId) {
+            return;
+        }
+        Client clientRef = new Client();
+        clientRef.setClientId(clientId);
+        this.client = clientRef;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
+    }
 
 }

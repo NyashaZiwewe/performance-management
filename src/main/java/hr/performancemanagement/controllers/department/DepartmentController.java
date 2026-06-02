@@ -6,7 +6,6 @@ import hr.performancemanagement.service.api.AccountService;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.DepartmentService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -53,8 +52,7 @@ public class DepartmentController {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_DEPARTMENTS);
         modelAndView.addObject("pageTitle", "View All Departments");
 
-        Account loggedUser = commonService.getLoggedUser();
-        long clientId = loggedUser != null ? loggedUser.getClientId() : Client.CLIENT_ID;
+        long clientId = commonService.getConfiguredClientId();
         List<Department> departments = canManage()
                 ? departmentService.listAllDepartments(clientId)
                 : departmentService.listAllDepartments();
@@ -88,8 +86,7 @@ public class DepartmentController {
             return "redirect:/departments";
         }
 
-        Account loggedUser = commonService.getLoggedUser();
-        long clientId = loggedUser != null ? loggedUser.getClientId() : Client.CLIENT_ID;
+        long clientId = commonService.getConfiguredClientId();
 
         Department department = new Department();
         department.setClientId(clientId);
@@ -125,8 +122,7 @@ public class DepartmentController {
             department.setName(name.trim());
             department.setManager(managerId == null ? 0 : managerId);
             if (department.getClientId() <= 0) {
-                Account loggedUser = commonService.getLoggedUser();
-                department.setClientId(loggedUser != null ? loggedUser.getClientId() : Client.CLIENT_ID);
+                department.setClientId(commonService.getConfiguredClientId());
             }
             departmentService.saveDepartment(department);
             PortletUtils.addInfoMsg("Department was successfully updated.", request);

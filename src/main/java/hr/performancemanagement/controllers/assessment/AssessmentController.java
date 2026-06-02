@@ -461,15 +461,21 @@ public class AssessmentController {
             List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
             long loggedUserId = loggedUser.getId();
             String role = loggedUser.getRole();
-            List<ReportingDate> reportingDates = reportingPeriod.getReportingDates();
+            List<ReportingDate> reportingDates = reportingPeriod == null || reportingPeriod.getReportingDates() == null
+                    ? Collections.emptyList()
+                    : reportingPeriod.getReportingDates();
             Map<Long, Map<Long, OverallScore>> overallScoresByDate =
                     overallScoreService.getOverallScoresByScorecardsAndReportingDates(Collections.singletonList(scorecard), reportingDates);
+            ReportingDate finalReportingDate = resolveInsightReportingDate(reportingPeriod);
 
             for (ReportingDate reportingDate : reportingDates) {
                 Map<Long, OverallScore> scoreByScorecard = reportingDate == null ? null : overallScoresByDate.get(reportingDate.getId());
                 OverallScore overallScore = resolveOverallScore(scoreByScorecard, scorecard, reportingDate);
                 reportingDate.setOverallScore(overallScore);
             }
+            OverallScore finalOverallScore = finalReportingDate == null
+                    ? null
+                    : overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, finalReportingDate);
 
             context.setVariable("loggedUserId", loggedUserId);
             context.setVariable("pips", pips);
@@ -480,6 +486,8 @@ public class AssessmentController {
             context.setVariable("reportingPeriod", reportingPeriod);
             context.setVariable("scorecard", scorecard);
             context.setVariable("username", username);
+            context.setVariable("finalReportingDate", finalReportingDate);
+            context.setVariable("finalOverallScore", finalOverallScore);
             ReportInsight reportInsight = buildReportInsight(scorecard, reportingPeriod, targetsList, pips, actionPlans);
             context.setVariable("reportInsight", reportInsight);
             context.setVariable("averageEmployeeScore", reportInsight.averageEmployeeScore);
@@ -579,26 +587,27 @@ public class AssessmentController {
             return insight;
         }
 
-        insight.averageEmployeeScore = safeScore(goalService.getAverageEmployeeScore(scorecard.getId()));
-        insight.averageManagerScore = safeScore(goalService.getAverageManagerScore(scorecard.getId()));
-        insight.averageAgreedScore = safeScore(goalService.getAverageAgreedScore(scorecard.getId()));
-        insight.averageModeratedScore = safeScore(goalService.getAverageModeratorScore(scorecard.getId()));
-        insight.alignmentGapEmployeeManager = roundTwoDecimals(Math.abs(insight.averageEmployeeScore - insight.averageManagerScore));
-        insight.alignmentGapManagerAgreed = roundTwoDecimals(Math.abs(insight.averageManagerScore - insight.averageAgreedScore));
-        insight.alignmentGapAgreedModerated = roundTwoDecimals(Math.abs(insight.averageAgreedScore - insight.averageModeratedScore));
-
         List<Target> safeTargets = targetsList == null ? Collections.emptyList() : targetsList;
-        insight.totalTargets = safeTargets.size();
         ReportingDate insightReportingDate = resolveInsightReportingDate(reportingPeriod);
         insight.insightReportingDateLabel = insightReportingDate == null || insightReportingDate.getEndDate() == null
                 ? "Latest available context"
                 : insightReportingDate.getEndDate();
 
+        applyReportInsightAverages(insight, scorecard, safeTargets, insightReportingDate);
+        insight.alignmentGapEmployeeManager = roundTwoDecimals(Math.abs(insight.averageEmployeeScore - insight.averageManagerScore));
+        insight.alignmentGapManagerAgreed = roundTwoDecimals(Math.abs(insight.averageManagerScore - insight.averageAgreedScore));
+        insight.alignmentGapAgreedModerated = roundTwoDecimals(Math.abs(insight.averageAgreedScore - insight.averageModeratedScore));
+
+        insight.totalTargets = safeTargets.size();
+
         for (Target target : safeTargets) {
             if (target == null) {
                 continue;
             }
-            double scoreValue = resolveTargetInsightScore(target);
+            Score score = insightReportingDate == null ? null : resolveInsightScore(target, insightReportingDate);
+            double scoreValue = insightReportingDate == null
+                    ? resolveTargetInsightScore(target)
+                    : resolveInsightScoreValue(score);
             if (scoreValue > 0.0) {
                 insight.targetsWithScore++;
                 if (scoreValue < 2.5) {
@@ -612,10 +621,8 @@ public class AssessmentController {
 
             boolean hasEvidence = false;
             if (insightReportingDate != null) {
-                Score score = scoreRepository.findScoreByTargetAndReportingDate(target, insightReportingDate);
                 hasEvidence = score != null && (hasText(score.getEvidence()) || hasText(score.getAttachmentName()));
-            }
-            if (!hasEvidence) {
+            } else {
                 hasEvidence = hasText(target.getCurrentEvidence()) || hasText(target.getCurrentAttachmentName());
             }
             if (hasEvidence) {
@@ -658,6 +665,120 @@ public class AssessmentController {
             }
         }
         return insight;
+    }
+
+    private void applyReportInsightAverages(ReportInsight insight,
+                                            Scorecard scorecard,
+                                            List<Target> targets,
+                                            ReportingDate reportingDate) {
+        if (reportingDate == null) {
+            insight.averageEmployeeScore = safeScore(goalService.getAverageEmployeeScore(scorecard.getId()));
+            insight.averageManagerScore = safeScore(goalService.getAverageManagerScore(scorecard.getId()));
+            insight.averageAgreedScore = safeScore(goalService.getAverageAgreedScore(scorecard.getId()));
+            insight.averageModeratedScore = safeScore(goalService.getAverageModeratorScore(scorecard.getId()));
+            return;
+        }
+
+        OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+        if (hasAnyOverallScore(overallScore)) {
+            insight.averageEmployeeScore = safeScore(orZero(overallScore.getEmployeeOverall()));
+            insight.averageManagerScore = safeScore(orZero(overallScore.getManagerOverall()));
+            insight.averageAgreedScore = safeScore(orZero(overallScore.getAgreedOverall()));
+            insight.averageModeratedScore = safeScore(orZero(overallScore.getModeratedOverall()));
+            return;
+        }
+
+        Map<Long, Score> finalScoresById = new HashMap<Long, Score>();
+        for (Target target : targets) {
+            Score score = resolveInsightScore(target, reportingDate);
+            if (score != null && score.getId() > 0) {
+                finalScoresById.put(score.getId(), score);
+            }
+        }
+
+        double employeeTotal = 0.0;
+        int employeeCount = 0;
+        double managerTotal = 0.0;
+        int managerCount = 0;
+        double agreedTotal = 0.0;
+        int agreedCount = 0;
+        double moderatedTotal = 0.0;
+        int moderatedCount = 0;
+
+        for (Score score : finalScoresById.values()) {
+            if (score.getEmployeeScore() > 0.0) {
+                employeeTotal += score.getEmployeeScore();
+                employeeCount++;
+            }
+            if (score.getManagerScore() > 0.0) {
+                managerTotal += score.getManagerScore();
+                managerCount++;
+            }
+            if (score.getAgreedScore() > 0.0) {
+                agreedTotal += score.getAgreedScore();
+                agreedCount++;
+            }
+            if (score.getModeratedScore() > 0.0) {
+                moderatedTotal += score.getModeratedScore();
+                moderatedCount++;
+            }
+        }
+
+        insight.averageEmployeeScore = averageScore(employeeTotal, employeeCount);
+        insight.averageManagerScore = averageScore(managerTotal, managerCount);
+        insight.averageAgreedScore = averageScore(agreedTotal, agreedCount);
+        insight.averageModeratedScore = averageScore(moderatedTotal, moderatedCount);
+    }
+
+    private boolean hasAnyOverallScore(OverallScore overallScore) {
+        return overallScore != null
+                && (positive(overallScore.getEmployeeOverall())
+                || positive(overallScore.getManagerOverall())
+                || positive(overallScore.getAgreedOverall())
+                || positive(overallScore.getModeratedOverall()));
+    }
+
+    private boolean positive(Double value) {
+        return value != null && value > 0.0;
+    }
+
+    private double orZero(Double value) {
+        return value == null ? 0.0 : value;
+    }
+
+    private double averageScore(double total, int count) {
+        if (count <= 0) {
+            return 0.0;
+        }
+        return roundTwoDecimals(total / count);
+    }
+
+    private Score resolveInsightScore(Target target, ReportingDate reportingDate) {
+        if (target == null || reportingDate == null) {
+            return null;
+        }
+        List<Score> byTarget = scoreRepository.findScoresByTargetAndReportingDateOrderByIdDesc(target, reportingDate);
+        if (byTarget != null && !byTarget.isEmpty()) {
+            return byTarget.get(0);
+        }
+        if (target.getOutput() == null) {
+            return null;
+        }
+        List<Score> byOutput = scoreRepository.findScoresByOutputAndReportingDateOrderByIdDesc(target.getOutput(), reportingDate);
+        if (byOutput == null || byOutput.isEmpty()) {
+            return null;
+        }
+        for (Score score : byOutput) {
+            if (score != null && score.getTarget() != null && score.getTarget().getId() == target.getId()) {
+                return score;
+            }
+        }
+        for (Score score : byOutput) {
+            if (score != null && score.getTarget() == null) {
+                return score;
+            }
+        }
+        return byOutput.get(0);
     }
 
     private ReportingDate resolveInsightReportingDate(ReportingPeriod reportingPeriod) {
@@ -717,6 +838,25 @@ public class AssessmentController {
         };
         for (Double candidate : candidates) {
             if (candidate != null && candidate > 0.0) {
+                return candidate;
+            }
+        }
+        return 0.0;
+    }
+
+    private double resolveInsightScoreValue(Score score) {
+        if (score == null) {
+            return 0.0;
+        }
+        double[] candidates = new double[]{
+                score.getModeratedScore(),
+                score.getAgreedScore(),
+                score.getManagerScore(),
+                score.getEmployeeScore(),
+                score.getActual()
+        };
+        for (double candidate : candidates) {
+            if (candidate > 0.0) {
                 return candidate;
             }
         }

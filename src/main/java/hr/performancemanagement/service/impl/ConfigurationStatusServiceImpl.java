@@ -42,7 +42,7 @@ public class ConfigurationStatusServiceImpl implements ConfigurationStatusServic
             return warnings;
         }
 
-        if (accountRepository.findAccountsByClientId(clientId).isEmpty()) {
+        if (accountRepository.findAccountsByClient_ClientId(clientId).isEmpty()) {
             warnings.add("No accounts exist yet. Supervisor is optional for the first account and can be assigned later.");
         }
         if (divisionRepository.findDivisionsByClientId(clientId).isEmpty()) {

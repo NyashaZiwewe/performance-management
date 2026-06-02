@@ -33,7 +33,7 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
         Account loggedUser = cs.getLoggedUser();
 
         if(cs.isAdmin() || cs.hasSpecialRights()){
-            accountRepository.findAccountsByClientId(loggedUser.getClientId()).forEach(account -> accountList.add(account));
+            accountRepository.findAccountsByClient_ClientId(loggedUser.getClientId()).forEach(account -> accountList.add(account));
         }
         else if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){
 
@@ -50,7 +50,7 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
 
         }else if(loggedUser.getAccountType().equalsIgnoreCase("ACTING_CEO") || loggedUser.getAccountType().equalsIgnoreCase("CEO") ){
 
-            accountRepository.findAccountsByClientId(loggedUser.getClientId()).forEach(account -> accountList.add(account));
+            accountRepository.findAccountsByClient_ClientId(loggedUser.getClientId()).forEach(account -> accountList.add(account));
 
         }else{
 
@@ -62,7 +62,7 @@ public class AccountServiceImpl implements hr.performancemanagement.service.api.
     @Override
     public List<Account> listAllAccountsByClientId(long clientId) {
         List<Account> accountList = new ArrayList<>();
-        accountRepository.findAccountsByClientId(clientId).forEach(accountList::add);
+        accountRepository.findAccountsByClient_ClientId(clientId).forEach(accountList::add);
         return accountList;
     }
 

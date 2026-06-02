@@ -16,18 +16,28 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
     List<Goal> findGoalsByScorecardIdOrderByPerspective(long scorecardId);
     List<Goal> findGoalsByScorecardIdOrderByPerspectiveAscStrategicObjective(long scorecardId);
 
-    @Query("SELECT COALESCE(SUM(t.allocatedWeight), 0.0) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    @Query("SELECT COALESCE(SUM(t.allocatedWeight), 0.0) FROM Target t " +
+            "LEFT JOIN t.goal g LEFT JOIN t.output o " +
+            "WHERE o.scorecard.id = :scorecardId OR g.scorecardId = :scorecardId")
     double sumAllocatedWeight(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT COALESCE(AVG(s.employeeScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    @Query("SELECT COALESCE(AVG(s.employeeScore), 0.0) FROM Score s " +
+            "LEFT JOIN s.target t LEFT JOIN t.goal g LEFT JOIN s.output o " +
+            "WHERE o.scorecard.id = :scorecardId OR g.scorecardId = :scorecardId")
     double averageEmployeeScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT COALESCE(AVG(s.managerScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    @Query("SELECT COALESCE(AVG(s.managerScore), 0.0) FROM Score s " +
+            "LEFT JOIN s.target t LEFT JOIN t.goal g LEFT JOIN s.output o " +
+            "WHERE o.scorecard.id = :scorecardId OR g.scorecardId = :scorecardId")
     double averageManagerScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT COALESCE(AVG(s.agreedScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    @Query("SELECT COALESCE(AVG(s.agreedScore), 0.0) FROM Score s " +
+            "LEFT JOIN s.target t LEFT JOIN t.goal g LEFT JOIN s.output o " +
+            "WHERE o.scorecard.id = :scorecardId OR g.scorecardId = :scorecardId")
     double averageAgreedScore(@Param("scorecardId") long scorecardId);
 
-    @Query("SELECT COALESCE(AVG(s.moderatedScore), 0.0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
+    @Query("SELECT COALESCE(AVG(s.moderatedScore), 0.0) FROM Score s " +
+            "LEFT JOIN s.target t LEFT JOIN t.goal g LEFT JOIN s.output o " +
+            "WHERE o.scorecard.id = :scorecardId OR g.scorecardId = :scorecardId")
     double averageModeratedScore(@Param("scorecardId") long scorecardId);
 }

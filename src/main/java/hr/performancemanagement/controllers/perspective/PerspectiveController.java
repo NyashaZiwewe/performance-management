@@ -4,7 +4,6 @@ import hr.performancemanagement.entities.Perspective;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.PerspectiveService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
-import hr.performancemanagement.utils.constants.Client;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,7 +38,7 @@ public class PerspectiveController {
     public ModelAndView viewPerspectives(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERSPECTIVES);
         modelAndView.addObject("pageTitle", "View Perspectives");
-        long clientId = commonService.getLoggedUser().getClientId();
+        long clientId = commonService.getConfiguredClientId();
         List<Perspective> perspectives = perspectiveService.listAllPerspectives(clientId);
         modelAndView.addObject("perspectives", perspectives);
         preparePage(modelAndView, request);
@@ -59,7 +58,7 @@ public class PerspectiveController {
     @RequestMapping(value = "/save-perspective", method = RequestMethod.POST)
     public String savePerspective(HttpServletRequest request, Perspective newPerspective) {
 
-        newPerspective.setClientId(Client.CLIENT_ID);
+        newPerspective.setClientId(commonService.getConfiguredClientId());
         perspectiveService.addPerspective(newPerspective);
         PortletUtils.addInfoMsg("Perspective was successfully created or updated.", request);
         return "redirect:/perspectives";

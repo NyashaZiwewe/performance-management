@@ -1,7 +1,12 @@
 package hr.performancemanagement.controllers.scorecard;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.repository.CommentRepository;
+import hr.performancemanagement.repository.EvidenceRepository;
+import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.service.GearService;
+import hr.performancemanagement.service.OverallCommentService;
+import hr.performancemanagement.service.OverallScoreService;
 import hr.performancemanagement.service.OutcomeService;
 import hr.performancemanagement.service.OutputService;
 import hr.performancemanagement.service.api.*;
@@ -46,6 +51,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
@@ -94,6 +102,8 @@ public class ScorecardController {
     @Autowired
     private final AccountService accountService;
     @Autowired
+    private final DepartmentService departmentService;
+    @Autowired
     private final ScorecardService scorecardService;
     @Autowired
     private final PerspectiveService perspectiveService;
@@ -127,13 +137,26 @@ public class ScorecardController {
     private final CommonService commonService;
     @Autowired
     private final ScorecardWorkflowService scorecardWorkflowService;
+    @Autowired
+    private final ScorecardReportingDateStageService scorecardReportingDateStageService;
+    @Autowired
+    private final EvidenceRepository evidenceRepository;
+    @Autowired
+    private final CommentRepository commentRepository;
+    @Autowired
+    private final ScoreRepository scoreRepository;
+    @Autowired
+    private final OverallScoreService overallScoreService;
+    @Autowired
+    private final OverallCommentService overallCommentService;
 
     private final Environment environment;
 
 
-    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, ScorecardWorkflowService scorecardWorkflowService, Environment environment) {
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, ScorecardWorkflowService scorecardWorkflowService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
+        this.departmentService = departmentService;
         this.scorecardService = scorecardService;
         this.perspectiveService = perspectiveService;
         this.goalService = goalService;
@@ -151,14 +174,27 @@ public class ScorecardController {
         this.scorecardModelService = scorecardModelService;
         this.commonService = commonService;
         this.scorecardWorkflowService = scorecardWorkflowService;
+        this.scorecardReportingDateStageService = scorecardReportingDateStageService;
+        this.evidenceRepository = evidenceRepository;
+        this.commentRepository = commentRepository;
+        this.scoreRepository = scoreRepository;
+        this.overallScoreService = overallScoreService;
+        this.overallCommentService = overallCommentService;
         this.environment = environment;
     }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request, HttpSession session) {
 
+        long configuredClientId = commonService.getConfiguredClientId();
         List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
-        List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
-        List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives(commonService.getLoggedUser().getClientId());
+        List<ReportingDate> REPORTING_DATES_LIST = listReportingDates(REPORTING_PERIODS_LIST);
+        List<Account> ACCOUNTS_LIST = configuredClientId > 0
+                ? accountService.listAllAccountsByClientId(configuredClientId)
+                : accountService.listAllAccounts();
+        List<Department> DEPARTMENTS_LIST = configuredClientId > 0
+                ? departmentService.listAllDepartments(configuredClientId)
+                : departmentService.listAllDepartments();
+        List<Perspective> PERSPECTIVES_LIST = perspectiveService.listAllPerspectives(configuredClientId);
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
@@ -169,7 +205,9 @@ public class ScorecardController {
         modelAndView.addObject("pageDomain", "Performance");
         modelAndView.addObject("pageName", "Scorecards");
         modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
+        modelAndView.addObject("reportingDatesList", REPORTING_DATES_LIST);
         modelAndView.addObject("accountsList", ACCOUNTS_LIST);
+        modelAndView.addObject("departmentsList", DEPARTMENTS_LIST);
         modelAndView.addObject("perspectivesList", PERSPECTIVES_LIST);
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("loggedUser", loggedUser);
@@ -181,38 +219,116 @@ public class ScorecardController {
         modelAndView.addObject("approvalStatusLabels", workflow.getStatusDisplayLabels());
         modelAndView.addObject("approvalStatusStages", workflow.getStatusStageNames());
         modelAndView.addObject("approvalStatusActionLabels", workflow.getStatusActionButtonLabels());
+        modelAndView.addObject("workflowRoleStageNames", workflow.getRoleStageNames());
+        modelAndView.addObject("workflowRoleActionLabels", workflow.getRoleActionButtonLabels());
+        modelAndView.addObject("workflowRoleRejectionLabels", workflow.getRoleRejectionButtonLabels());
         addTerminology(modelAndView);
         PortletUtils.addMessagesToPage(modelAndView, request);
 
     }
 
+    private List<ReportingDate> listReportingDates(List<ReportingPeriod> reportingPeriods) {
+        List<ReportingDate> reportingDates = new ArrayList<ReportingDate>();
+        if (reportingPeriods == null || reportingPeriods.isEmpty()) {
+            return reportingDates;
+        }
+        for (ReportingPeriod reportingPeriod : reportingPeriods) {
+            if (reportingPeriod == null) {
+                continue;
+            }
+            List<ReportingDate> periodReportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
+            if (periodReportingDates != null && !periodReportingDates.isEmpty()) {
+                reportingDates.addAll(periodReportingDates);
+            }
+        }
+        return reportingDates;
+    }
+
     @RequestMapping
-    public ModelAndView viewScorecards(@RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
-                                       @RequestParam(value = "ownerName", required = false) String ownerName,
+    public ModelAndView viewScorecards(@RequestParam(value = "reportingPeriodId", required = false) String reportingPeriodId,
+                                       @RequestParam(value = "reportingDateId", required = false) String reportingDateId,
+                                       @RequestParam(value = "departmentId", required = false) String departmentId,
+                                       @RequestParam(value = "employeeId", required = false) String employeeId,
                                        @RequestParam(value = "approvalStatus", required = false) String approvalStatus,
+                                       @RequestParam(value = "search", required = false) String search,
                                        HttpServletRequest request,
                                        HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORECARDS);
         modelAndView.addObject("pageTitle", "View Scorecards");
-        ReportingPeriod reportingPeriod = reportingPeriodService.getActiveReportingPeriod();
-        if (reportingPeriodId != null) {
-            ReportingPeriod selectedPeriod = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
-            Account loggedUser = commonService.getLoggedUser();
-            if (selectedPeriod != null && loggedUser != null && selectedPeriod.getClientId() == loggedUser.getClientId()) {
-                reportingPeriod = selectedPeriod;
-            }
+        boolean searchSubmitted = search != null
+                || reportingPeriodId != null
+                || reportingDateId != null
+                || departmentId != null
+                || employeeId != null
+                || StringUtils.hasText(approvalStatus);
+        Long selectedReportingPeriodId = parseFilterId(reportingPeriodId);
+        Long selectedReportingDateId = parseFilterId(reportingDateId);
+        Long selectedDepartmentId = parseFilterId(departmentId);
+        Long selectedEmployeeId = parseFilterId(employeeId);
+        String approvalFilter = searchSubmitted ? normalizeFilterText(approvalStatus) : "";
+
+        if (!searchSubmitted) {
+            ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+            selectedReportingPeriodId = activeReportingPeriod == null ? null : activeReportingPeriod.getId();
+            selectedReportingDateId = null;
+            selectedDepartmentId = null;
+            selectedEmployeeId = null;
+            approvalFilter = "";
         }
-        List<Scorecard> scorecards = reportingPeriod == null
-                ? Collections.emptyList()
-                : scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
-        scorecards = filterScorecards(scorecards, ownerName, approvalStatus);
+
+        List<Scorecard> scorecards = scorecardService.searchScorecards(
+                selectedReportingPeriodId,
+                selectedReportingDateId,
+                selectedDepartmentId,
+                selectedEmployeeId,
+                approvalFilter
+        );
+        scorecards = filterViewableScorecards(scorecards);
 
         modelAndView.addObject("scorecards", scorecards);
-        modelAndView.addObject("selectedReportingPeriodId", reportingPeriod != null ? reportingPeriod.getId() : null);
-        modelAndView.addObject("ownerName", ownerName == null ? "" : ownerName.trim());
-        modelAndView.addObject("approvalStatus", approvalStatus == null ? "" : approvalStatus.trim());
+        modelAndView.addObject("scorecardCaptureScoresAllowed", buildCaptureScoresAllowedMap(scorecards));
+        modelAndView.addObject("scorecardEditTargetsAllowed", buildEditTargetsAllowedMap(scorecards));
+        modelAndView.addObject("scorecardViewReportAllowed", buildViewReportAllowedMap(scorecards));
+        modelAndView.addObject("selectedReportingPeriodId", selectedReportingPeriodId);
+        modelAndView.addObject("selectedReportingDateId", selectedReportingDateId);
+        modelAndView.addObject("selectedDepartmentId", selectedDepartmentId);
+        modelAndView.addObject("selectedEmployeeId", selectedEmployeeId);
+        modelAndView.addObject("approvalStatus", approvalFilter);
+        modelAndView.addObject("searchSubmitted", searchSubmitted);
         preparePage(modelAndView, request, session);
         return modelAndView;
+    }
+
+    private Long parseFilterId(String value) {
+        if (!StringUtils.hasText(value) || "ALL".equalsIgnoreCase(value.trim())) {
+            return null;
+        }
+        try {
+            Long parsedValue = Long.parseLong(value.trim());
+            return parsedValue > 0 ? parsedValue : null;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private String normalizeFilterText(String value) {
+        if (!StringUtils.hasText(value) || "ALL".equalsIgnoreCase(value.trim())) {
+            return "";
+        }
+        return value.trim();
+    }
+
+    private List<Scorecard> filterViewableScorecards(List<Scorecard> scorecards) {
+        if (scorecards == null || scorecards.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Scorecard> viewableScorecards = new ArrayList<Scorecard>();
+        for (Scorecard scorecard : scorecards) {
+            if (canViewScorecard(scorecard)) {
+                viewableScorecards.add(scorecard);
+            }
+        }
+        return viewableScorecards;
     }
 
     private List<Scorecard> filterScorecards(List<Scorecard> scorecards, String ownerName, String approvalStatus) {
@@ -253,6 +369,57 @@ public class ScorecardController {
         return filteredScorecards;
     }
 
+    private Map<Long, Boolean> buildCaptureScoresAllowedMap(List<Scorecard> scorecards) {
+        Map<Long, Boolean> map = new HashMap<Long, Boolean>();
+        if (scorecards == null || scorecards.isEmpty()) {
+            return map;
+        }
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        boolean captureWindowOpen = reportingDateService.isReportingDateOpen(reportingDate);
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getId() <= 0) {
+                continue;
+            }
+            boolean canCapture = captureWindowOpen
+                    && isScoreCaptureWindowOpen(scorecard, reportingDate)
+                    && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
+                    && isAnyScoreCaptureAllowed(scorecard);
+            map.put(scorecard.getId(), canCapture);
+        }
+        return map;
+    }
+
+    private Map<Long, Boolean> buildEditTargetsAllowedMap(List<Scorecard> scorecards) {
+        Map<Long, Boolean> map = new HashMap<Long, Boolean>();
+        if (scorecards == null || scorecards.isEmpty()) {
+            return map;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getId() <= 0) {
+                continue;
+            }
+            boolean canEditTargets = PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
+                    && isScorecardInActiveReportingPeriod(scorecard)
+                    && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard);
+            map.put(scorecard.getId(), canEditTargets);
+        }
+        return map;
+    }
+
+    private Map<Long, Boolean> buildViewReportAllowedMap(List<Scorecard> scorecards) {
+        Map<Long, Boolean> map = new HashMap<Long, Boolean>();
+        if (scorecards == null || scorecards.isEmpty()) {
+            return map;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getId() <= 0) {
+                continue;
+            }
+            map.put(scorecard.getId(), canViewScorecardReport(scorecard));
+        }
+        return map;
+    }
+
     @RequestMapping(value = "/view-user-scorecards/{id}")
     public ModelAndView viewUserScorecards(@PathVariable("id") Long userId, HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_USER_SCORECARDS);
@@ -261,6 +428,9 @@ public class ScorecardController {
         List<Scorecard> scorecards = scorecardService.getScorecardsByOwner(owner);
 
         modelAndView.addObject("scorecards", scorecards);
+        modelAndView.addObject("scorecardCaptureScoresAllowed", buildCaptureScoresAllowedMap(scorecards));
+        modelAndView.addObject("scorecardEditTargetsAllowed", buildEditTargetsAllowedMap(scorecards));
+        modelAndView.addObject("scorecardViewReportAllowed", buildViewReportAllowedMap(scorecards));
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -306,7 +476,7 @@ public class ScorecardController {
             return "redirect:/scorecards/add-scorecard";
         }else {
             ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-            newScorecard.setClientId(loggedUser.getClientId());
+            newScorecard.setClient(commonService.getConfiguredClient());
             newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
             newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
             newScorecard.setApprovalStatus(workflow.getNewStatus());
@@ -338,6 +508,12 @@ public class ScorecardController {
     public ModelAndView captureTargets(@PathVariable("id") long id, HttpServletRequest request, HttpSession session) {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Scorecard not found.", request);
+            ModelAndView modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+            preparePage(modelAndView, request, session);
+            return modelAndView;
+        }
         String scorecardModel = scorecard.getScorecardModel().getName();
         String hierarchyModel = resolveHierarchyModel(scorecard);
         long reportingPeriodId = scorecard.getReportingPeriod().getId();
@@ -345,7 +521,7 @@ public class ScorecardController {
         List<StrategicObjective> STRATEGIC_OBJECTIVES_LIST = strategicObjectiveService.listAllStrategicObjectives(reportingPeriodId);
         ModelAndView modelAndView;
 
-        if(commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS,scorecard)){
+        if(canCaptureTargets(scorecard)){
 
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
             modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
@@ -357,10 +533,11 @@ public class ScorecardController {
             modelAndView.addObject("scorecardModel", scorecardModel);
             List<Target> targetsList;
             if (isLegacyHierarchyModel(hierarchyModel)) {
-                List<Gear> gears = gearService.listAllGears(commonService.getLoggedUser().getClientId());
+                List<Gear> gears = gearService.listAllGears(commonService.getConfiguredClientId());
                 List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
                 List<Gear> remainingGears = gearService.listRemainingGears(scorecard);
                 targetsList = attachLegacyTargets(scorecard, selectedGears);
+                mergeHydratedTargetSnapshots(scorecard.getId(), targetsList);
                 modelAndView.addObject("selectedGears", selectedGears);
                 modelAndView.addObject("remainingGears", remainingGears);
                 modelAndView.addObject("gears", gears);
@@ -376,7 +553,7 @@ public class ScorecardController {
         } else {
 
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
-            PortletUtils.addErrorMsg("You are not allowed to capture targets on this scorecard at this moment", request);
+            PortletUtils.addErrorMsg("Targets can only be captured for an active reporting period.", request);
         }
         preparePage(modelAndView, request, session);
         return modelAndView;
@@ -400,6 +577,7 @@ public class ScorecardController {
         if (scorecard == null) {
             return targetsList;
         }
+        String hierarchyModel = resolveHierarchyModel(scorecard);
 
         List<Output> outputs = outputService.listAllOutputs(scorecard);
         Map<Long, Gear> selectedById = new HashMap<Long, Gear>();
@@ -452,9 +630,19 @@ public class ScorecardController {
                 if (gear.getTargetsList() == null) {
                     continue;
                 }
-                gear.getTargetsList().sort(Comparator.<Target>comparingLong(target -> target.getOutcome() == null ? Long.MAX_VALUE : target.getOutcome().getId())
-                        .thenComparingLong(target -> target.getOutput() == null ? Long.MAX_VALUE : target.getOutput().getId())
-                        .thenComparingLong(Target::getId));
+                if ("programme".equalsIgnoreCase(hierarchyModel)) {
+                    gear.getTargetsList().sort(Comparator
+                            .comparingLong((Target target) -> strategicGoalId(target))
+                            .thenComparingLong(target -> pillarId(target))
+                            .thenComparingLong(target -> outcomeId(target))
+                            .thenComparingLong(target -> outputId(target))
+                            .thenComparingLong(Target::getId));
+                } else {
+                    gear.getTargetsList().sort(Comparator
+                            .comparingLong((Target target) -> outcomeId(target))
+                            .thenComparingLong(target -> outputId(target))
+                            .thenComparingLong(Target::getId));
+                }
             }
         }
 
@@ -559,8 +747,13 @@ public class ScorecardController {
     }
 
     private void addScorecardDisplayModel(ModelAndView modelAndView, Scorecard scorecard, List<Target> targetsList) {
+        addScorecardDisplayModel(modelAndView, scorecard, targetsList, Collections.emptyList());
+    }
+
+    private void addScorecardDisplayModel(ModelAndView modelAndView, Scorecard scorecard, List<Target> targetsList, List<ReportingDate> reportingDates) {
         String hierarchyModel = resolveHierarchyModel(scorecard);
         List<ScorecardDisplaySection> displaySections = buildDisplaySections(scorecard, hierarchyModel, targetsList);
+        hydrateDisplayScores(displaySections, reportingDates, hierarchyModel);
         modelAndView.addObject("displaySections", displaySections);
 
         if ("programme".equalsIgnoreCase(hierarchyModel)) {
@@ -590,6 +783,238 @@ public class ScorecardController {
         }
     }
 
+    private void hydrateDisplayScores(List<ScorecardDisplaySection> displaySections, List<ReportingDate> reportingDates, String hierarchyModel) {
+        if (displaySections == null || displaySections.isEmpty()
+                || reportingDates == null || reportingDates.isEmpty()) {
+            return;
+        }
+        boolean legacyHierarchy = isLegacyHierarchyModel(hierarchyModel);
+        for (ScorecardDisplaySection section : displaySections) {
+            if (section == null || section.getRows() == null) {
+                continue;
+            }
+            for (ScorecardDisplayRow row : section.getRows()) {
+                if (row == null || row.getTarget() == null) {
+                    continue;
+                }
+                for (ReportingDate reportingDate : reportingDates) {
+                    if (reportingDate == null || reportingDate.getId() <= 0) {
+                        continue;
+                    }
+                    Score score = legacyHierarchy
+                            ? resolveOutputReportingDateScore(row.getTarget(), reportingDate)
+                            : resolveTargetReportingDateScore(row.getTarget(), reportingDate);
+                    if (score != null) {
+                        row.getScoresByReportingDate().put(reportingDate.getId(), score);
+                    }
+                    Evidence evidence = resolveLatestEvidence(row.getTarget(), reportingDate);
+                    if (evidence != null) {
+                        row.getEvidenceByReportingDate().put(reportingDate.getId(), evidence);
+                    }
+                }
+                row.getTarget().setComments(commentRepository.findCommentsByTarget(row.getTarget()));
+            }
+        }
+    }
+
+    private Evidence resolveLatestEvidence(Target target, ReportingDate reportingDate) {
+        List<Evidence> evidenceList = evidenceRepository.findEvidenceByTargetAndReportingDateOrderByIdDesc(target, reportingDate);
+        if (evidenceList == null || evidenceList.isEmpty()) {
+            return null;
+        }
+        return evidenceList.get(0);
+    }
+
+    private Score resolveTargetReportingDateScore(Target target, ReportingDate reportingDate) {
+        if (target == null || reportingDate == null) {
+            return null;
+        }
+        List<Score> scores = scoreRepository.findScoresByTargetAndReportingDateOrderByIdDesc(target, reportingDate);
+        if (scores != null && !scores.isEmpty()) {
+            return scores.get(0);
+        }
+        return resolveOutputReportingDateScore(target, reportingDate);
+    }
+
+    private Score resolveOutputReportingDateScore(Target target, ReportingDate reportingDate) {
+        if (target == null || target.getOutput() == null || reportingDate == null) {
+            return null;
+        }
+        List<Score> scores = scoreRepository.findScoresByOutputAndReportingDateOrderByIdDesc(target.getOutput(), reportingDate);
+        if (scores == null || scores.isEmpty()) {
+            return null;
+        }
+
+        for (Score score : scores) {
+            if (score != null && score.getTarget() == null) {
+                return score;
+            }
+        }
+        for (Score score : scores) {
+            if (isScoreForTarget(score, target)) {
+                return score;
+            }
+        }
+        return scores.get(0);
+    }
+
+    private boolean isScoreForTarget(Score score, Target target) {
+        return score != null
+                && score.getTarget() != null
+                && target != null
+                && score.getTarget().getId() == target.getId();
+    }
+
+    private Map<Long, OverallScore> buildOverallScoresByReportingDate(Scorecard scorecard, List<ReportingDate> reportingDates) {
+        Map<Long, OverallScore> overallScoresByReportingDate = new HashMap<Long, OverallScore>();
+        if (scorecard == null || reportingDates == null || reportingDates.isEmpty()) {
+            return overallScoresByReportingDate;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null || reportingDate.getId() <= 0) {
+                continue;
+            }
+            overallScoresByReportingDate.put(
+                    reportingDate.getId(),
+                    overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate)
+            );
+        }
+        return overallScoresByReportingDate;
+    }
+
+    private Map<Long, OverallComment> buildOverallCommentsByReportingDate(Scorecard scorecard) {
+        Map<Long, OverallComment> commentsByReportingDate = new HashMap<Long, OverallComment>();
+        if (scorecard == null) {
+            return commentsByReportingDate;
+        }
+        List<OverallComment> comments = overallCommentService.getOverallCommentsByScorecard(scorecard);
+        if (comments == null || comments.isEmpty()) {
+            return commentsByReportingDate;
+        }
+        for (OverallComment comment : comments) {
+            if (comment != null && comment.getReportingDate() != null && comment.getReportingDate().getId() > 0) {
+                commentsByReportingDate.put(comment.getReportingDate().getId(), comment);
+            }
+        }
+        return commentsByReportingDate;
+    }
+
+    private Map<Long, Double> buildDisplayWeightedScoreTotalsByReportingDate(List<ScorecardDisplaySection> displaySections, List<ReportingDate> reportingDates, String hierarchyModel) {
+        Map<Long, Double> totalsByReportingDate = new HashMap<Long, Double>();
+        if (reportingDates == null || reportingDates.isEmpty()) {
+            return totalsByReportingDate;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate != null && reportingDate.getId() > 0) {
+                totalsByReportingDate.put(reportingDate.getId(), 0.0);
+            }
+        }
+        if (displaySections == null || displaySections.isEmpty()) {
+            return totalsByReportingDate;
+        }
+
+        boolean legacyHierarchy = isLegacyHierarchyModel(hierarchyModel);
+        for (ScorecardDisplaySection section : displaySections) {
+            if (section == null || section.getRows() == null) {
+                continue;
+            }
+            for (ScorecardDisplayRow row : section.getRows()) {
+                if (row == null || (legacyHierarchy && !row.isShowOutput())) {
+                    continue;
+                }
+                for (ReportingDate reportingDate : reportingDates) {
+                    if (reportingDate == null || reportingDate.getId() <= 0) {
+                        continue;
+                    }
+                    Score score = row.getScoresByReportingDate().get(reportingDate.getId());
+                    if (score == null) {
+                        continue;
+                    }
+                    Double total = totalsByReportingDate.get(reportingDate.getId());
+                    totalsByReportingDate.put(reportingDate.getId(), (total == null ? 0.0 : total) + score.getWeightedScore());
+                }
+            }
+        }
+        return totalsByReportingDate;
+    }
+
+    private int resolveViewScoreColumnCount(String scorecardModel) {
+        return PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel) ? 3 : 2;
+    }
+
+    private int resolveViewTableColumnCount(int displayHierarchyColumnCount, String scorecardModel) {
+        return displayHierarchyColumnCount + 5 + resolveViewScoreColumnCount(scorecardModel) + 3;
+    }
+
+    private int resolveViewSummaryLabelColspan(int displayHierarchyColumnCount) {
+        return displayHierarchyColumnCount + 4;
+    }
+
+    private Long resolveDefaultReportingDateId(List<ReportingDate> reportingDates) {
+        if (reportingDates == null || reportingDates.isEmpty()) {
+            return null;
+        }
+        ReportingDate activeReportingDate = reportingDateService.getActiveReportingDate();
+        if (activeReportingDate != null && isReportingDateInList(activeReportingDate, reportingDates)) {
+            return activeReportingDate.getId();
+        }
+        ReportingDate finalReportingDate = resolveFinalReportingDate(reportingDates);
+        if (finalReportingDate != null) {
+            return finalReportingDate.getId();
+        }
+        return reportingDates.get(0) == null ? null : reportingDates.get(0).getId();
+    }
+
+    private boolean isReportingDateInList(ReportingDate candidate, List<ReportingDate> reportingDates) {
+        if (candidate == null || reportingDates == null) {
+            return false;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate != null && reportingDate.getId() == candidate.getId()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private ReportingDate resolveFinalReportingDate(List<ReportingDate> reportingDates) {
+        ReportingDate selected = null;
+        LocalDate selectedDate = null;
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null) {
+                continue;
+            }
+            LocalDate candidateDate = parseReportingDate(reportingDate.getEndDate());
+            if (candidateDate == null) {
+                if (selected == null) {
+                    selected = reportingDate;
+                }
+                continue;
+            }
+            if (selectedDate == null || candidateDate.isAfter(selectedDate)) {
+                selected = reportingDate;
+                selectedDate = candidateDate;
+            }
+        }
+        return selected;
+    }
+
+    private LocalDate parseReportingDate(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        try {
+            return LocalDate.parse(trimmed);
+        } catch (DateTimeParseException ignored) {
+            try {
+                return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+            } catch (DateTimeParseException ignoredAgain) {
+                return null;
+            }
+        }
+    }
+
     private int resolveDisplayHierarchyColumnCount(String hierarchyModel) {
         if ("programme".equalsIgnoreCase(hierarchyModel)) {
             return 4;
@@ -609,6 +1034,14 @@ public class ScorecardController {
         if (isLegacyHierarchyModel(hierarchyModel)) {
             List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
             attachLegacyTargets(scorecard, selectedGears);
+            if (selectedGears != null) {
+                for (Gear gear : selectedGears) {
+                    if (gear == null || gear.getTargetsList() == null || gear.getTargetsList().isEmpty()) {
+                        continue;
+                    }
+                    mergeHydratedTargetSnapshots(scorecard.getId(), gear.getTargetsList());
+                }
+            }
             for (Gear gear : selectedGears) {
                 if (gear == null || gear.getTargetsList() == null || gear.getTargetsList().isEmpty()) {
                     continue;
@@ -684,6 +1117,9 @@ public class ScorecardController {
             ScorecardDisplayRow row = rows.get(index);
             row.setShowStage2(true);
             row.setStage2Rowspan(end - index);
+            for (int duplicateIndex = index + 1; duplicateIndex < end; duplicateIndex++) {
+                rows.get(duplicateIndex).setShowStage2(false);
+            }
             index = end;
         }
     }
@@ -735,6 +1171,9 @@ public class ScorecardController {
             ScorecardDisplayRow row = rows.get(index);
             row.setShowStage2(true);
             row.setStage2Rowspan(end - index);
+            for (int duplicateIndex = index + 1; duplicateIndex < end; duplicateIndex++) {
+                rows.get(duplicateIndex).setShowStage2(false);
+            }
             index = end;
         }
 
@@ -749,6 +1188,9 @@ public class ScorecardController {
                 ScorecardDisplayRow row = rows.get(index);
                 row.setShowStage3(true);
                 row.setStage3Rowspan(end - index);
+                for (int duplicateIndex = index + 1; duplicateIndex < end; duplicateIndex++) {
+                    rows.get(duplicateIndex).setShowStage3(false);
+                }
                 index = end;
             }
 
@@ -762,6 +1204,9 @@ public class ScorecardController {
                 ScorecardDisplayRow row = rows.get(index);
                 row.setShowStage4(true);
                 row.setStage4Rowspan(end - index);
+                for (int duplicateIndex = index + 1; duplicateIndex < end; duplicateIndex++) {
+                    rows.get(duplicateIndex).setShowStage4(false);
+                }
                 index = end;
             }
         }
@@ -779,6 +1224,9 @@ public class ScorecardController {
             ScorecardDisplayRow row = rows.get(index);
             row.setShowOutput(true);
             row.setOutputRowspan(end - index);
+            for (int duplicateIndex = index + 1; duplicateIndex < end; duplicateIndex++) {
+                rows.get(duplicateIndex).setShowOutput(false);
+            }
             index = end;
         }
     }
@@ -818,6 +1266,70 @@ public class ScorecardController {
             return -1;
         }
         return target.getOutcome().getId();
+    }
+
+    private long pillarId(Target target) {
+        if (target == null || target.getOutcome() == null || target.getOutcome().getPillar() == null) {
+            return -1;
+        }
+        return target.getOutcome().getPillar().getId();
+    }
+
+    private long strategicGoalId(Target target) {
+        if (target == null || target.getOutcome() == null || target.getOutcome().getPillar() == null
+                || target.getOutcome().getPillar().getGoal() == null) {
+            return -1;
+        }
+        return target.getOutcome().getPillar().getGoal().getId();
+    }
+
+    private void mergeHydratedTargetSnapshots(long scorecardId, List<Target> targetsList) {
+        if (scorecardId <= 0 || targetsList == null || targetsList.isEmpty()) {
+            return;
+        }
+
+        List<Target> hydratedTargets = targetService.getAllTargetsByScorecard(scorecardId);
+        if (hydratedTargets == null || hydratedTargets.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Target> hydratedById = new HashMap<Long, Target>();
+        for (Target hydratedTarget : hydratedTargets) {
+            if (hydratedTarget == null || hydratedTarget.getId() <= 0) {
+                continue;
+            }
+            hydratedById.put(hydratedTarget.getId(), hydratedTarget);
+        }
+
+        for (Target target : targetsList) {
+            if (target == null || target.getId() <= 0) {
+                continue;
+            }
+            Target hydrated = hydratedById.get(target.getId());
+            if (hydrated == null) {
+                continue;
+            }
+            copyScoreSnapshot(target, hydrated);
+        }
+    }
+
+    private void copyScoreSnapshot(Target destination, Target source) {
+        destination.setActual(source.getActual());
+        destination.setEmployeeScore(source.getEmployeeScore());
+        destination.setManagerScore(source.getManagerScore());
+        destination.setAgreedScore(source.getAgreedScore());
+        destination.setModeratedScore(source.getModeratedScore());
+        destination.setWeightedScore(source.getWeightedScore());
+        destination.setCurrentActual(source.getCurrentActual());
+        destination.setCurrentEmployeeScore(source.getCurrentEmployeeScore());
+        destination.setCurrentManagerScore(source.getCurrentManagerScore());
+        destination.setCurrentAgreedScore(source.getCurrentAgreedScore());
+        destination.setCurrentModeratedScore(source.getCurrentModeratedScore());
+        destination.setCurrentWeightedScore(source.getCurrentWeightedScore());
+        destination.setCurrentEvidence(source.getCurrentEvidence());
+        destination.setCurrentAttachmentName(source.getCurrentAttachmentName());
+        destination.setCurrentJustification(source.getCurrentJustification());
+        destination.setScores(source.getScores());
     }
 
     @RequestMapping("/capture-scores/{id}")
@@ -861,7 +1373,8 @@ public class ScorecardController {
         if (captureStage != null) {
             modelAndView.addObject("url", captureStage.getSubmitUrl());
         }
-        modelAndView.addObject("captureSubmitLabel", resolveCaptureSubmitLabel(captureStage));
+        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
+        modelAndView.addObject("captureSubmitLabel", resolveCaptureSubmitLabel(captureStage, workflow));
 
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
@@ -869,13 +1382,16 @@ public class ScorecardController {
             if (isLegacyHierarchyModel(hierarchyModel)) {
                 List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
                 targetsList = attachLegacyTargets(scorecard, selectedGears);
+                mergeHydratedTargetSnapshots(scorecard.getId(), targetsList);
                 modelAndView.addObject("selectedGears", selectedGears);
             } else {
                 targetsList = targetService.getAllTargetsByScorecard(id);
             }
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
-            addScorecardDisplayModel(modelAndView, scorecard, targetsList);
+            addScorecardDisplayModel(modelAndView, scorecard, targetsList, reportingDates);
+            List<ScorecardDisplaySection> displaySections =
+                    (List<ScorecardDisplaySection>) modelAndView.getModel().get("displaySections");
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
             modelAndView.addObject("averageAgreedScore", averageAgreedScore);
@@ -888,12 +1404,19 @@ public class ScorecardController {
             modelAndView.addObject("reportingDateLabel", resolveReportingDateLabel(reportingDate));
             modelAndView.addObject("scorecardModel", scorecardModel);
             modelAndView.addObject("reportingPeriod", reportingPeriod);
+            modelAndView.addObject("overallScore", overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate));
             modelAndView.addObject("scoreCaptureAllowed", scoreCaptureAllowed);
             modelAndView.addObject("scoreCaptureBlockedMessage", scoreCaptureBlockedMessage);
+            modelAndView.addObject("activeReportingDateId", resolveDefaultReportingDateId(reportingDates));
+            modelAndView.addObject("overallScoresByReportingDate", buildOverallScoresByReportingDate(scorecard, reportingDates));
+            modelAndView.addObject(
+                    "displayWeightedScoreTotalsByReportingDate",
+                    buildDisplayWeightedScoreTotalsByReportingDate(displaySections, reportingDates, hierarchyModel)
+            );
             if (PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)) {
                 modelAndView.addObject("captureViewSummaryLabelColspan", displayHierarchyColumnCount + 4);
                 modelAndView.addObject("captureEntrySummaryLabelColspan", displayHierarchyColumnCount + 4);
-                modelAndView.addObject("captureViewTableColumnCount", displayHierarchyColumnCount + 8);
+                modelAndView.addObject("captureViewTableColumnCount", displayHierarchyColumnCount + 10);
                 modelAndView.addObject("captureEntryTableColumnCount", displayHierarchyColumnCount + 9);
             } else if (PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel) && captureStage != null) {
                 modelAndView.addObject("captureViewSummaryLabelColspan", displayHierarchyColumnCount + 3);
@@ -934,22 +1457,113 @@ public class ScorecardController {
         return null;
     }
 
-    private String resolveCaptureSubmitLabel(ValueBasedCaptureStage captureStage) {
+    private ReportingDate resolveActiveReportingDate() {
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        if (reportingDate == null) {
+            return null;
+        }
+        return reportingDate;
+    }
+
+    private boolean isScoreCaptureWindowOpen(Scorecard scorecard, ReportingDate reportingDate) {
+        return reportingDateService.isReportingDateOpen(reportingDate)
+                && isReportingDateForScorecard(scorecard, reportingDate);
+    }
+
+    private boolean isReportingDateForScorecard(Scorecard scorecard, ReportingDate reportingDate) {
+        if (scorecard == null || scorecard.getReportingPeriod() == null || reportingDate == null
+                || reportingDate.getReportingPeriod() == null) {
+            return false;
+        }
+        return scorecard.getReportingPeriod().getId() == reportingDate.getReportingPeriod().getId();
+    }
+
+    private boolean isScorecardInActiveReportingPeriod(Scorecard scorecard) {
+        return scorecard != null
+                && scorecard.getReportingPeriod() != null
+                && scorecard.getReportingPeriod().getStatus() != null
+                && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getReportingPeriod().getStatus().trim());
+    }
+
+    private String resolveActiveReportingDateRole(Scorecard scorecard) {
+        if (scorecard == null) {
+            return null;
+        }
+        ReportingDate reportingDate = resolveActiveReportingDate();
+        if (reportingDate == null) {
+            return null;
+        }
+        if (!isScoreCaptureWindowOpen(scorecard, reportingDate)) {
+            return null;
+        }
+        String roleKey = scorecardReportingDateStageService.getCurrentRoleKey(scorecard, reportingDate);
+        if (roleKey != null) {
+            return roleKey;
+        }
+        ScorecardReportingDateStage stage = scorecardReportingDateStageService.getOrCreateStage(scorecard, reportingDate);
+        if (stage == null || stage.getApprovalStage() == null) {
+            return null;
+        }
+        return stage.getApprovalStage().getRoleKey();
+    }
+
+    private boolean isActiveReportingDateRole(Scorecard scorecard, String roleKey) {
+        String currentRole = resolveActiveReportingDateRole(scorecard);
+        if (currentRole == null || roleKey == null) {
+            return false;
+        }
+        return currentRole.trim().equalsIgnoreCase(roleKey.trim());
+    }
+
+    private boolean moveActiveReportingDateStage(Scorecard scorecard, String roleKey, HttpServletRequest request) {
+        ReportingDate reportingDate = resolveActiveReportingDate();
+        if (reportingDate == null) {
+            PortletUtils.addErrorMsg("No active reporting date was found.", request);
+            return false;
+        }
+        if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+            PortletUtils.addErrorMsg("Scores can only be submitted for an OPEN reporting date.", request);
+            return false;
+        }
+        if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+            PortletUtils.addErrorMsg("Scores can only be submitted for the OPEN reporting date in this scorecard's reporting period.", request);
+            return false;
+        }
+        ScorecardReportingDateStage stage = scorecardReportingDateStageService.moveToRole(scorecard, reportingDate, roleKey);
+        if (stage == null || stage.getApprovalStage() == null) {
+            PortletUtils.addErrorMsg("The score workflow stage could not be updated.", request);
+            return false;
+        }
+        return true;
+    }
+
+    private String resolveCaptureSubmitLabel(ValueBasedCaptureStage captureStage, ScorecardWorkflowDefinition workflow) {
         if (captureStage == null) {
             return "Validate & Submit";
         }
         switch (captureStage) {
             case EMPLOYEE:
-                return "Submit Owner Scores";
+                return resolveRoleActionLabel(workflow, PMConstants.SCORECARD_STAGE_OWNER_SCORING, "Submit Owner Scores");
             case MANAGER:
-                return "Submit Supervisor Scores";
+                return resolveRoleActionLabel(workflow, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING, "Submit Supervisor Scores");
             case AGREED:
-                return "Submit Agreed Scores";
+                return resolveRoleActionLabel(workflow, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING, "Submit Agreed Scores");
             case MODERATED:
-                return "Submit Moderated Scores";
+                return resolveRoleActionLabel(workflow, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING, "Submit Moderated Scores");
             default:
                 return "Validate & Submit";
         }
+    }
+
+    private String resolveRoleActionLabel(ScorecardWorkflowDefinition workflow, String roleKey, String fallback) {
+        if (workflow == null || workflow.getRoleActionButtonLabels() == null || roleKey == null) {
+            return fallback;
+        }
+        String configured = workflow.getRoleActionButtonLabels().get(roleKey.toUpperCase(Locale.ENGLISH));
+        if (configured == null || configured.trim().isEmpty()) {
+            return fallback;
+        }
+        return configured.trim();
     }
 
     private double sumCurrentWeightedScores(List<Target> targets) {
@@ -966,15 +1580,12 @@ public class ScorecardController {
     }
 
     private int resolveValueBasedViewTableColumnCount(int hierarchyColumnCount, ValueBasedCaptureStage captureStage) {
-        int columns = hierarchyColumnCount + 6; // measure, unit, target, weight, employee score, action
+        int columns = hierarchyColumnCount + 8; // measure, unit, target, weight, employee score, evidence, justification, action
         if (captureStage != ValueBasedCaptureStage.EMPLOYEE) {
             columns += 1; // manager score
         }
         if (captureStage == ValueBasedCaptureStage.AGREED || captureStage == ValueBasedCaptureStage.MODERATED) {
             columns += 1; // agreed score
-        }
-        if (captureStage == ValueBasedCaptureStage.MODERATED) {
-            columns += 2; // moderated score + weighted score
         }
         return columns;
     }
@@ -982,15 +1593,15 @@ public class ScorecardController {
     private int resolveValueBasedCaptureTableColumnCount(int hierarchyColumnCount, ValueBasedCaptureStage captureStage) {
         int columns = hierarchyColumnCount + 8; // measure, unit, target, weight, employee, evidence, justification, action
         if (captureStage != ValueBasedCaptureStage.EMPLOYEE) {
-            columns += 2; // manager + weighted
+            columns += 1; // manager
+            if (captureStage != ValueBasedCaptureStage.MODERATED) {
+                columns += 1; // weighted
+            }
         } else {
             columns += 1; // attachment
         }
         if (captureStage == ValueBasedCaptureStage.AGREED || captureStage == ValueBasedCaptureStage.MODERATED) {
             columns += 1; // agreed
-        }
-        if (captureStage == ValueBasedCaptureStage.MODERATED) {
-            columns += 1; // moderated
         }
         return columns;
     }
@@ -999,14 +1610,107 @@ public class ScorecardController {
         return left != null && right != null && left.equalsIgnoreCase(right);
     }
 
+    private boolean canViewScorecardReport(Scorecard scorecard) {
+        if (scorecard == null) {
+            return false;
+        }
+        if (scorecard.getApprovalStage() != null
+                && scorecard.getApprovalStage().getRoleKey() != null
+                && PMConstants.SCORECARD_STAGE_CLOSED.equalsIgnoreCase(scorecard.getApprovalStage().getRoleKey().trim())) {
+            return true;
+        }
+        return equalsStatus(scorecard.getApprovalStatus(), PMConstants.APPROVAL_STATUS_MODERATED_BY_HR)
+                || equalsStatus(scorecard.getApprovalStatus(), PMConstants.APPROVAL_STATUS_CLOSED);
+    }
+
+    private boolean canViewScorecard(Scorecard scorecard) {
+        if (scorecard == null) {
+            return false;
+        }
+        Account loggedUser = commonService.getLoggedUser();
+        if (loggedUser == null || !isScorecardInConfiguredClient(scorecard)) {
+            return false;
+        }
+        if (commonService.isAdmin() || commonService.hasSpecialRights()) {
+            return true;
+        }
+
+        String accountType = loggedUser.getAccountType();
+        if ("EMPLOYEE".equalsIgnoreCase(accountType)) {
+            return isScorecardOwner(scorecard, loggedUser);
+        }
+        if ("SUPERVISOR".equalsIgnoreCase(accountType)) {
+            return isScorecardOwner(scorecard, loggedUser) || isScorecardSupervisor(scorecard, loggedUser);
+        }
+        if ("DEPARTMENT_MANAGER".equalsIgnoreCase(accountType) || "DIVISIONAL_DIRECTOR".equalsIgnoreCase(accountType)) {
+            return isSameDepartment(scorecard.getOwner(), loggedUser);
+        }
+        if ("ACTING_CEO".equalsIgnoreCase(accountType) || "CEO".equalsIgnoreCase(accountType)) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isScorecardInConfiguredClient(Scorecard scorecard) {
+        if (scorecard == null) {
+            return false;
+        }
+        long configuredClientId = commonService.getConfiguredClientId();
+        if (configuredClientId <= 0) {
+            return true;
+        }
+        ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+        if (reportingPeriod != null
+                && (reportingPeriod.getClientId() == configuredClientId || reportingPeriod.getClientId() <= 0)) {
+            return true;
+        }
+        long scorecardClientId = scorecard.getClientId();
+        return scorecardClientId <= 0 || configuredClientId <= 0 || scorecardClientId == configuredClientId;
+    }
+
+    private boolean isScorecardOwner(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && loggedUser != null
+                && scorecard.getOwner().getId() == loggedUser.getId();
+    }
+
+    private boolean isScorecardSupervisor(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && scorecard.getOwner().getSupervisor() != null
+                && loggedUser != null
+                && scorecard.getOwner().getSupervisor().getId() == loggedUser.getId();
+    }
+
+    private boolean isSameDepartment(Account owner, Account loggedUser) {
+        return owner != null
+                && owner.getDepartment() != null
+                && loggedUser != null
+                && loggedUser.getDepartment() != null
+                && owner.getDepartment().getId() == loggedUser.getDepartment().getId();
+    }
+
+    private boolean canCaptureTargets(Scorecard scorecard) {
+        return scorecard != null
+                && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
+                && isScorecardInActiveReportingPeriod(scorecard)
+                && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard);
+    }
+
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
-    public String saveTarget(@Valid GoalWrapper goalWrapper, BindingResult bindingResult) {
+    public String saveTarget(@Valid GoalWrapper goalWrapper, BindingResult bindingResult, HttpServletRequest request) {
         if (bindingResult.hasErrors()) {
             log.warn("Target validation failed: {}", bindingResult.getFieldError().getDefaultMessage());
             return "redirect:/scorecards/view-scorecards";
         }
 
         long scorecardId = goalWrapper.getScorecardId();
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be captured for an active reporting period.", request);
+            return scorecard == null ? "redirect:/scorecards" : "redirect:/scorecards/view-scorecard/" + scorecardId;
+        }
         Goal goal;
         Target target;
 
@@ -1043,13 +1747,22 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-target-to-existing-goal", method = RequestMethod.POST)
-    public String saveTargetToExistingGoal(@Valid Target target, BindingResult bindingResult) {
+    public String saveTargetToExistingGoal(@Valid Target target, BindingResult bindingResult, HttpServletRequest request) {
         if (bindingResult.hasErrors()) {
             log.warn("Target validation failed: {}", bindingResult.getFieldError().getDefaultMessage());
             return "redirect:/scorecards/view-scorecards";
         }
 
+        if (target == null || target.getGoal() == null || target.getGoal().getScorecardId() <= 0) {
+            PortletUtils.addErrorMsg("Scorecard reference is required.", request);
+            return "redirect:/scorecards";
+        }
         long scorecardId = target.getGoal().getScorecardId();
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be captured for an active reporting period.", request);
+            return scorecard == null ? "redirect:/scorecards" : "redirect:/scorecards/view-scorecard/" + scorecardId;
+        }
         targetService.saveTarget(target);
 
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
@@ -1062,6 +1775,10 @@ public class ScorecardController {
         if (scorecard == null) {
             PortletUtils.addErrorMsg("Scorecard could not be resolved.", request);
             return "redirect:/scorecards";
+        }
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be captured for an active reporting period.", request);
+            return "redirect:/scorecards/view-scorecard/" + scorecardId;
         }
 
         Outcome outcome = outcomeService.getOutcomeById(wrapper.getOutcomeId());
@@ -1131,11 +1848,16 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Output could not be resolved.", request);
             return "redirect:/scorecards";
         }
+        Scorecard scorecard = output.getScorecard();
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be captured for an active reporting period.", request);
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
 
         Goal goal = resolveGoalFromOutcome(output.getOutcome());
         if (goal == null) {
             PortletUtils.addErrorMsg("Strategic goal could not be resolved for this output.", request);
-            return "redirect:/scorecards/capture-targets/" + output.getScorecard().getId();
+            return "redirect:/scorecards/capture-targets/" + scorecard.getId();
         }
 
         target.setOutput(output);
@@ -1150,7 +1872,7 @@ public class ScorecardController {
         }
         targetService.saveTarget(target);
 
-        return "redirect:/scorecards/capture-targets/" + output.getScorecard().getId();
+        return "redirect:/scorecards/capture-targets/" + scorecard.getId();
     }
 
     @RequestMapping(value = "/select-gear", method = RequestMethod.POST)
@@ -1160,6 +1882,10 @@ public class ScorecardController {
         if (gear == null || scorecard == null) {
             PortletUtils.addErrorMsg("Scorecard hierarchy selection failed. Invalid input.", request);
             return "redirect:/scorecards/capture-targets/" + scorecardId;
+        }
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be captured for an active reporting period.", request);
+            return "redirect:/scorecards/view-scorecard/" + scorecardId;
         }
 
         if (scorecard.getReportingPeriod() == null || scorecard.getReportingPeriod().getId() <= 0) {
@@ -1307,6 +2033,15 @@ public class ScorecardController {
             scorecardId = target.getOutput().getScorecard().getId();
         }
 
+        if (scorecardId <= 0) {
+            return "redirect:/scorecards";
+        }
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be deleted for an active reporting period.", request);
+            return scorecard == null ? "redirect:/scorecards" : "redirect:/scorecards/view-scorecard/" + scorecardId;
+        }
+
         try {
             targetService.deleteTarget(target);
             PortletUtils.addInfoMsg("Target was successfully deleted", request);
@@ -1321,9 +2056,6 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Target wasn't deleted", request);
         }
 
-        if (scorecardId <= 0) {
-            return "redirect:/scorecards";
-        }
         return "redirect:/scorecards/capture-targets/"+ scorecardId;
     }
 
@@ -1334,6 +2066,10 @@ public class ScorecardController {
         if (scorecard == null) {
             PortletUtils.addErrorMsg("Scorecard not found.", request);
             return "redirect:/scorecards";
+        }
+        if (!canCaptureTargets(scorecard)) {
+            PortletUtils.addErrorMsg("Targets can only be submitted for an active reporting period.", request);
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
         }
         Account owner = scorecard.getOwner();
         Account supervisor = owner == null ? null : owner.getSupervisor();
@@ -1371,10 +2107,9 @@ public class ScorecardController {
     public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
-
-        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        scorecard.setApprovalStatus(workflow.getScoredByEmployeeStatus());
-        scorecardService.saveScorecard(scorecard);
+        if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL, request)) {
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
         Account supervisor = scorecard.getOwner().getSupervisor();
 
         URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
@@ -1407,9 +2142,9 @@ public class ScorecardController {
             return "redirect:/scorecards/view-scorecard/" + id;
         }
 
-        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        scorecard.setApprovalStatus(workflow.getApprovedOwnerScoresStatus());
-        scorecardService.saveScorecard(scorecard);
+        if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING, request)) {
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
 
         Account owner = scorecard.getOwner();
         Account supervisor = owner == null ? null : owner.getSupervisor();
@@ -1435,9 +2170,9 @@ public class ScorecardController {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
 
-        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        scorecard.setApprovalStatus(workflow.getScoredBySupervisorStatus());
-        scorecardService.saveScorecard(scorecard);
+        if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING, request)) {
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
         URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
@@ -1462,14 +2197,14 @@ public class ScorecardController {
     public String submitAgreedScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
-        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        scorecard.setApprovalStatus(workflow.getAgreedByTwoStatus());
         Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
 
         try {
-            scorecardService.saveScorecard(scorecard);
+            if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL, request)) {
+                return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+            }
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String recipient = owner.getEmail();
             String subject = "Scorecard Scoring,";
@@ -1531,9 +2266,9 @@ public class ScorecardController {
             return "redirect:/scorecards/view-scorecard/" + id;
         }
 
-        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        scorecard.setApprovalStatus(workflow.getApprovedAgreedScoresStatus());
-        scorecardService.saveScorecard(scorecard);
+        if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING, request)) {
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
 
         Account owner = scorecard.getOwner();
         Account supervisor = owner == null ? null : owner.getSupervisor();
@@ -1567,17 +2302,17 @@ public class ScorecardController {
         return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
     }
  @RequestMapping(value = "/submit-moderated-scores", method = RequestMethod.POST)
-    public String submitModeratedScorecard(HttpServletRequest request, Scorecard updatedScorecard) {
+ public String submitModeratedScorecard(HttpServletRequest request, Scorecard updatedScorecard) {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
-        ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        scorecard.setApprovalStatus(workflow.getModeratedByHrStatus());
         Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
 
         try {
-            scorecardService.saveScorecard(scorecard);
+            if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_CLOSED, request)) {
+                return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+            }
 
             URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
             String recipient = owner.getEmail();
@@ -1901,12 +2636,20 @@ public class ScorecardController {
                 preparePage(modelAndView, request, session);
                 return modelAndView;
             }
+            if (!canViewScorecard(scorecard)) {
+                PortletUtils.addErrorMsg("You are not allowed to view this scorecard.", request);
+                modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+                preparePage(modelAndView, request, session);
+                return modelAndView;
+            }
 
             String scorecardModel = scorecard.getScorecardModel() != null
                     ? scorecard.getScorecardModel().getName()
                     : PMConstants.STANDARD_SCORECARD;
             String hierarchyModel = resolveHierarchyModel(scorecard);
             int displayHierarchyColumnCount = resolveDisplayHierarchyColumnCount(hierarchyModel);
+            ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+            List<ReportingDate> reportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
             double averageEmployeeScore = goalService.getAverageEmployeeScore(id);
             double averageManagerScore = goalService.getAverageManagerScore(id);
             double averageAgreedScore = goalService.getAverageAgreedScore(id);
@@ -1918,6 +2661,7 @@ public class ScorecardController {
             if (isLegacyHierarchyModel(hierarchyModel)) {
                 List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
                 targetsList = attachLegacyTargets(scorecard, selectedGears);
+                mergeHydratedTargetSnapshots(scorecard.getId(), targetsList);
                 modelAndView.addObject("selectedGears", selectedGears);
             } else {
                 targetsList = targetService.getAllTargetsByScorecard(id);
@@ -1932,34 +2676,41 @@ public class ScorecardController {
 
             modelAndView.addObject("pageTitle", "View Scorecard {"+ scorecard.getOwner().getFullName() +"}");
             modelAndView.addObject("scorecard", scorecard);
+            modelAndView.addObject("id", scorecard.getId());
             modelAndView.addObject("scorecardModel", scorecardModel);
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
-            addScorecardDisplayModel(modelAndView, scorecard, targetsList);
+            addScorecardDisplayModel(modelAndView, scorecard, targetsList, reportingDates);
+            List<ScorecardDisplaySection> displaySections =
+                    (List<ScorecardDisplaySection>) modelAndView.getModel().get("displaySections");
             modelAndView.addObject("comment", new Comment());
+            modelAndView.addObject("reportingDates", reportingDates);
+            modelAndView.addObject("activeReportingDateId", resolveDefaultReportingDateId(reportingDates));
+            modelAndView.addObject("overallScoresByReportingDate", buildOverallScoresByReportingDate(scorecard, reportingDates));
+            modelAndView.addObject("overallCommentsByReportingDate", buildOverallCommentsByReportingDate(scorecard));
+            modelAndView.addObject(
+                    "displayWeightedScoreTotalsByReportingDate",
+                    buildDisplayWeightedScoreTotalsByReportingDate(displaySections, reportingDates, hierarchyModel)
+            );
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
             modelAndView.addObject("averageAgreedScore", averageAgreedScore);
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
             modelAndView.addObject("totalWeightedScore", totalWeightedScore);
-            if (PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel)) {
-                modelAndView.addObject("viewSummaryLabelColspan", displayHierarchyColumnCount + 3);
-                modelAndView.addObject("viewTableColumnCount", displayHierarchyColumnCount + 10);
-            } else {
-                modelAndView.addObject("viewSummaryLabelColspan", displayHierarchyColumnCount + 4);
-                modelAndView.addObject("viewTableColumnCount", displayHierarchyColumnCount + 8);
-            }
+            modelAndView.addObject("viewScoreColumnCount", resolveViewScoreColumnCount(scorecardModel));
+            modelAndView.addObject("viewPreScoreColumnCount", displayHierarchyColumnCount + 5);
+            modelAndView.addObject("viewSummaryLabelColspan", resolveViewSummaryLabelColspan(displayHierarchyColumnCount));
+            modelAndView.addObject("viewTableColumnCount", resolveViewTableColumnCount(displayHierarchyColumnCount, scorecardModel));
             modelAndView.addObject("isSupervisor", commonService.isSupervisor(scorecard.getOwner()));
             ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-            modelAndView.addObject("ownerCaptureStage", equalsStatus(scorecard.getApprovalStatus(), workflow.getApprovedByHrStatus()));
-            modelAndView.addObject("supervisorCaptureStage",
-                    equalsStatus(scorecard.getApprovalStatus(), workflow.getApprovedOwnerScoresStatus())
-                            || equalsStatus(scorecard.getApprovalStatus(), workflow.getScoredBySupervisorStatus()));
-            modelAndView.addObject("agreedCaptureStage", equalsStatus(scorecard.getApprovalStatus(), workflow.getScoredBySupervisorStatus()));
-            modelAndView.addObject("moderatedCaptureStage", equalsStatus(scorecard.getApprovalStatus(), workflow.getApprovedAgreedScoresStatus()));
+            modelAndView.addObject("ownerCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_OWNER_SCORING));
+            modelAndView.addObject("supervisorCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING));
+            modelAndView.addObject("agreedCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING));
+            modelAndView.addObject("moderatedCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING));
+            modelAndView.addObject("canViewReport", canViewScorecardReport(scorecard));
             modelAndView.addObject("canApprove", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard));
-            modelAndView.addObject("canCaptureTargets", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard));
+            modelAndView.addObject("canCaptureTargets", canCaptureTargets(scorecard));
             modelAndView.addObject("canCaptureEmployeeScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard));
             modelAndView.addObject("canCaptureManagerScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard));
             modelAndView.addObject("canCaptureAgreedScoreAgreedScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard));
@@ -1968,6 +2719,7 @@ public class ScorecardController {
             modelAndView.addObject("canApproveAgreedScores", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES, scorecard));
 
         }catch (Exception e){
+            log.error("Failed to open scorecard id={}", id, e);
             PortletUtils.addErrorMsg("The scorecard could not be opened. Please check scorecard setup and try again.", request);
             modelAndView = new ModelAndView(Pages.BLANK_PAGE);
         }
@@ -2037,11 +2789,11 @@ public class ScorecardController {
             return;
         }
         Target target = targetService.getTargetById(targetId);
-        if (target == null || target.getGoal() == null) {
+        if (target == null) {
             writeScoreSaveResponse(response, true, "Target could not be resolved");
             return;
         }
-        Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+        Scorecard scorecard = resolveScorecardFromTarget(target);
         if (scorecard == null) {
             writeScoreSaveResponse(response, true, "Scorecard could not be resolved");
             return;
@@ -2060,13 +2812,18 @@ public class ScorecardController {
             writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
             return;
         }
+        if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+            writeScoreSaveResponse(response, true, "Scores can only be captured for the open reporting date in this scorecard's reporting period");
+            return;
+        }
 
-        Score score = new Score();
-        score.setTarget(target);
-        score.setReportingDate(reportingDate);
-        score.setEvidence(evidence);
-        score.setJustification(justification);
-        score.setActual(actual);
+            Score score = new Score();
+            score.setTarget(target);
+            score.setOutput(target.getOutput());
+            score.setReportingDate(reportingDate);
+            score.setEvidence(evidence);
+            score.setJustification(justification);
+            score.setActual(actual);
 
         standardScorecardScoreService.saveScore(score);
         writeScoreSaveResponse(response);
@@ -2083,12 +2840,12 @@ public class ScorecardController {
         Long scorecardId = null;
         try {
             Target target = targetService.getTargetById(wrapper.getTargetId());
-            if (target == null || target.getGoal() == null) {
+            if (target == null) {
                 PortletUtils.addErrorMsg("Target could not be resolved for evidence upload.", request);
                 return "redirect:/scorecards";
             }
 
-            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            Scorecard scorecard = resolveScorecardFromTarget(target);
             if (scorecard == null) {
                 PortletUtils.addErrorMsg("Scorecard could not be resolved for evidence upload.", request);
                 return "redirect:/scorecards";
@@ -2110,9 +2867,14 @@ public class ScorecardController {
                 PortletUtils.addErrorMsg("Scores can only be captured for an open reporting date", request);
                 return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
             }
+            if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+                PortletUtils.addErrorMsg("Scores can only be captured for the open reporting date in this scorecard's reporting period", request);
+                return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
+            }
 
             Score score = new Score();
             score.setTarget(target);
+            score.setOutput(target.getOutput());
             score.setReportingDate(reportingDate);
             score.setEvidence(wrapper.getEvidence());
 
@@ -2142,6 +2904,48 @@ public class ScorecardController {
         saveValueBasedScore(response, targetId, managerScore, null, ValueBasedCaptureStage.MANAGER);
     }
 
+    @RequestMapping(value = "/save-overall-score", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveOverallScore(HttpServletResponse response, Long scorecardId, String userType, Double score) {
+        try {
+            if (scorecardId == null || scorecardId <= 0) {
+                writeScoreSaveResponse(response, true, "Scorecard reference is required");
+                return;
+            }
+            if (score == null || score < 0.0 || score > 5.0) {
+                writeScoreSaveResponse(response, true, "Score must be between 0 and 5");
+                return;
+            }
+            Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+            if (scorecard == null) {
+                writeScoreSaveResponse(response, true, "Scorecard could not be resolved");
+                return;
+            }
+            if (!PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)
+                    || !isStageCaptureAllowed(scorecard, ValueBasedCaptureStage.MODERATED)) {
+                writeScoreSaveResponse(response, true, "You are not allowed to capture the moderated score for this scorecard");
+                return;
+            }
+
+            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+            if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+                writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
+                return;
+            }
+            if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+                writeScoreSaveResponse(response, true, "Scores can only be captured for the open reporting date in this scorecard's reporting period");
+                return;
+            }
+
+            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+            overallScore.setModeratedOverall(score);
+            overallScoreService.saveOverallScore(overallScore);
+            writeScoreSaveResponse(response);
+        } catch (Exception exception) {
+            log.error("Failed to save overall score for scorecardId={}", scorecardId, exception);
+            writeScoreSaveResponse(response, true, "Score could not be saved");
+        }
+    }
+
     @RequestMapping(value = "/save-value-based-agreed-score", method = RequestMethod.POST, consumes = {"*/*"})
     public void saveAgreedScore(HttpServletResponse response, Long targetId, Double agreedScore) {
         saveValueBasedScore(response, targetId, agreedScore, null, ValueBasedCaptureStage.AGREED);
@@ -2160,11 +2964,11 @@ public class ScorecardController {
             }
 
             Target target = targetService.getTargetById(targetId);
-            if (target == null || target.getGoal() == null) {
+            if (target == null) {
                 writeScoreSaveResponse(response, true, "Target could not be resolved");
                 return;
             }
-            Scorecard scorecard = scorecardService.getScorecardById(target.getGoal().getScorecardId());
+            Scorecard scorecard = resolveScorecardFromTarget(target);
             if (scorecard == null) {
                 writeScoreSaveResponse(response, true, "Scorecard could not be resolved");
                 return;
@@ -2183,10 +2987,19 @@ public class ScorecardController {
                 writeScoreSaveResponse(response, true, "Scores can only be captured for an open reporting date");
                 return;
             }
+            if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+                writeScoreSaveResponse(response, true, "Scores can only be captured for the open reporting date in this scorecard's reporting period");
+                return;
+            }
+            if (!isValidValueBasedScore(scoreValue)) {
+                writeScoreSaveResponse(response, true, "Score must be between 0 and 5");
+                return;
+            }
 
             if(isStageCaptureAllowed(scorecard, stage)){
                 Score score = new Score();
                 score.setTarget(target);
+                score.setOutput(target.getOutput());
                 score.setReportingDate(reportingDate);
                 score.setJustification(justification);
                 persistScoreByStage(score, scoreValue, stage);
@@ -2223,6 +3036,9 @@ public class ScorecardController {
         if (!reportingDateService.isReportingDateOpen(reportingDate)) {
             return "Score capture is unavailable because there is no OPEN reporting date.";
         }
+        if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+            return "Score capture is unavailable because the OPEN reporting date is not in this scorecard's reporting period.";
+        }
         return null;
     }
 
@@ -2235,6 +3051,22 @@ public class ScorecardController {
             clientId = scorecard.getOwner().getClientId();
         }
         return clientId > 0 && reportingDateService.hasMultipleOpenOrActiveReportingDates(clientId);
+    }
+
+    private Scorecard resolveScorecardFromTarget(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getOutput() != null && target.getOutput().getScorecard() != null) {
+            long scorecardId = target.getOutput().getScorecard().getId();
+            if (scorecardId > 0) {
+                return scorecardService.getScorecardById(scorecardId);
+            }
+        }
+        if (target.getGoal() != null && target.getGoal().getScorecardId() > 0) {
+            return scorecardService.getScorecardById(target.getGoal().getScorecardId());
+        }
+        return null;
     }
 
     private String resolveReportingDateLabel(ReportingDate reportingDate) {
@@ -2257,6 +3089,10 @@ public class ScorecardController {
             default:
                 return false;
         }
+    }
+
+    private boolean isValidValueBasedScore(Double scoreValue) {
+        return scoreValue != null && scoreValue >= 0.0 && scoreValue <= 5.0;
     }
 
     private void persistScoreByStage(Score score, Double scoreValue, ValueBasedCaptureStage stage) {
@@ -2439,7 +3275,11 @@ public class ScorecardController {
             Scorecard scorecard = scorecardService.getScorecardById(imaginaryScorecard.getId());
             Scorecard newScorecard = new Scorecard();
 
-            newScorecard.setClientId(scorecard.getClientId());
+            if (scorecard.getClient() != null) {
+                newScorecard.setClient(scorecard.getClient());
+            } else {
+                newScorecard.setClient(commonService.getConfiguredClient());
+            }
             newScorecard.setOwner(imaginaryScorecard.getOwner());
             newScorecard.setReportingPeriod(imaginaryScorecard.getReportingPeriod());
             newScorecard.setScorecardModel(scorecardModelService.getActiveScorecardModel());
@@ -2628,14 +3468,14 @@ public class ScorecardController {
 
             if("programme".equalsIgnoreCase(hierarchyModel)){
                 stage1 = "Programme";
-                stage2 = "Outcome";
+                stage2 = "Strategic Goal";
                 stage3 = "Pillar";
-                stage4 = "Strategic goal";
+                stage4 = "Outcome";
                 model = "programme";
             } else if("gear".equalsIgnoreCase(hierarchyModel)){
                 stage1 = "Gear";
                 stage2 = "Goal";
-                stage3 = "goal";
+                stage3 = "Goal";
                 stage4 = "Outcome";
                 model = "gear";
             } else {

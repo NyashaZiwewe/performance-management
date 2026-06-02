@@ -20,6 +20,15 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
     Score findScoreByOutputAndReportingDate(Output output, ReportingDate reportingDate);
     boolean existsScoresByTargetAndReportingDate(Target target, ReportingDate reportingDate);
     Score findScoreByTargetAndReportingDate(Target target, ReportingDate reportingDate);
+    List<Score> findScoresByTargetAndReportingDateOrderByIdDesc(Target target, ReportingDate reportingDate);
+    List<Score> findScoresByOutputAndReportingDateOrderByIdDesc(Output output, ReportingDate reportingDate);
+    List<Score> findScoresByTargetOrderByReportingDate_DateDescIdDesc(Target target);
+    List<Score> findScoresByOutputOrderByReportingDate_DateDescIdDesc(Output output);
+    @Query("SELECT s FROM Score s WHERE s.reportingDate = :reportingDate " +
+            "AND (s.target = :target OR (s.target IS NULL AND s.output = :output))")
+    Score findScoreByTargetOrOutputAndReportingDate(@Param("target") Target target,
+                                                    @Param("output") Output output,
+                                                    @Param("reportingDate") ReportingDate reportingDate);
 
 //    @Query("SELECT coalesce(AVG(employeeScore), 0) FROM Score WHERE target = :target")
 //    double averageEmployeeScore(@Param("target") long target);
@@ -95,14 +104,14 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
     double averageEmployeeScoreByTarget(@Param("target") Target target);
 
     @Query("SELECT coalesce(SUM(s.weightedScore), 0), coalesce(AVG(s.actual), 0), coalesce(SUM(s.actual), 0) " +
-            "FROM Score s WHERE s.target = :target")
-    Object[] aggregateStandardTargetScores(@Param("target") Target target);
+            "FROM Score s WHERE s.target = :target OR (s.target IS NULL AND s.output = :output)")
+    Object[] aggregateStandardTargetScores(@Param("target") Target target, @Param("output") Output output);
 
     @Query("SELECT coalesce(SUM(s.weightedScore), 0), " +
-            "coalesce(SUM(s.employeeScore), 0), " +
-            "coalesce(SUM(s.managerScore), 0), " +
-            "coalesce(SUM(s.agreedScore), 0), " +
-            "coalesce(SUM(s.moderatedScore), 0) " +
-            "FROM Score s WHERE s.target = :target")
-    Object[] aggregateValueBasedTargetScores(@Param("target") Target target);
+            "coalesce(AVG(s.employeeScore), 0), " +
+            "coalesce(AVG(s.managerScore), 0), " +
+            "coalesce(AVG(s.agreedScore), 0), " +
+            "coalesce(AVG(s.moderatedScore), 0) " +
+            "FROM Score s WHERE s.target = :target OR (s.target IS NULL AND s.output = :output)")
+    Object[] aggregateValueBasedTargetScores(@Param("target") Target target, @Param("output") Output output);
 }

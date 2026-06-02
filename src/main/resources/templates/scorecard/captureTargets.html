@@ -480,14 +480,14 @@
                     <div class="col-lg-8" th:if="${totalAllocatedWeight == 100.0}">
                         <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
                         <button class="btn btn-success submit-scorecard-btn" th:if="${scorecard.approvalStatus == scorecardWorkflow.newStatus}" type="button" onclick="submitScorecardForApproval()"
-                                th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Submit for Approval'}">Submit for Approval</button>
+                                th:text="${workflowRoleActionLabels != null and workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] != null ? workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] : 'Submit for Approval'}">Submit for Approval</button>
                         <button class="btn btn-success submit-scorecard-btn" th:if="${scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus}" type="button" onclick="submitScorecardForApproval()"
-                                th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Re-Submit for Approval'}">Re-Submit for Approval</button>
+                                th:text="${workflowRoleActionLabels != null and workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] != null ? workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] : 'Re-Submit for Approval'}">Re-Submit for Approval</button>
                     </div>
                     <div class="col-lg-8" th:if="${totalAllocatedWeight != 100.0}">
                         <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
                         <button class="btn btn-secondary" type="button" disabled
-                                th:text="${approvalStatusActionLabels != null and scorecard.approvalStatus != null and approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusActionLabels[#strings.toUpperCase(scorecard.approvalStatus)] : 'Submit for Approval'}">Submit for Approval</button>
+                                th:text="${workflowRoleActionLabels != null and workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] != null ? workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] : 'Submit for Approval'}">Submit for Approval</button>
                     </div>
                 </div>
 

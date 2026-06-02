@@ -22,7 +22,7 @@ public class Target {
     private long id;
 
     @ManyToOne
-    @JoinColumn(name = "output_id")
+    @JoinColumn(name = "output_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Output output;
 
     @Transient
@@ -31,8 +31,7 @@ public class Target {
     private Outcome outcome;
 
     @ManyToOne
-    @JoinColumn(name = "goal_id")
-    @NotNull(message = "Goal is required")
+    @JoinColumn(name = "goal_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Goal goal;
 
     @Transient
