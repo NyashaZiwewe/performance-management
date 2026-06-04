@@ -32,23 +32,7 @@ public class Output implements Serializable {
     private List<Target> targets;
     @OneToMany(mappedBy = "output", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Score> scores;
-    private String unit;
     private Double allocatedWeight;
-    private Double normalTarget;
-    private Double baseTarget;
-    private Double stretchTarget;
-    private Double actual;
-    private Double employeeScore;
-    private Double managerScore;
-    private Double agreedScore;
-    private Double moderatedScore;
-    private Double weightedScore;
-    private Double currentActual;
-    private Double currentEmployeeScore;
-    private Double currentManagerScore;
-    private Double currentAgreedScore;
-    private Double currentModeratedScore;
-    private Double currentWeightedScore;
     @CreationTimestamp
     @Column(updatable = false)
     private Date date;

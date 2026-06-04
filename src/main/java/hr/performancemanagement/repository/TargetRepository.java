@@ -1,8 +1,6 @@
 package hr.performancemanagement.repository;
 import hr.performancemanagement.entities.Goal;
 import hr.performancemanagement.entities.Output;
-import hr.performancemanagement.entities.ReportingDate;
-import hr.performancemanagement.entities.Score;
 import hr.performancemanagement.entities.Target;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,36 +13,21 @@ import java.util.List;
 public interface TargetRepository extends JpaRepository<Target, Long> {
     List<Target> findTargetsByGoalId(long goalId);
     @Query("SELECT t FROM Target t " +
+            "LEFT JOIN FETCH t.goal directGoal " +
             "LEFT JOIN FETCH t.output o " +
             "LEFT JOIN FETCH o.outcome oc " +
             "LEFT JOIN FETCH oc.goal g " +
             "LEFT JOIN FETCH oc.pillar p " +
             "LEFT JOIN FETCH p.goal pg " +
-            "WHERE o.scorecard.id = :scorecardId " +
-            "ORDER BY COALESCE(g.perspective.id, pg.perspective.id), " +
-            "COALESCE(g.strategicObjective.id, pg.strategicObjective.id), " +
-            "COALESCE(g.id, pg.id), t.id")
+            "WHERE o.scorecard.id = :scorecardId OR directGoal.scorecardId = :scorecardId " +
+            "ORDER BY COALESCE(directGoal.perspective.id, g.perspective.id, pg.perspective.id), " +
+            "COALESCE(directGoal.strategicObjective.id, g.strategicObjective.id, pg.strategicObjective.id), " +
+            "COALESCE(directGoal.id, g.id, pg.id), t.id")
     List<Target> findTargetsByScorecardId(@Param("scorecardId") long scorecardId);
     int countTargetsByGoal(Goal goal);
     List<Target> findTargetsByOutput(Output output);
     Target findTargetById(long id);
     int countTargetsByOutput(Output output);
-    @Query("SELECT coalesce(s.actual, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    Double currentActual(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT coalesce(s.employeeScore, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    Double currentEmployeeScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT coalesce(s.managerScore, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    Double currentManagerScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT coalesce(s.agreedScore, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    Double currentAgreedScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT coalesce(s.moderatedScore, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    Double currentModeratedScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-    @Query("SELECT coalesce(s.weightedScore, 0) FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-    Double currentWeightedScore(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-//    @Query("SELECT s.evidence FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-//    String currentEvidence(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
-//    @Query("SELECT s.justification FROM Score s WHERE s.output = :output AND s.reportingDate = :reportingDate")
-//    String currentJustification(@Param("output") Output output, @Param("reportingDate") ReportingDate reportingDate);
 
     @Query("SELECT DISTINCT(t.unit) FROM Target t")
     List<String> listAllUnits();

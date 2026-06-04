@@ -6,6 +6,7 @@ import org.jsoup.parser.Parser;
 import org.jsoup.safety.Cleaner;
 import org.jsoup.safety.Whitelist;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -16,6 +17,8 @@ import java.io.OutputStream;
 
 @Service
 public class PdfGeneratorService {
+    private static final String PDF_RESOURCES = "/static/";
+
     @Autowired
     private TemplateEngine templateEngine;
     public byte[] generatePdfFromTemplate(String templateName, Context context, boolean clean) throws Exception {
@@ -28,7 +31,7 @@ public class PdfGeneratorService {
         ITextRenderer renderer = new ITextRenderer();
 
 //        System.out.println(htmlContent);
-        renderer.setDocumentFromString(htmlContent);
+        renderer.setDocumentFromString(htmlContent, new ClassPathResource(PDF_RESOURCES).getURL().toExternalForm());
         renderer.layout();
         renderer.createPDF(outputStream, false);
         renderer.finishPDF();

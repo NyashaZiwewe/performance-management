@@ -1,7 +1,6 @@
 package hr.performancemanagement.service;
 import hr.performancemanagement.entities.Outcome;
 import hr.performancemanagement.repository.OutcomeRepository;
-import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,8 +12,6 @@ import java.util.List;
 public class OutcomeService {
     @Autowired
     OutcomeRepository outcomeRepository;
-    @Autowired
-    private TargetRepository targetRepository;
 
     public Outcome getOutcomeById(long id){
 

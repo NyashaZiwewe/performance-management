@@ -3,6 +3,7 @@ package hr.performancemanagement.service.resource;
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.exception.BadRequestException;
 import hr.performancemanagement.exception.ResourceNotFoundException;
+import hr.performancemanagement.service.EvidenceService;
 import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreService;
 import hr.performancemanagement.service.api.ScoreService.ValueBasedScoreService;
@@ -35,6 +36,7 @@ public class ScorecardResource {
     private final CommonService commonService;
     private final StandardScorecardScoreService standardScorecardScoreService;
     private final ValueBasedScoreService valueBasedScoreService;
+    private final EvidenceService evidenceService;
     private final ScorecardWorkflowService scorecardWorkflowService;
 
     @GetMapping("/client/{clientId}")
@@ -387,12 +389,18 @@ public class ScorecardResource {
     @PostMapping("/scores/value-based/evidence")
     public ResponseEntity<CommonResponse<Score>> saveValueBasedEvidence(@RequestBody Score score) {
         normalizeScoreReferences(score);
-        Score savedScore = valueBasedScoreService.saveEvidence(score);
+        Evidence evidence = new Evidence();
+        evidence.setTarget(score.getTarget());
+        evidence.setReportingDate(score.getReportingDate());
+        evidence.setEvidence(score.getEvidence());
+        evidence.setAttachmentName(score.getAttachmentName());
+        evidence.setJustification(score.getJustification());
+        evidenceService.saveEvidence(evidence);
         return ResponseEntity.status(HttpStatus.CREATED).body(CommonResponse.<Score>builder()
                 .isSuccess(true)
                 .statusCode(HttpStatus.CREATED.value())
                 .message("Evidence saved successfully")
-                .data(savedScore)
+                .data(score)
                 .build());
     }
 

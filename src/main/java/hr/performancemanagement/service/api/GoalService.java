@@ -1,10 +1,6 @@
 package hr.performancemanagement.service.api;
 
 import hr.performancemanagement.entities.Goal;
-import hr.performancemanagement.entities.Scorecard;
-import hr.performancemanagement.repository.GoalRepository;
-import hr.performancemanagement.repository.TargetRepository;
-import java.util.ArrayList;
 import java.util.List;
 
 public interface GoalService {

@@ -3,9 +3,7 @@ package hr.performancemanagement.service.impl;
 import org.springframework.stereotype.Service;
 import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.entities.Goal;
-import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.GoalRepository;
-import hr.performancemanagement.repository.TargetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +15,6 @@ import java.util.List;
 public class GoalServiceImpl implements hr.performancemanagement.service.api.GoalService {
     @Autowired
     GoalRepository goalRepository;
-    @Autowired
-    private TargetRepository targetRepository;
 
     @Override
     public Goal getGoalById(long id){

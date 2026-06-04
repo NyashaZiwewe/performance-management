@@ -6,7 +6,13 @@ import hr.performancemanagement.entities.ProbationAssessment;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.Scorecard;
+import hr.performancemanagement.entities.Score;
 import hr.performancemanagement.entities.StrategicObjective;
+import hr.performancemanagement.entities.Target;
+import hr.performancemanagement.entities.Gear;
+import hr.performancemanagement.entities.Goal;
+import hr.performancemanagement.entities.Output;
+import hr.performancemanagement.entities.Outcome;
 import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
@@ -19,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.WebAttributes;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -50,8 +57,6 @@ public class HomeController {
     }
 
     @Autowired
-    StrategicObjectiveService strategicObjectiveService;
-    @Autowired
     private final ReportingPeriodService reportingPeriodService;
     @Autowired
     private final ScorecardService scorecardService;
@@ -71,6 +76,8 @@ public class HomeController {
     PerformanceImprovementPlanService performanceImprovementPlanService;
     @Autowired
     ProbationAssessmentService probationAssessmentService;
+    @Autowired
+    TargetService targetService;
 
     public HomeController(ReportingPeriodService reportingPeriodService, ScorecardService scorecardService) {
         this.reportingPeriodService = reportingPeriodService;
@@ -134,11 +141,8 @@ public class HomeController {
                 periodStart,
                 snapshotDate
         );
-        List<Scorecard> scorecardsWithScores = filterScorecardsByIds(
-                Optional.ofNullable(scorecardService.getScoresByPeriodId(selectedPeriod)).orElse(Collections.emptyList()),
-                scorecards
-        );
-        Map<Long, Map<Long, Double>> weightedScoresByDate = scorecardService.getScoresByReportingDatesAndScorecardIds(reportingDates, scorecards);
+        Map<Long, Map<Long, Double>> finalScorePercentByDate =
+                scorecardService.getScoresByReportingDatesAndScorecardIds(reportingDates, scorecards);
 
         int scorecardTotal = scorecards.size();
         int lockedScorecards = 0;
@@ -164,9 +168,9 @@ public class HomeController {
         double scoreSum = 0;
         int scoredCount = 0;
         if (selectedReportingDate != null) {
-            Map<Long, Double> selectedDateScores = weightedScoresByDate.get(selectedReportingDate.getId());
+            Map<Long, Double> selectedDateScores = finalScorePercentByDate.get(selectedReportingDate.getId());
             for (Scorecard scorecard : scorecards) {
-                double score = resolveWeightedScore(selectedDateScores, scorecard);
+                double score = resolveFinalScorePercent(selectedDateScores, scorecard);
                 if (score <= 0) {
                     notScored++;
                     continue;
@@ -180,39 +184,39 @@ public class HomeController {
                 }
             }
         } else {
-            for (Scorecard scorecard : scorecardsWithScores) {
-                double weightedScore = safeScore(scorecard.getWeightedScore());
-                if (weightedScore <= 0) {
-                    notScored++;
+            for (ReportingDate reportingDate : reportingDates) {
+                LocalDate reportingDateEnd = parseLocalDate(reportingDate == null ? null : reportingDate.getEndDate());
+                if (reportingDateEnd != null && snapshotDate != null && reportingDateEnd.isAfter(snapshotDate)) {
                     continue;
                 }
-                scoredCount++;
-                scoreSum += weightedScore;
-                double moderatedScore = safeScore(scorecard.getModeratedScore());
-                if (moderatedScore >= 2.5) {
-                    pass++;
-                } else {
-                    fail++;
+                Map<Long, Double> scoresByScorecard = reportingDate == null ? null : finalScorePercentByDate.get(reportingDate.getId());
+                for (Scorecard scorecard : scorecards) {
+                    double score = resolveFinalScorePercent(scoresByScorecard, scorecard);
+                    if (score <= 0) {
+                        notScored++;
+                        continue;
+                    }
+                    scoredCount++;
+                    scoreSum += score;
+                    if (score >= 50) {
+                        pass++;
+                    } else {
+                        fail++;
+                    }
                 }
             }
         }
         double averageWeightedScore = scoredCount > 0 ? scoreSum / scoredCount : 0;
 
-        List<StrategicObjective> strategicObjectivesList = Optional
-                .ofNullable(strategicObjectiveService.listAllStrategicObjectives(selectedPeriod.getId()))
-                .orElse(Collections.emptyList());
-        List<String> strategicObjectives = new ArrayList<>();
-        for (StrategicObjective strategicObjective : strategicObjectivesList) {
-            if (strategicObjective != null && strategicObjective.getName() != null) {
-                strategicObjectives.add(strategicObjective.getName());
-            }
-        }
-        List<Double> averageWeights = Optional
-                .ofNullable(scorecardService.findAverageAllocatedWeightPerStrategicObjective(selectedPeriod))
-                .orElse(Collections.emptyList());
-        List<Double> averageScores = Optional
-                .ofNullable(scorecardService.findAverageWeightedScorePerStrategicObjective(selectedPeriod))
-                .orElse(Collections.emptyList());
+        DashboardObjectiveSeries objectiveSeries = buildDashboardObjectiveSeries(
+                scorecards,
+                reportingDates,
+                selectedReportingDate,
+                snapshotDate
+        );
+        List<String> strategicObjectives = objectiveSeries.getLabels();
+        List<Double> averageWeights = objectiveSeries.getWeights();
+        List<Double> averageScores = objectiveSeries.getScores();
 
         List<String> trendLabels = new ArrayList<>();
         List<Double> trendScores = new ArrayList<>();
@@ -225,13 +229,13 @@ public class HomeController {
             trendLabels.add(shortDate(reportingDate == null ? null : reportingDate.getEndDate()));
             double dateTotalScore = 0;
             int dateCoverage = 0;
-            Map<Long, Double> scoresByScorecard = reportingDate == null ? null : weightedScoresByDate.get(reportingDate.getId());
+            Map<Long, Double> scoresByScorecard = reportingDate == null ? null : finalScorePercentByDate.get(reportingDate.getId());
             for (Scorecard scorecard : scorecards) {
-                double weightedScore = resolveWeightedScore(scoresByScorecard, scorecard);
-                if (weightedScore <= 0) {
+                double finalScorePercent = resolveFinalScorePercent(scoresByScorecard, scorecard);
+                if (finalScorePercent <= 0) {
                     continue;
                 }
-                dateTotalScore += weightedScore;
+                dateTotalScore += finalScorePercent;
                 dateCoverage++;
             }
             trendScores.add(dateCoverage == 0 ? 0 : roundTwoDecimals(dateTotalScore / dateCoverage));
@@ -653,23 +657,7 @@ public class HomeController {
         return filtered;
     }
 
-    private List<Scorecard> filterScorecardsByIds(List<Scorecard> source, List<Scorecard> reference) {
-        Set<Long> ids = new HashSet<>();
-        for (Scorecard scorecard : reference) {
-            if (scorecard != null) {
-                ids.add(scorecard.getId());
-            }
-        }
-        List<Scorecard> filtered = new ArrayList<>();
-        for (Scorecard scorecard : source) {
-            if (scorecard != null && ids.contains(scorecard.getId())) {
-                filtered.add(scorecard);
-            }
-        }
-        return filtered;
-    }
-
-    private double resolveWeightedScore(Map<Long, Double> scoresByScorecard, Scorecard scorecard) {
+    private double resolveFinalScorePercent(Map<Long, Double> scoresByScorecard, Scorecard scorecard) {
         if (scoresByScorecard == null || scorecard == null) {
             return 0.0;
         }
@@ -770,6 +758,231 @@ public class HomeController {
         return snapshotDate == null || !createdLocalDate.isAfter(snapshotDate);
     }
 
+    private DashboardObjectiveSeries buildDashboardObjectiveSeries(List<Scorecard> scorecards,
+                                                                   List<ReportingDate> reportingDates,
+                                                                   ReportingDate selectedReportingDate,
+                                                                   LocalDate snapshotDate) {
+        Map<String, DashboardObjectiveAggregate> aggregates = new LinkedHashMap<>();
+        Set<Long> reportingDateIds = resolveDashboardReportingDateIds(reportingDates, selectedReportingDate, snapshotDate);
+        if (scorecards == null || scorecards.isEmpty()) {
+            return new DashboardObjectiveSeries();
+        }
+
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getId() <= 0) {
+                continue;
+            }
+
+            String hierarchyModel = resolveHierarchyModel(scorecard);
+            List<Target> targets = Optional.ofNullable(targetService.getAllTargetsByScorecard(scorecard.getId()))
+                    .orElse(Collections.emptyList());
+            Map<String, Double> weightByObjective = new LinkedHashMap<>();
+            Map<String, Map<Long, Double>> scoreByObjectiveAndDate = new LinkedHashMap<>();
+
+            for (Target target : targets) {
+                if (target == null) {
+                    continue;
+                }
+                String objectiveLabel = resolveDashboardObjectiveLabel(target, hierarchyModel);
+                double allocatedWeight = resolveDashboardTargetWeight(target);
+                if (allocatedWeight > 0) {
+                    weightByObjective.merge(objectiveLabel, allocatedWeight, Double::sum);
+                }
+
+                Map<Long, Score> latestScoreByDate = new LinkedHashMap<>();
+                List<Score> scores = Optional.ofNullable(target.getScores()).orElse(Collections.emptyList());
+                for (Score score : scores) {
+                    if (!matchesDashboardReportingDate(score, reportingDateIds)) {
+                        continue;
+                    }
+                    long dateKey = score != null && score.getReportingDate() != null ? score.getReportingDate().getId() : 0L;
+                    Score existingScore = latestScoreByDate.get(dateKey);
+                    if (existingScore == null || score.getId() > existingScore.getId()) {
+                        latestScoreByDate.put(dateKey, score);
+                    }
+                }
+                for (Map.Entry<Long, Score> scoreEntry : latestScoreByDate.entrySet()) {
+                    scoreByObjectiveAndDate
+                            .computeIfAbsent(objectiveLabel, key -> new LinkedHashMap<>())
+                            .merge(scoreEntry.getKey(), safeScore(scoreEntry.getValue().getWeightedScore()), Double::sum);
+                }
+            }
+
+            for (Map.Entry<String, Double> entry : weightByObjective.entrySet()) {
+                getObjectiveAggregate(aggregates, entry.getKey()).addWeight(entry.getValue());
+            }
+            for (Map.Entry<String, Map<Long, Double>> objectiveScores : scoreByObjectiveAndDate.entrySet()) {
+                DashboardObjectiveAggregate aggregate = getObjectiveAggregate(aggregates, objectiveScores.getKey());
+                for (Double score : objectiveScores.getValue().values()) {
+                    aggregate.addScore(score == null ? 0.0 : score);
+                }
+            }
+        }
+
+        DashboardObjectiveSeries series = new DashboardObjectiveSeries();
+        for (Map.Entry<String, DashboardObjectiveAggregate> entry : aggregates.entrySet()) {
+            String label = entry.getKey();
+            DashboardObjectiveAggregate aggregate = entry.getValue();
+            if (aggregate == null || (!aggregate.hasWeight() && !aggregate.hasScore())) {
+                continue;
+            }
+            series.add(label, roundTwoDecimals(aggregate.averageWeight()), roundTwoDecimals(aggregate.averageScore()));
+        }
+        return series;
+    }
+
+    private Set<Long> resolveDashboardReportingDateIds(List<ReportingDate> reportingDates,
+                                                       ReportingDate selectedReportingDate,
+                                                       LocalDate snapshotDate) {
+        Set<Long> reportingDateIds = new LinkedHashSet<>();
+        if (selectedReportingDate != null && selectedReportingDate.getId() > 0) {
+            reportingDateIds.add(selectedReportingDate.getId());
+            return reportingDateIds;
+        }
+        if (reportingDates == null) {
+            return reportingDateIds;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null || reportingDate.getId() <= 0) {
+                continue;
+            }
+            LocalDate reportingDateEnd = parseLocalDate(reportingDate.getEndDate());
+            if (reportingDateEnd != null && snapshotDate != null && reportingDateEnd.isAfter(snapshotDate)) {
+                continue;
+            }
+            reportingDateIds.add(reportingDate.getId());
+        }
+        return reportingDateIds;
+    }
+
+    private boolean matchesDashboardReportingDate(Score score, Set<Long> reportingDateIds) {
+        if (score == null) {
+            return false;
+        }
+        if (reportingDateIds == null || reportingDateIds.isEmpty()) {
+            return true;
+        }
+        return score.getReportingDate() != null && reportingDateIds.contains(score.getReportingDate().getId());
+    }
+
+    private String resolveHierarchyModel(Scorecard scorecard) {
+        if (scorecard != null
+                && scorecard.getReportingPeriod() != null
+                && StringUtils.hasText(scorecard.getReportingPeriod().getModel())) {
+            return scorecard.getReportingPeriod().getModel();
+        }
+        return "standard";
+    }
+
+    private String resolveDashboardObjectiveLabel(Target target, String hierarchyModel) {
+        if (isDashboardLegacyHierarchyModel(hierarchyModel)) {
+            Gear gear = resolveDashboardGear(target);
+            String gearName = gear == null ? "" : safeText(gear.getName());
+            if (!gearName.isEmpty()) {
+                return gearName;
+            }
+        }
+
+        StrategicObjective strategicObjective = resolveDashboardStrategicObjective(target);
+        if (strategicObjective != null && StringUtils.hasText(strategicObjective.getName())) {
+            return strategicObjective.getName().trim();
+        }
+
+        Goal goal = resolveDashboardGoal(target);
+        Outcome outcome = resolveDashboardOutcome(target);
+        if ("gear".equalsIgnoreCase(hierarchyModel)) {
+            String outcomeName = outcome == null ? "" : safeText(outcome.getName());
+            if (!outcomeName.isEmpty()) {
+                return outcomeName;
+            }
+        }
+
+        String goalName = goal == null ? "" : safeText(goal.getName());
+        if (!goalName.isEmpty()) {
+            return goalName;
+        }
+
+        String outcomeName = outcome == null ? "" : safeText(outcome.getName());
+        if (!outcomeName.isEmpty()) {
+            return outcomeName;
+        }
+        return "Unassigned Objective";
+    }
+
+    private boolean isDashboardLegacyHierarchyModel(String hierarchyModel) {
+        return "gear".equalsIgnoreCase(hierarchyModel) || "programme".equalsIgnoreCase(hierarchyModel);
+    }
+
+    private StrategicObjective resolveDashboardStrategicObjective(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getStrategicObjective() != null) {
+            return target.getStrategicObjective();
+        }
+        Goal goal = resolveDashboardGoal(target);
+        return goal == null ? null : goal.getStrategicObjective();
+    }
+
+    private Gear resolveDashboardGear(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getGear() != null) {
+            return target.getGear();
+        }
+        Goal goal = resolveDashboardGoal(target);
+        if (goal != null && goal.getGear() != null) {
+            return goal.getGear();
+        }
+        Outcome outcome = resolveDashboardOutcome(target);
+        return outcome == null ? null : outcome.getGear();
+    }
+
+    private Goal resolveDashboardGoal(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getGoal() != null) {
+            return target.getGoal();
+        }
+        Outcome outcome = resolveDashboardOutcome(target);
+        if (outcome == null) {
+            return null;
+        }
+        if (outcome.getGoal() != null) {
+            return outcome.getGoal();
+        }
+        return outcome.getPillar() == null ? null : outcome.getPillar().getGoal();
+    }
+
+    private Outcome resolveDashboardOutcome(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getOutcome() != null) {
+            return target.getOutcome();
+        }
+        Output output = target.getOutput();
+        return output == null ? null : output.getOutcome();
+    }
+
+    private double resolveDashboardTargetWeight(Target target) {
+        if (target == null) {
+            return 0.0;
+        }
+        if (target.getAllocatedWeight() != null) {
+            return safeScore(target.getAllocatedWeight());
+        }
+        Output output = target.getOutput();
+        return output == null || output.getAllocatedWeight() == null ? 0.0 : safeScore(output.getAllocatedWeight());
+    }
+
+    private DashboardObjectiveAggregate getObjectiveAggregate(Map<String, DashboardObjectiveAggregate> aggregates, String label) {
+        String safeLabel = StringUtils.hasText(label) ? label.trim() : "Unassigned Objective";
+        return aggregates.computeIfAbsent(safeLabel, key -> new DashboardObjectiveAggregate());
+    }
+
     private LocalDate parseLocalDate(String value) {
         if (value == null || value.trim().isEmpty()) {
             return null;
@@ -850,6 +1063,63 @@ public class HomeController {
             return "Restricted dashboard view";
         }
         return accountType + " dashboard view";
+    }
+
+    private static class DashboardObjectiveSeries {
+        private final List<String> labels = new ArrayList<>();
+        private final List<Double> weights = new ArrayList<>();
+        private final List<Double> scores = new ArrayList<>();
+
+        void add(String label, double weight, double score) {
+            labels.add(label);
+            weights.add(weight);
+            scores.add(score);
+        }
+
+        List<String> getLabels() {
+            return labels;
+        }
+
+        List<Double> getWeights() {
+            return weights;
+        }
+
+        List<Double> getScores() {
+            return scores;
+        }
+    }
+
+    private static class DashboardObjectiveAggregate {
+        private double totalWeight;
+        private int weightContexts;
+        private double totalScore;
+        private int scoreContexts;
+
+        void addWeight(double weight) {
+            totalWeight += weight;
+            weightContexts++;
+        }
+
+        void addScore(double score) {
+            totalScore += score;
+            scoreContexts++;
+        }
+
+        boolean hasWeight() {
+            return weightContexts > 0;
+        }
+
+        boolean hasScore() {
+            return scoreContexts > 0;
+        }
+
+        double averageWeight() {
+            return weightContexts == 0 ? 0.0 : totalWeight / weightContexts;
+        }
+
+        double averageScore() {
+            return scoreContexts == 0 ? 0.0 : totalScore / scoreContexts;
+        }
     }
 
     public List<String> listMonthsWithinAReportingPeriod(String sDate, String eDate) throws ParseException {

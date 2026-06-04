@@ -140,12 +140,14 @@
                                                     </span>
                                                 </td>
                                             </tr>
-                                            <tr th:each="row : ${section.rows}"
-                                                th:with="target=${row.target},
-                                                         score=${row.scoresByReportingDate[date.id]},
-                                                         evidence=${row.evidenceByReportingDate[date.id]},
-                                                         stretchTarget=${target.stretchTarget != null ? target.stretchTarget : target.normalTarget},
-                                                         rowWeight=${displayShowOutput && target.output != null && target.output.allocatedWeight != null ? target.output.allocatedWeight : target.allocatedWeight}">
+	                                            <tr th:each="row : ${section.rows}"
+	                                                th:with="target=${row.target},
+	                                                         score=${row.scoresByReportingDate[date.id]},
+	                                                         evidence=${row.evidenceByReportingDate[date.id]},
+	                                                         evidenceLink=${evidence != null ? evidence.evidence : (score == null ? '' : score.evidence)},
+	                                                         attachmentName=${evidence != null ? evidence.attachmentName : (score == null ? '' : score.attachmentName)},
+	                                                         stretchTarget=${target.stretchTarget != null ? target.stretchTarget : target.normalTarget},
+	                                                         rowWeight=${displayShowOutput && target.output != null && target.output.allocatedWeight != null ? target.output.allocatedWeight : target.allocatedWeight}">
                                                 <td th:if="${row.showStage2}" th:text="${row.stage2Value}" th:rowspan="${row.stage2Rowspan}"></td>
                                                 <td th:if="${displayShowStage3 && row.showStage3}" th:text="${row.stage3Value}" th:rowspan="${row.stage3Rowspan}"></td>
                                                 <td th:if="${displayShowStage4 && row.showStage4}" th:text="${row.stage4Value}" th:rowspan="${row.stage4Rowspan}"></td>
@@ -182,29 +184,21 @@
                                                     th:class="${score == null ? '' : (score.agreedScore < 2.5 ? 'fail' : 'pass')}"
                                                     th:text="${score == null || score.agreedScore <= 0.0 ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}"></td>
                                                 <td>
-                                                    <a th:if="${evidence != null && evidence.evidence != null && !#strings.isEmpty(evidence.evidence)}"
-                                                       th:href="${evidence.evidence}" target="_blank">
-                                                        <i class="fa fa-link"></i>
-                                                    </a>
-                                                    <a th:if="${evidence != null && evidence.attachmentName != null && !#strings.isEmpty(evidence.attachmentName)}"
-                                                       th:href="@{/scorecards/view-evidence/} + ${evidence.attachmentName}" target="_blank">
-                                                        <i class="fa fa-paperclip"></i>
-                                                    </a>
-                                                    <a th:if="${evidence == null && score != null && score.evidence != null && !#strings.isEmpty(score.evidence)}"
-                                                       th:href="${score.evidence}" target="_blank">
-                                                        <i class="fa fa-link"></i>
-                                                    </a>
-                                                    <a th:if="${evidence == null && score != null && score.attachmentName != null && !#strings.isEmpty(score.attachmentName)}"
-                                                       th:href="@{/scorecards/view-evidence/} + ${score.attachmentName}" target="_blank">
-                                                        <i class="fa fa-paperclip"></i>
-                                                    </a>
-                                                </td>
+	                                                    <a th:if="${evidenceLink != null && !#strings.isEmpty(evidenceLink)}"
+	                                                       th:href="${evidenceLink}" target="_blank">
+	                                                        <i class="fa fa-link"></i>
+	                                                    </a>
+	                                                    <a th:if="${attachmentName != null && !#strings.isEmpty(attachmentName)}"
+	                                                       th:href="@{/scorecards/view-evidence/} + ${attachmentName}" target="_blank">
+	                                                        <i class="fa fa-paperclip"></i>
+	                                                    </a>
+	                                                </td>
                                                 <td th:text="${evidence != null && evidence.justification != null ? evidence.justification : (score == null ? '' : score.justification)}"></td>
                                                 <td>
-                                                    <a th:if="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="${'#commentModal' + date.id + '-' + target.id}">
+                                                    <a th:if="${#lists.isEmpty(row.comments)}" data-toggle="modal" th:data-target="${'#commentModal' + date.id + '-' + target.id}">
                                                         <i class="fa fa-lg fa-commenting" style="color: grey"></i>
                                                     </a>
-                                                    <a th:unless="${#lists.isEmpty(target.comments)}" data-toggle="modal" th:data-target="${'#commentModal' + date.id + '-' + target.id}">
+                                                    <a th:unless="${#lists.isEmpty(row.comments)}" data-toggle="modal" th:data-target="${'#commentModal' + date.id + '-' + target.id}">
                                                         <i class="fa fa-lg fa-comment" style="color: #1d84c6"></i>
                                                     </a>
                                                     <a th:if="${target.flag != null}" data-toggle="modal" th:data-target="${'#flagModal' + date.id + '-' + target.id}">
@@ -230,7 +224,7 @@
                                                                         <div class="col-sm-12">
                                                                             <div class="chat-container">
                                                                                 <main>
-                                                                                    <div class="chat" th:each="comment, commentStat : ${target.comments}">
+                                                                                    <div class="chat" th:each="comment, commentStat : ${row.comments}">
                                                                                         <li th:class="${comment?.sender?.id == session.loggedUser?.id ? 'me' : 'you'}">
                                                                                             <div class="entete">
                                                                                                 <h3 th:text="${comment.date}"></h3>

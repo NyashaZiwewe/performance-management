@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.repository.OverallScoreRepository;
 import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.repository.ScoreCardRepository;
 import hr.performancemanagement.repository.ScorecardWorkflowStageRepository;
@@ -43,6 +44,9 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
     @Autowired
     ReportingDateRepository reportingDateRepository;
+
+    @Autowired
+    OverallScoreRepository overallScoreRepository;
 
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
@@ -252,8 +256,8 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             return 0.0;
         }
         Map<Long, Double> scoresByScorecardId = getScoresByReportingDateAndScorecardIds(date, Collections.singletonList(scorecard));
-        Double weightedScore = scoresByScorecardId.get(scorecard.getId());
-        return weightedScore == null ? 0.0 : weightedScore;
+        Double finalScorePercent = scoresByScorecardId.get(scorecard.getId());
+        return finalScorePercent == null ? 0.0 : finalScorePercent;
     }
 
     @Override
@@ -294,16 +298,24 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             return Collections.emptyMap();
         }
 
-        List<Object[]> rows = scoreCardRepository.findAverageWeightedScoresByReportingDatesAndScorecardIds(new ArrayList<>(reportingDateIds), scorecardIds);
-        Map<Long, Map<Long, Double>> weightedScoresByDate = new HashMap<>();
-        for (Object[] row : rows) {
-            long scorecardId = toLong(row[0]);
-            long reportingDateId = toLong(row[1]);
-            double weightedScore = toDouble(row[2]);
-            Map<Long, Double> scoresByScorecard = weightedScoresByDate.computeIfAbsent(reportingDateId, key -> new HashMap<>());
-            scoresByScorecard.put(scorecardId, weightedScore);
+        List<OverallScore> rows = overallScoreRepository.findOverallScoresByScorecardIdsAndReportingDateIds(
+                scorecardIds,
+                new ArrayList<>(reportingDateIds)
+        );
+        Map<Long, Map<Long, Double>> finalScoresByDate = new HashMap<>();
+        for (OverallScore overallScore : rows) {
+            if (overallScore == null
+                    || overallScore.getScorecard() == null
+                    || overallScore.getReportingDate() == null) {
+                continue;
+            }
+            long scorecardId = overallScore.getScorecard().getId();
+            long reportingDateId = overallScore.getReportingDate().getId();
+            double finalScorePercent = moderatedOverallToPercent(overallScore.getModeratedOverall());
+            Map<Long, Double> scoresByScorecard = finalScoresByDate.computeIfAbsent(reportingDateId, key -> new HashMap<>());
+            scoresByScorecard.put(scorecardId, finalScorePercent);
         }
-        return weightedScoresByDate;
+        return finalScoresByDate;
     }
 
     @Override
@@ -542,6 +554,14 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             return ((Number) value).doubleValue();
         }
         return 0.0;
+    }
+
+    private double moderatedOverallToPercent(Double moderatedOverall) {
+        double moderatedScore = toDouble(moderatedOverall);
+        if (moderatedScore <= 0.0) {
+            return 0.0;
+        }
+        return Math.round(((moderatedScore / 5.0) * 100.0) * 100.0) / 100.0;
     }
 
     private void alignApprovalStage(Scorecard scorecard) {

@@ -1,13 +1,11 @@
 package hr.performancemanagement.service.impl.ScoreService;
 
 import org.springframework.stereotype.Service;
-import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.entities.Score;
 import hr.performancemanagement.entities.Target;
 import hr.performancemanagement.entities.Output;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.repository.ScoreRepository;
-import hr.performancemanagement.service.api.TargetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,8 +16,6 @@ import java.util.List;
 public class StandardScorecardScoreServiceImpl implements hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreService {
     @Autowired
     ScoreRepository scoreRepository;
-    @Autowired
-    private TargetService targetService;
 
     @Override
     public double calculateWeightedScore(Score score){
@@ -81,12 +77,7 @@ public class StandardScorecardScoreServiceImpl implements hr.performancemanageme
         }
         target.setActual(actual);
         target.setWeightedScore(weightedRating);
-        try {
-            targetService.saveTarget(target);
-            return true;
-        }catch (Exception e){
-            return false;
-        }
+        return true;
     }
 
 

@@ -12,4 +12,7 @@ import java.util.List;
 public interface EvidenceRepository extends JpaRepository<Evidence, Long> {
     boolean existsEvidenceByTargetAndReportingDate(Target target, ReportingDate reportingDate);
     List<Evidence> findEvidenceByTargetAndReportingDateOrderByIdDesc(Target target, ReportingDate reportingDate);
+    List<Evidence> findEvidenceByTargetOrderByReportingDate_DateDescIdDesc(Target target);
+    List<Evidence> findEvidenceByTarget_IdAndReportingDate_IdOrderByIdDesc(long targetId, long reportingDateId);
+    List<Evidence> findEvidenceByTarget_IdOrderByReportingDate_DateDescIdDesc(long targetId);
 }

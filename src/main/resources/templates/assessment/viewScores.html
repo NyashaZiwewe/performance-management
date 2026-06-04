@@ -28,13 +28,51 @@
 
     <style>
         .fail{
-            color: red;
+            color: #bf4a4a;
         }
         .fair{
-            color: orange;
+            color: #b7791f;
         }
         .pass{
-            color: green;
+            color: #1f8f5f;
+        }
+        .dashboard-metric-card-link {
+            color: #111827;
+            cursor: pointer;
+            text-decoration: none;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+        .dashboard-metric-card-link:hover,
+        .dashboard-metric-card-link:focus {
+            border-color: #175ea8;
+            box-shadow: 0 10px 22px rgba(23, 94, 168, 0.14);
+            color: #111827;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+        .dashboard-metric-card-link.active-filter {
+            border-color: #1f8f5f;
+            box-shadow: 0 8px 18px rgba(31, 143, 95, 0.12);
+        }
+        .score-filter-summary {
+            align-items: center;
+            background: #f7fbff;
+            border: 1px solid rgba(23, 94, 168, 0.18);
+            border-radius: 8px;
+            color: #111827;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding: 10px 12px;
+        }
+        .score-filter-summary strong {
+            color: #175ea8;
+        }
+        .score-filter-clear {
+            color: #1f8f5f;
+            font-weight: 600;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -52,6 +90,110 @@
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
 
+            <div class="ibox dashboard-filter-panel">
+                <div class="ibox-content">
+                    <form th:action="@{/performance-review/view-scores-select-year}" method="post" class="dashboard-filter-form">
+                        <div class="form-group">
+                            <label for="reviewPeriod">Reporting Period</label>
+                            <select id="reviewPeriod" name="reportingPeriodId" class="form-control">
+                                <option th:each="period : ${reviewReportingPeriods}"
+                                        th:value="${period.id}"
+                                        th:text="${period.startDate + ' to ' + period.endDate}"
+                                        th:selected="${selectedReportingPeriodId != null and selectedReportingPeriodId == period.id}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="reviewDate">Reporting Date</label>
+                            <select id="reviewDate" name="reportingDateId" class="form-control">
+                                <option value="">Latest reporting date</option>
+                                <option th:each="dateOption : ${reviewReportingDateOptions}"
+                                        th:value="${dateOption.id}"
+                                        th:text="${dateOption.label}"
+                                        th:attr="data-period-id=${dateOption.periodId}"
+                                        th:selected="${selectedReportingDateId != null and selectedReportingDateId == dateOption.id}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="dashboard-filter-actions">
+                            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                        </div>
+                    </form>
+                    <div class="dashboard-scope-summary">
+                        <span class="dashboard-scope-label" th:text="${selectedReportingPeriodLabel}">Reporting Period</span>
+                        <span class="dashboard-scope-separator">|</span>
+                        <span class="dashboard-scope-label" th:text="${selectedReportingDateLabel}">Reporting Date</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-metric-grid">
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'all'} ? ' active-filter' : ''"
+                   th:href="${allScorecardsFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-balance-scale"></i></span>
+                    <span class="dashboard-metric-title">Total Scorecards</span>
+                    <span class="dashboard-metric-value" th:text="${totalScorecards}">0</span>
+                    <span class="dashboard-metric-detail" th:text="${selectedReportingPeriodLabel}">Reporting period</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'scored'} ? ' active-filter' : ''"
+                   th:href="${scoredScorecardsFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-line-chart"></i></span>
+                    <span class="dashboard-metric-title">Average Final Score</span>
+                    <span class="dashboard-metric-value" th:text="${#numbers.formatDecimal(reportAverageScore, 0, 2) + '%'}">0%</span>
+                    <span class="dashboard-metric-detail" th:text="${selectedReportingDateLabel}">Reporting date</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'below-threshold'} ? ' active-filter' : ''"
+                   th:href="${belowThresholdFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-exclamation-triangle"></i></span>
+                    <span class="dashboard-metric-title">Below Threshold</span>
+                    <span class="dashboard-metric-value fail" th:text="${belowThresholdCount}">0</span>
+                    <span class="dashboard-metric-detail">Final score below 50%</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'probation-decisions'} ? ' active-filter' : ''"
+                   th:href="${probationDecisionFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-user-plus"></i></span>
+                    <span class="dashboard-metric-title">Probation Decisions</span>
+                    <span class="dashboard-metric-value" th:text="${probationDecisionCount}">0</span>
+                    <span class="dashboard-metric-detail">Employees requiring review</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'improving'} ? ' active-filter' : ''"
+                   th:href="${improvingFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-arrow-up"></i></span>
+                    <span class="dashboard-metric-title">Improving</span>
+                    <span class="dashboard-metric-value pass" th:text="${improvingCount}">0</span>
+                    <span class="dashboard-metric-detail">Positive score movement</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'declining'} ? ' active-filter' : ''"
+                   th:href="${decliningFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-arrow-down"></i></span>
+                    <span class="dashboard-metric-title">Declining</span>
+                    <span class="dashboard-metric-value fail" th:text="${decliningCount}">0</span>
+                    <span class="dashboard-metric-detail">Negative score movement</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'active-pips'} ? ' active-filter' : ''"
+                   th:href="${activePipFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-wrench"></i></span>
+                    <span class="dashboard-metric-title">Active PIPs</span>
+                    <span class="dashboard-metric-value" th:text="${activePipCount}">0</span>
+                    <span class="dashboard-metric-detail">Open or in progress</span>
+                </a>
+                <a class="dashboard-metric-card dashboard-metric-card-link"
+                   th:classappend="${activeScoreFilter == 'open-action-plans'} ? ' active-filter' : ''"
+                   th:href="${openActionPlanFilterUrl}">
+                    <span class="dashboard-metric-icon"><i class="fa fa-tasks"></i></span>
+                    <span class="dashboard-metric-title">Open Action Plans</span>
+                    <span class="dashboard-metric-value" th:text="${openActionPlanCount}">0</span>
+                    <span class="dashboard-metric-detail">Open or in progress</span>
+                </a>
+            </div>
+
             <div class="row">
                 <div class="col-lg-12 ">
                     <div class="ibox ">
@@ -64,6 +206,13 @@
                         <div class="ibox-content">
                             <fieldset class="p2">
                                 <legend class="w-auto">Scores</legend>
+                                <div class="score-filter-summary" th:if="${activeScoreFilter != 'all'}">
+                                    <span>
+                                        Filtered by <strong th:text="${activeScoreFilterLabel}">Filter</strong>
+                                        <span th:text="${'(' + filteredScorecardCount + ' of ' + totalScorecards + ' scorecards)'}">(0 of 0 scorecards)</span>
+                                    </span>
+                                    <a class="score-filter-clear" th:href="${allScorecardsFilterUrl}">Clear filter</a>
+                                </div>
                                 <div class="table-responsive" th:fragement="administration">
                                 <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap" style="width: 100% !important;">
                                     <thead>
@@ -72,23 +221,35 @@
                                         <th>Employee Score</th>
                                         <th>Manager Score</th>
                                         <th>Agreed Score</th>
-                                        <th>Moderated Score</th>
-                                        <th>Weighted Score</th>
+                                        <th>Final Moderated Score</th>
+                                        <th>Final Score</th>
                                         <th>PIP Count</th>
                                         <th>Action Plan Count</th>
+                                        <th>Decision Risk</th>
+                                        <th>Trend</th>
+                                        <th>Exceptions</th>
+                                        <th>Open Interventions</th>
+                                        <th>Probation</th>
                                         <th></th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                       <tr th:each="score: ${scoresList}">
+                                       <tr th:each="score: ${scoresList}"
+                                           th:with="profile=${riskProfilesByScorecardId != null ? riskProfilesByScorecardId.get(score.id) : null},
+                                                    overall=${latestOverallScoresByScorecardId != null ? latestOverallScoresByScorecardId.get(score.id) : null}">
                                           <td th:text="${score.owner?.fullName}"></td>
-                                          <td th:text="${score.employeeScore == 0.0 ? '' : #numbers.formatDecimal(score.employeeScore, 0, 2)}" th:attr="class = ${score.employeeScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                          <td th:text="${score.managerScore == 0.0 ? '' : #numbers.formatDecimal(score.managerScore, 0, 2)}" th:attr="class = ${score.managerScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                          <td th:text="${score.agreedScore == 0.0 ? '' : #numbers.formatDecimal(score.agreedScore, 0, 2)}" th:attr="class = ${score.agreedScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                          <td th:text="${score.moderatedScore == 0.0 ? '' : #numbers.formatDecimal(score.moderatedScore, 0, 2)}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                          <td th:text="${score.moderatedScore == 0.0 ? '' : #numbers.formatDecimal((score.moderatedScore / 5) * 100, 0, 2) + '%'}" th:attr="class = ${score.moderatedScore < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${overall == null || overall.employeeOverall == null || overall.employeeOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.employeeOverall, 0, 2)}" th:attr="class = ${overall == null || overall.employeeOverall == null || overall.employeeOverall < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${overall == null || overall.managerOverall == null || overall.managerOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.managerOverall, 0, 2)}" th:attr="class = ${overall == null || overall.managerOverall == null || overall.managerOverall < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${overall == null || overall.agreedOverall == null || overall.agreedOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.agreedOverall, 0, 2)}" th:attr="class = ${overall == null || overall.agreedOverall == null || overall.agreedOverall < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${overall == null || overall.moderatedOverall == null || overall.moderatedOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.moderatedOverall, 0, 2)}" th:attr="class = ${overall == null || overall.moderatedOverall == null || overall.moderatedOverall < 2.5 ? 'fail' : 'pass' }"></td>
+                                          <td th:text="${overall == null || overall.moderatedOverall == null || overall.moderatedOverall <= 0.0 ? '' : #numbers.formatDecimal((overall.moderatedOverall / 5) * 100, 0, 2) + '%'}" th:attr="class = ${overall == null || overall.moderatedOverall == null || overall.moderatedOverall < 2.5 ? 'fail' : 'pass' }"></td>
                                           <td th:text="${pipCountsByScorecardId != null && pipCountsByScorecardId.containsKey(score.id) ? pipCountsByScorecardId.get(score.id) : 0}"></td>
                                           <td th:text="${actionPlanCountsByScorecardId != null && actionPlanCountsByScorecardId.containsKey(score.id) ? actionPlanCountsByScorecardId.get(score.id) : 0}"></td>
+                                          <td th:text="${profile == null ? 'N/A' : profile.decisionRiskLevel}" th:attr="class = ${profile == null ? '' : (profile.decisionRiskLevel == 'High' ? 'fail' : (profile.decisionRiskLevel == 'Medium' ? 'fair' : 'pass'))}"></td>
+                                          <td th:text="${profile == null ? 'N/A' : profile.scoreMovementLabel}"></td>
+                                          <td th:text="${profile == null ? 0 : profile.exceptionCount}"></td>
+                                          <td th:text="${profile == null ? 0 : profile.openInterventionCount}"></td>
+                                          <td th:text="${profile == null ? 'N/A' : profile.probationStatus}" th:attr="class = ${profile != null && profile.probationDecisionRequired ? 'fail' : ''}"></td>
                                            <td>
                                                <a th:if="${captureWindowOpen AND role == 'MODERATOR' AND score.managerScore != 0.0}" th:href="@{/scorecards/capture-scores/{id}(id=${score.id})}" target="_blank" class="btn btn-success btn-sm">Moderate Scores</a>
                                                <a th:if="${captureWindowOpen AND loggedUserId == score.owner?.supervisor?.id AND score.employeeScore != 0.0 }" th:href="@{/scorecards/capture-scores/{id}(id=${score.id})}" target="_blank" class="btn btn-success btn-sm">Capture Scores</a>
@@ -110,6 +271,7 @@
         <div th:replace="fragments/template :: footer"></div>
         <input type="hidden" id="startDate" th:value="${startDate}">
         <input type="hidden" id="endDate" th:value="${endDate}">
+        <input type="hidden" id="selectedReportingDateLabel" th:value="${selectedReportingDateLabel}">
 
     </div>
 </div>
@@ -141,8 +303,30 @@
     $.fn.dataTable.Buttons.defaults.dom.button.className = 'btn btn-white btn-sm';
     let startDate = document.getElementById("startDate").value;
     let endDate = document.getElementById("endDate").value;
+    let selectedReportingDateLabel = document.getElementById("selectedReportingDateLabel").value;
+    let exportTitle = 'Performance Scores [' + startDate + ' to ' + endDate + ' | ' + selectedReportingDateLabel + ']';
 
     $(document).ready(function(){
+        function filterReviewReportingDates(clearSelection) {
+            const selectedPeriodId = $('#reviewPeriod').val();
+            const selectedDate = $('#reviewDate').val();
+            $('#reviewDate option[data-period-id]').each(function () {
+                const optionPeriodId = String($(this).attr('data-period-id'));
+                const isVisible = optionPeriodId === String(selectedPeriodId);
+                $(this).prop('disabled', !isVisible).toggle(isVisible);
+            });
+            if (clearSelection || $('#reviewDate option:selected').prop('disabled')) {
+                $('#reviewDate').val('');
+            } else {
+                $('#reviewDate').val(selectedDate);
+            }
+        }
+
+        $('#reviewPeriod').on('change', function () {
+            filterReviewReportingDates(true);
+        });
+        filterReviewReportingDates(false);
+
         $('.transactionsDataTable').DataTable({
             pageLength: 25,
             responsive: true,
@@ -151,25 +335,25 @@
             buttons: [
                 { extend: 'copy'},
                 {extend: 'csv',
-                    title: 'Performance Scores [' + startDate + ' to '+endDate+']',
+                    title: exportTitle,
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8,9,10,11,12]
                     }},
                 {extend: 'excel',
-                    title: 'Performance Scores [' + startDate + ' to '+endDate+']',
+                    title: exportTitle,
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8,9,10,11,12]
                     }},
                 {extend: 'pdf',
-                    title: 'Performance Scores [' + startDate + ' to '+endDate+']',
+                    title: exportTitle,
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8,9,10,11,12]
                     }},
 
                 {extend: 'print',
-                    title: 'Performance Scores [' + startDate + ' to '+endDate+']',
+                    title: exportTitle,
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6,7,8,9,10,11,12]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

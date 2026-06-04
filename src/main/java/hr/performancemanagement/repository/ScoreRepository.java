@@ -4,7 +4,6 @@ import hr.performancemanagement.entities.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,25 +28,6 @@ public interface ScoreRepository extends JpaRepository<Score, Long> {
     Score findScoreByTargetOrOutputAndReportingDate(@Param("target") Target target,
                                                     @Param("output") Output output,
                                                     @Param("reportingDate") ReportingDate reportingDate);
-
-//    @Query("SELECT coalesce(AVG(employeeScore), 0) FROM Score WHERE target = :target")
-//    double averageEmployeeScore(@Param("target") long target);
-//
-//    @Query("SELECT coalesce(AVG(s.managerScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
-//    double averageManagerScore(@Param("scorecardId") long scorecardId);
-//
-//    @Query(value = "SELECT coalesce(AVG(s.actualScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.scorecardId = :scorecardId")
-//    double averageActualScore(@Param("scorecardId") long scorecardId);
-//
-//    @Query(value = "SELECT coalesce(AVG(s.employeeScore), 0) FROM Score s WHERE s.target = :target")
-//    double averageEmployeeScoreForTarget(@Param("target") Target target);
-//
-//    @Query(value = "SELECT coalesce(AVG(s.managerScore), 0) FROM Score s WHERE s.target = :target")
-//    double averageManagerScoreForTarget(@Param("target") Target target);
-//
-//    @Query(value = "SELECT coalesce(AVG(s.actualScore), 0) FROM Score s WHERE s.target = :target")
-//    double averageActualScoreForTarget(@Param("target") Target target);
-
 
     @Query(value = "SELECT coalesce(SUM(s.weightedScore), 0) FROM Score s WHERE s.output = :output")
     double totalWeightedScoreByOutput(@Param("output") Output output);

@@ -73,7 +73,7 @@
 
                 <a class="dashboard-metric-card" th:href="@{/performance-review/view-scores-select-year}">
                     <span class="dashboard-metric-icon"><i class="fa fa-line-chart"></i></span>
-                    <span class="dashboard-metric-title">Average Score</span>
+                    <span class="dashboard-metric-title">Average Final Score</span>
                     <span class="dashboard-metric-value" th:text="${#numbers.formatDecimal(dashboardAverageWeightedScore, 1, 2) + '%'}">0%</span>
                     <span class="dashboard-metric-detail" th:text="${dashboardPassCount + ' above target'}">0 above target</span>
                 </a>
@@ -106,7 +106,9 @@
                     <span class="dashboard-metric-detail" th:text="${dashboardActiveAccounts + ' active'}">0 active</span>
                 </a>
 
-                <a class="dashboard-metric-card" th:href="@{/reporting-periods}" th:if="${dashboardAdminOrSpecial}">
+                <a class="dashboard-metric-card"
+                   th:href="${dashboardSelectedPeriodId == null} ? @{/reporting-periods} : @{/reporting-periods/reporting-dates/{id}(id=${dashboardSelectedPeriodId})}"
+                   th:if="${dashboardAdminOrSpecial}">
                     <span class="dashboard-metric-icon"><i class="fa fa-calendar"></i></span>
                     <span class="dashboard-metric-title">Reporting Dates</span>
                     <span class="dashboard-metric-value" th:text="${dashboardReportingDateCount}">0</span>
@@ -130,8 +132,8 @@
                         <div class="ibox-content">
                             <canvas id="objectiveChart" height="120" role="img" aria-describedby="objectiveChartSummary"></canvas>
                             <p id="objectiveChartSummary" class="chart-sr-summary"
-                               th:text="${'Objectives tracked: ' + dashboardStrategicObjectiveCount + '. Average weighted score: ' + #numbers.formatDecimal(dashboardAverageWeightedScore, 1, 2) + '%'}">
-                                Objectives tracked: 0. Average weighted score: 0%.
+                               th:text="${'Objectives tracked: ' + dashboardStrategicObjectiveCount + '. Average final score: ' + #numbers.formatDecimal(dashboardAverageWeightedScore, 1, 2) + '%'}">
+                                Objectives tracked: 0. Average final score: 0%.
                             </p>
                         </div>
                     </div>
@@ -320,7 +322,7 @@
                             borderWidth: 1
                         },
                         {
-                            label: 'Weighted Score %',
+                            label: 'Objective Weighted Score %',
                             data: objectiveScores,
                             backgroundColor: 'rgba(31, 143, 95, 0.72)',
                             borderColor: 'rgba(31, 143, 95, 1)',
@@ -383,7 +385,7 @@
                     datasets: [
                         {
                             type: 'line',
-                            label: 'Average Weighted Score %',
+                            label: 'Average Final Moderated Score %',
                             data: trendScores,
                             borderColor: 'rgba(23, 94, 168, 1)',
                             backgroundColor: 'rgba(23, 94, 168, 0.16)',

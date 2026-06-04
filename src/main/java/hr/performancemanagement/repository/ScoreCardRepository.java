@@ -99,23 +99,71 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     );
 
     @Nullable
-    @Query("SELECT coalesce(AVG(t.allocatedWeight), 0) FROM Target t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
+    @Query("SELECT coalesce(AVG(t.allocatedWeight), 0) " +
+            "FROM Target t " +
+            "LEFT JOIN t.goal directGoal " +
+            "LEFT JOIN t.output targetOutput " +
+            "LEFT JOIN targetOutput.outcome targetOutcome " +
+            "LEFT JOIN targetOutcome.goal outputGoal " +
+            "LEFT JOIN targetOutcome.pillar outputPillar " +
+            "LEFT JOIN outputPillar.goal pillarGoal " +
+            "WHERE directGoal.strategicObjective = :strategicObjective " +
+            "OR outputGoal.strategicObjective = :strategicObjective " +
+            "OR pillarGoal.strategicObjective = :strategicObjective")
     Double findAverageAllocatedWeightPerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
 
     @Nullable
-    @Query("SELECT coalesce(AVG(s.weightedScore), 0) FROM Score s LEFT JOIN Target t ON s.target = t LEFT JOIN Goal g ON t.goal = g WHERE g.strategicObjective = :strategicObjective")
+    @Query("SELECT coalesce(AVG(s.weightedScore), 0) " +
+            "FROM Score s " +
+            "LEFT JOIN s.target t " +
+            "LEFT JOIN t.goal directGoal " +
+            "LEFT JOIN t.output targetOutput " +
+            "LEFT JOIN targetOutput.outcome targetOutcome " +
+            "LEFT JOIN targetOutcome.goal targetOutputGoal " +
+            "LEFT JOIN targetOutcome.pillar targetOutputPillar " +
+            "LEFT JOIN targetOutputPillar.goal targetPillarGoal " +
+            "LEFT JOIN s.output scoreOutput " +
+            "LEFT JOIN scoreOutput.outcome scoreOutcome " +
+            "LEFT JOIN scoreOutcome.goal scoreOutputGoal " +
+            "LEFT JOIN scoreOutcome.pillar scoreOutputPillar " +
+            "LEFT JOIN scoreOutputPillar.goal scorePillarGoal " +
+            "WHERE directGoal.strategicObjective = :strategicObjective " +
+            "OR targetOutputGoal.strategicObjective = :strategicObjective " +
+            "OR targetPillarGoal.strategicObjective = :strategicObjective " +
+            "OR scoreOutputGoal.strategicObjective = :strategicObjective " +
+            "OR scorePillarGoal.strategicObjective = :strategicObjective")
     Double findAverageWeightedScorePerStrategicObjective(@Param("strategicObjective") StrategicObjective strategicObjective);
 
-    @Query("SELECT g.strategicObjective.id, coalesce(AVG(t.allocatedWeight), 0) " +
-            "FROM Target t LEFT JOIN t.goal g " +
-            "WHERE g.strategicObjective.id IN :strategicObjectiveIds " +
-            "GROUP BY g.strategicObjective.id")
+    @Query("SELECT COALESCE(directGoal.strategicObjective.id, outputGoal.strategicObjective.id, pillarGoal.strategicObjective.id), " +
+            "coalesce(AVG(t.allocatedWeight), 0) " +
+            "FROM Target t " +
+            "LEFT JOIN t.goal directGoal " +
+            "LEFT JOIN t.output targetOutput " +
+            "LEFT JOIN targetOutput.outcome targetOutcome " +
+            "LEFT JOIN targetOutcome.goal outputGoal " +
+            "LEFT JOIN targetOutcome.pillar outputPillar " +
+            "LEFT JOIN outputPillar.goal pillarGoal " +
+            "WHERE COALESCE(directGoal.strategicObjective.id, outputGoal.strategicObjective.id, pillarGoal.strategicObjective.id) IN :strategicObjectiveIds " +
+            "GROUP BY COALESCE(directGoal.strategicObjective.id, outputGoal.strategicObjective.id, pillarGoal.strategicObjective.id)")
     List<Object[]> findAverageAllocatedWeightPerStrategicObjectiveIds(@Param("strategicObjectiveIds") List<Long> strategicObjectiveIds);
 
-    @Query("SELECT g.strategicObjective.id, coalesce(AVG(s.weightedScore), 0) " +
-            "FROM Score s LEFT JOIN s.target t LEFT JOIN t.goal g " +
-            "WHERE g.strategicObjective.id IN :strategicObjectiveIds " +
-            "GROUP BY g.strategicObjective.id")
+    @Query("SELECT COALESCE(directGoal.strategicObjective.id, targetOutputGoal.strategicObjective.id, targetPillarGoal.strategicObjective.id, scoreOutputGoal.strategicObjective.id, scorePillarGoal.strategicObjective.id), " +
+            "coalesce(AVG(s.weightedScore), 0) " +
+            "FROM Score s " +
+            "LEFT JOIN s.target t " +
+            "LEFT JOIN t.goal directGoal " +
+            "LEFT JOIN t.output targetOutput " +
+            "LEFT JOIN targetOutput.outcome targetOutcome " +
+            "LEFT JOIN targetOutcome.goal targetOutputGoal " +
+            "LEFT JOIN targetOutcome.pillar targetOutputPillar " +
+            "LEFT JOIN targetOutputPillar.goal targetPillarGoal " +
+            "LEFT JOIN s.output scoreOutput " +
+            "LEFT JOIN scoreOutput.outcome scoreOutcome " +
+            "LEFT JOIN scoreOutcome.goal scoreOutputGoal " +
+            "LEFT JOIN scoreOutcome.pillar scoreOutputPillar " +
+            "LEFT JOIN scoreOutputPillar.goal scorePillarGoal " +
+            "WHERE COALESCE(directGoal.strategicObjective.id, targetOutputGoal.strategicObjective.id, targetPillarGoal.strategicObjective.id, scoreOutputGoal.strategicObjective.id, scorePillarGoal.strategicObjective.id) IN :strategicObjectiveIds " +
+            "GROUP BY COALESCE(directGoal.strategicObjective.id, targetOutputGoal.strategicObjective.id, targetPillarGoal.strategicObjective.id, scoreOutputGoal.strategicObjective.id, scorePillarGoal.strategicObjective.id)")
     List<Object[]> findAverageWeightedScorePerStrategicObjectiveIds(@Param("strategicObjectiveIds") List<Long> strategicObjectiveIds);
 
     @Nullable

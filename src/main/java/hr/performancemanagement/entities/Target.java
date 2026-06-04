@@ -26,8 +26,6 @@ public class Target {
     private Output output;
 
     @Transient
-    @ManyToOne
-    @JoinColumn(name = "outcome_id")
     private Outcome outcome;
 
     @ManyToOne
@@ -35,18 +33,12 @@ public class Target {
     private Goal goal;
 
     @Transient
-    @ManyToOne
-    @JoinColumn(name = "gear_id")
     private Gear gear;
 
     @Transient
-    @ManyToOne
-    @JoinColumn(name = "perspective_id")
     private Perspective perspective;
 
     @Transient
-    @ManyToOne
-    @JoinColumn(name = "strategic_objective_id")
     private StrategicObjective strategicObjective;
 
     @NotBlank(message = "Measure is required")
@@ -67,52 +59,24 @@ public class Target {
 
     private Double baseTarget;
     private Double stretchTarget;
+
+    @Transient
     private Double actual;
 
-    @DecimalMin(value = "0.0", message = "Employee score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Employee score cannot exceed 5.0")
+    @Transient
     private Double employeeScore;
 
-    @DecimalMin(value = "0.0", message = "Manager score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Manager score cannot exceed 5.0")
+    @Transient
     private Double managerScore;
 
-    @DecimalMin(value = "0.0", message = "Agreed score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Agreed score cannot exceed 5.0")
+    @Transient
     private Double agreedScore;
 
-    @DecimalMin(value = "0.0", message = "Moderated score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Moderated score cannot exceed 5.0")
+    @Transient
     private Double moderatedScore;
 
-    @DecimalMin(value = "0.0", message = "Weighted score must be non-negative")
-    @DecimalMax(value = "100.0", message = "Weighted score cannot exceed 100")
+    @Transient
     private Double weightedScore;
-
-    private Double currentActual;
-
-    @DecimalMin(value = "0.0", message = "Current employee score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Current employee score cannot exceed 5.0")
-    private Double currentEmployeeScore;
-
-    @DecimalMin(value = "0.0", message = "Current manager score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Current manager score cannot exceed 5.0")
-    private Double currentManagerScore;
-
-    @DecimalMin(value = "0.0", message = "Current agreed score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Current agreed score cannot exceed 5.0")
-    private Double currentAgreedScore;
-
-    @DecimalMin(value = "0.0", message = "Current moderated score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Current moderated score cannot exceed 5.0")
-    private Double currentModeratedScore;
-
-    @DecimalMin(value = "0.0", message = "Current weighted score must be non-negative")
-    @DecimalMax(value = "100.0", message = "Current weighted score cannot exceed 100")
-    private Double currentWeightedScore;
-    private String currentEvidence;
-    private String currentAttachmentName;
-    private String currentJustification;
 
     @OneToMany(mappedBy = "target", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Evidence> evidence;

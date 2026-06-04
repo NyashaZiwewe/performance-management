@@ -20,17 +20,73 @@
     <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <style>
-        .fail{
-            color: red;
-        }
-        .fair{
-            color: orange;
-        }
-        .pass{
-            color: green;
-        }
-    </style>
+	    <style>
+	        body {
+	            color: #000000;
+	        }
+
+	        #divID {
+	            background: #ffffff;
+	            color: #000000;
+	        }
+
+	        #divID fieldset {
+	            border: 1px solid #d9e8f4 !important;
+	        }
+
+	        #divID legend a {
+	            color: #000000;
+	        }
+
+	        #divID h2,
+	        #divID h3,
+	        #divID h4,
+	        #divID h5 {
+	            color: #000000;
+	        }
+
+	        #divID h2 {
+	            margin-top: 18px;
+	            padding: 6px 8px;
+	            border-left: 3px solid #2f6f9f;
+	            border-bottom: 1px solid #ead77b;
+	            background: #ffffff;
+	            text-align: left;
+	        }
+
+	        #divID h3,
+	        #divID h4 {
+	            border-bottom: 1px solid #d7e8d9;
+	            padding-bottom: 4px;
+	            text-align: left;
+	        }
+
+	        #divID .table th,
+	        #divID .table td {
+	            border-color: #d9e8f4 !important;
+	            color: #000000;
+	        }
+
+	        #divID .table th {
+	            background: #f5faff;
+	            font-weight: bold;
+	        }
+
+	        #divID .table-striped tbody tr:nth-of-type(odd) {
+	            background: #fbfdff;
+	        }
+
+	        .fail{
+	            color: #b42318 !important;
+	        }
+	        .fair{
+	            color: #000000 !important;
+	            background: #fffbe8;
+	        }
+	        .pass{
+	            color: #1f7a4d !important;
+	        }
+	    </style>
 </head>
 
 <style>
@@ -81,7 +137,7 @@
 
                     <div class="row">
                         <div class="col-6">
-                            <img th:src="@{/img/tbtlogo.png}" src="../../static/img/tbtlogo.png" class="logo" alt="Company logo" style="height: 100px !important; width: 200px !important;"/>
+                            <img th:src="${browserReportLogoPath}" src="../../static/img/zimlogo.png" class="logo" alt="Company logo" style="height: 100px !important; width: 200px !important;"/>
                         </div>
                         <div class="col-6">
                             <table class="table" style="border: none; width: 100%">
@@ -100,6 +156,53 @@
                             </table>
                         </div>
                     </div>
+                    <h2>Executive Decision Summary</h2>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                            <tr>
+                                <th>Latest Final Score</th>
+                                <td th:text="${#numbers.formatDecimal(latestWeightedScore, 0, 2) + '%'}"></td>
+                                <th>Performance Band</th>
+                                <td th:text="${performanceBand}"></td>
+                            </tr>
+                            <tr>
+                                <th>Previous Final Score</th>
+                                <td th:text="${previousWeightedScore <= 0.0 ? 'No previous score' : #numbers.formatDecimal(previousWeightedScore, 0, 2) + '%'}"></td>
+                                <th>Movement</th>
+                                <td th:text="${scoreMovementLabel}"></td>
+                            </tr>
+                            <tr>
+                                <th>Decision Risk</th>
+                                <td th:text="${decisionRiskLevel}" th:attr="class = ${decisionRiskLevel == 'High' ? 'fail' : (decisionRiskLevel == 'Medium' ? 'fair' : 'pass')}"></td>
+                                <th>Recommended Decision</th>
+                                <td th:text="${decisionRecommendation}"></td>
+                            </tr>
+                            <tr>
+                                <th>Open Interventions</th>
+                                <td th:text="${outstandingInterventionCount}"></td>
+                                <th>Probation Contract</th>
+                                <td th:text="${probationStatus + ' - ' + probationRecommendation}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h3>Top Risks</h3>
+                            <ul>
+                                <li th:each="item : ${topRiskItems}" th:text="${item}"></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h3>Top Strengths</h3>
+                            <ul>
+                                <li th:each="item : ${topStrengthItems}" th:text="${item}"></li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <h2>Scorecard Summary</h2>
 
                     <div class="table-responsive">
@@ -120,8 +223,8 @@
                                     <td th:text="${target?.goal?.strategicObjective?.name}"></td>
                                     <td th:text="${target?.goal?.name}"></td>
                                     <td th:text="${target.measure}"></td>
-                                    <td th:text="${target.actualScore <= 0.0 || target.actualScore == null ? '' : #numbers.formatDecimal(target.actualScore, 0, 2)}" th:attr="class = ${target.actualScore < 2.5 ? 'fail' : 'pass' }"></td>
-                                    <td th:text="${target.actualScore <= 0.0 || target.actualScore == null ? '' : #numbers.formatDecimal((target.actualScore / 5) * target.allocatedWeight, 0, 2) + '%'}"></td>
+                                    <td th:text="${target.actual == null || target.actual <= 0.0 ? '' : #numbers.formatDecimal(target.actual, 0, 2)}" th:attr="class = ${target.actual != null && target.actual < 2.5 ? 'fail' : 'pass' }"></td>
+                                    <td th:text="${target.actual == null || target.actual <= 0.0 ? '' : #numbers.formatDecimal((target.actual / 5) * target.allocatedWeight, 0, 2) + '%'}"></td>
                                 </tr>
                                 <tr>
                                     <td colspan="4"></td>
@@ -132,6 +235,22 @@
                                         <h4 th:text="${totalWeightedScore <= 0.0 || totalWeightedScore == null ? '' : #numbers.formatDecimal(totalWeightedScore, 0, 2) + '%'}"  style="text-align: left !important;"></h4>
                                     </td>
                                 </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>Score Trend</h2>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                            <tr>
+                                <th th:each="label : ${scoreTrendLabels}" th:text="${label}"></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td th:each="trendScore : ${scoreTrendScores}" th:text="${#numbers.formatDecimal(trendScore, 0, 2) + '%'}"></td>
+                            </tr>
                             </tbody>
                         </table>
                     </div>
@@ -155,7 +274,7 @@
                             <tr>
                                 <th>Average Agreed Score</th>
                                 <td th:text="${#numbers.formatDecimal(averageAgreedScore, 0, 2)}"></td>
-                                <th>Average Moderated Score</th>
+                                <th>Final Moderated Score</th>
                                 <td th:text="${#numbers.formatDecimal(averageModeratedScore, 0, 2)}"></td>
                             </tr>
                             <tr>
@@ -179,6 +298,67 @@
                                 <td th:text="${'Open: ' + pipOpenCount + ', In Progress: ' + pipInProgressCount + ', Closed: ' + pipClosedCount}"></td>
                                 <th>Action Plan Mix</th>
                                 <td th:text="${'Open: ' + actionOpenCount + ', In Progress: ' + actionInProgressCount + ', Closed: ' + actionClosedCount}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>Decision Exceptions</h2>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h4>Low Performing Targets</h4>
+                            <ul>
+                                <li th:each="item : ${lowPerformingTargets}" th:text="${item}"></li>
+                                <li th:if="${#lists.isEmpty(lowPerformingTargets)}">No low-performing targets identified.</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>Missing Evidence</h4>
+                            <ul>
+                                <li th:each="item : ${missingEvidenceTargets}" th:text="${item}"></li>
+                                <li th:if="${#lists.isEmpty(missingEvidenceTargets)}">No missing evidence exceptions identified.</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>Score Alignment Gaps</h4>
+                            <ul>
+                                <li th:each="item : ${highVarianceTargets}" th:text="${item}"></li>
+                                <li th:if="${#lists.isEmpty(highVarianceTargets)}">No major score alignment gaps identified.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h2>Probation Contract Snapshot</h2>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                            <tr>
+                                <th>Status</th>
+                                <td th:text="${probationStatus}"></td>
+                                <th>Period</th>
+                                <td th:text="${probationPeriod}"></td>
+                            </tr>
+                            <tr>
+                                <th>Current Step</th>
+                                <td th:text="${probationCurrentStep}"></td>
+                                <th>End Date</th>
+                                <td th:text="${probationEndDate}"></td>
+                            </tr>
+                            <tr>
+                                <th>KPI Count</th>
+                                <td th:text="${probationKpiCount}"></td>
+                                <th>Flagged KPIs</th>
+                                <td th:text="${probationFlaggedKpiCount}"></td>
+                            </tr>
+                            <tr>
+                                <th>Average KPI Progress</th>
+                                <td th:text="${#numbers.formatDecimal(probationAverageProgress, 0, 2) + '%'}"></td>
+                                <th>Decision Required</th>
+                                <td th:text="${probationDecisionRequired ? 'Yes' : 'No'}"></td>
+                            </tr>
+                            <tr>
+                                <th>Recommendation</th>
+                                <td colspan="3" th:text="${probationRecommendation}"></td>
                             </tr>
                             </tbody>
                         </table>

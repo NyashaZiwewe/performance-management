@@ -95,11 +95,13 @@
                                                                 </span>
                                                             </td>
                                                         </tr>
-                                                        <tr th:each="row : ${section.rows}"
-                                                            th:with="target=${row.target},
-                                                                     score=${row.scoresByReportingDate[date.id]},
-                                                                     evidence=${row.evidenceByReportingDate[date.id]},
-                                                                     rowWeight=${displayShowOutput && target.output != null && target.output.allocatedWeight != null ? target.output.allocatedWeight : target.allocatedWeight}">
+	                                                        <tr th:each="row : ${section.rows}"
+	                                                            th:with="target=${row.target},
+	                                                                     score=${row.scoresByReportingDate[date.id]},
+	                                                                     evidence=${row.evidenceByReportingDate[date.id]},
+	                                                                     evidenceLink=${evidence != null ? evidence.evidence : (score == null ? '' : score.evidence)},
+	                                                                     attachmentName=${evidence != null ? evidence.attachmentName : (score == null ? '' : score.attachmentName)},
+	                                                                     rowWeight=${displayShowOutput && target.output != null && target.output.allocatedWeight != null ? target.output.allocatedWeight : target.allocatedWeight}">
                                                         <td th:if="${row.showStage2}" th:text="${row.stage2Value}" th:rowspan="${row.stage2Rowspan}"></td>
                                                         <td th:if="${displayShowStage3 && row.showStage3}" th:text="${row.stage3Value}" th:rowspan="${row.stage3Rowspan}"></td>
                                                         <td th:if="${displayShowStage4 && row.showStage4}" th:text="${row.stage4Value}" th:rowspan="${row.stage4Rowspan}"></td>
@@ -132,19 +134,13 @@
                                                             <a data-toggle="modal" th:data-target="'#scoreModal'+ ${target.id}" th:text="${score == null || score.weightedScore <= 0.0 ? '' : #numbers.formatDecimal(score.weightedScore, 0, 2) + '%'}" th:attr="class = ${score != null && score.weightedScore > 0 ? 'pass' : 'fail' }"></a>
                                                         </td>
                                                         <td>
-                                                            <a th:if="${evidence != null && evidence.evidence != null && !#strings.isEmpty(evidence.evidence)}" th:href="${evidence.evidence}" target="_blank">
-                                                                <i class="fa fa-link"></i>
-                                                            </a>
-                                                            <a th:if="${evidence != null && evidence.attachmentName != null && !#strings.isEmpty(evidence.attachmentName)}" th:href="@{/scorecards/view-evidence/} + ${evidence.attachmentName}" target="_blank">
-                                                                <i class="fa fa-paperclip"></i>
-                                                            </a>
-                                                            <a th:if="${evidence == null && score != null && score.evidence != null && !#strings.isEmpty(score.evidence)}" th:href="${score.evidence}" target="_blank">
-                                                                <i class="fa fa-link"></i>
-                                                            </a>
-                                                            <a th:if="${evidence == null && score != null && score.attachmentName != null && !#strings.isEmpty(score.attachmentName)}" th:href="@{/scorecards/view-evidence/} + ${score.attachmentName}" target="_blank">
-                                                                <i class="fa fa-paperclip"></i>
-                                                            </a>
-                                                        </td>
+	                                                            <a th:if="${evidenceLink != null && !#strings.isEmpty(evidenceLink)}" th:href="${evidenceLink}" target="_blank">
+	                                                                <i class="fa fa-link"></i>
+	                                                            </a>
+	                                                            <a th:if="${attachmentName != null && !#strings.isEmpty(attachmentName)}" th:href="@{/scorecards/view-evidence/} + ${attachmentName}" target="_blank">
+	                                                                <i class="fa fa-paperclip"></i>
+	                                                            </a>
+	                                                        </td>
                                                         <td th:text="${evidence != null && evidence.justification != null ? evidence.justification : (score == null ? '' : score.justification)}"></td>
 
                                                         <td>
@@ -173,15 +169,19 @@
                                                                                      </tr>
                                                                                     </thead>
                                                                                     <tbody>
-                                                                                     <tr th:each="score : ${target.scores}">
+	                                                                                     <tr th:each="score : ${row.scoreHistory}"
+	                                                                                         th:with="scoreEvidence=${score.reportingDate == null ? null : row.evidenceByReportingDate[score.reportingDate.id]},
+	                                                                                                  scoreEvidenceLink=${scoreEvidence != null ? scoreEvidence.evidence : score.evidence},
+	                                                                                                  scoreAttachmentName=${scoreEvidence != null ? scoreEvidence.attachmentName : score.attachmentName}">
                                                                                          <td th:text="${score.reportingDate?.endDate}"></td>
                                                                                          <td th:text="${target.baseTarget}"></td>
                                                                                          <td th:text="${target.stretchTarget}"></td>
                                                                                          <td th:text="${score.actual}"></td>
                                                                                          <td th:text="${score.weightedScore == null ? '' : #numbers.formatDecimal(score.weightedScore, 0, 2) + '%'}" th:attr="class = ${score.weightedScore > 0 ? 'pass' : 'fail' }"></td>
-                                                                                         <td>
-                                                                                             <a th:href="${score.evidence}" target="_blank" th:text="${score.evidence}"></a>
-                                                                                         </td>
+	                                                                                         <td>
+	                                                                                             <a th:if="${scoreEvidenceLink != null && !#strings.isEmpty(scoreEvidenceLink)}" th:href="${scoreEvidenceLink}" target="_blank"><i class="fa fa-link"></i></a>
+	                                                                                             <a th:if="${scoreAttachmentName != null && !#strings.isEmpty(scoreAttachmentName)}" th:href="@{/scorecards/view-evidence/} + ${scoreAttachmentName}" target="_blank"><i class="fa fa-paperclip"></i></a>
+	                                                                                         </td>
                                                                                          <td th:text="${score.justification}"></td>
                                                                                          <td></td>
                                                                                      </tr>
@@ -292,7 +292,13 @@
                                                         </span>
                                                     </td>
                                                 </tr>
-                                                <tr th:each="row : ${section.rows}" th:with="target=${row.target}">
+                                                <tr th:each="row : ${section.rows}"
+                                                    th:with="target=${row.target},
+                                                             score=${reportingDate == null ? null : row.scoresByReportingDate[reportingDate.id]},
+                                                             evidence=${reportingDate == null ? null : row.evidenceByReportingDate[reportingDate.id]},
+                                                             evidenceLink=${evidence != null ? evidence.evidence : (score == null ? '' : score.evidence)},
+                                                             justificationText=${evidence != null ? evidence.justification : (score == null ? '' : score.justification)},
+                                                             rowWeight=${displayShowOutput && target.output != null && target.output.allocatedWeight != null ? target.output.allocatedWeight : target.allocatedWeight}">
                                                     <td th:if="${row.showStage2}" th:text="${row.stage2Value}" th:rowspan="${row.stage2Rowspan}"></td>
                                                     <td th:if="${displayShowStage3 && row.showStage3}" th:text="${row.stage3Value}" th:rowspan="${row.stage3Rowspan}"></td>
                                                     <td th:if="${displayShowStage4 && row.showStage4}" th:text="${row.stage4Value}" th:rowspan="${row.stage4Rowspan}"></td>
@@ -301,18 +307,18 @@
                                                     <td th:text="${target.unit}"></td>
                                                     <td th:text="${target.baseTarget}"></td>
                                                     <td th:text="${target.stretchTarget}"></td>
-                                                    <td th:text="${target.allocatedWeight}"></td>
+                                                    <td th:text="${rowWeight == null ? '' : #numbers.formatDecimal(rowWeight, 0, 2)}"></td>
                                                     <td>
-                                                        <input type="number" step="any" th:id="'actual' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentActual}" required th:attr="aria-label=${'Actual score for ' + target.measure}">
+                                                        <input type="number" step="any" th:id="'actual' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null ? '' : score.actual}" required th:attr="aria-label=${'Actual score for ' + target.measure}">
                                                     </td>
                                                     <td>
-                                                        <span th:text="${target.currentWeightedScore}"></span>
+                                                        <span th:text="${score == null || score.weightedScore <= 0.0 ? '' : #numbers.formatDecimal(score.weightedScore, 0, 2) + '%'}"></span>
                                                     </td>
                                                     <td>
-                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentEvidence}" th:attr="aria-label=${'Evidence link for ' + target.measure}">
+                                                        <input type="url" th:id="'evidence' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${evidenceLink}" th:attr="aria-label=${'Evidence link for ' + target.measure}">
                                                     </td>
                                                     <td>
-                                                        <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${target.currentJustification}" th:attr="aria-label=${'Justification for ' + target.measure}">
+                                                        <input type="text" th:id="'justification' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${justificationText}" th:attr="aria-label=${'Justification for ' + target.measure}">
                                                     </td>
                                                 </tr>
                                                 <tr th:if="${!sectionStat.last}">

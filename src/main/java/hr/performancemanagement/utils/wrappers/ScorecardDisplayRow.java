@@ -3,11 +3,14 @@ package hr.performancemanagement.utils.wrappers;
 import hr.performancemanagement.entities.Target;
 import hr.performancemanagement.entities.Score;
 import hr.performancemanagement.entities.Evidence;
+import hr.performancemanagement.entities.Comment;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -35,6 +38,8 @@ public class ScorecardDisplayRow {
 
     private Map<Long, Score> scoresByReportingDate = new HashMap<Long, Score>();
     private Map<Long, Evidence> evidenceByReportingDate = new HashMap<Long, Evidence>();
+    private List<Score> scoreHistory = new ArrayList<Score>();
+    private List<Comment> comments = new ArrayList<Comment>();
 
     public ScorecardDisplayRow(Target target) {
         this.target = target;

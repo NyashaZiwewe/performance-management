@@ -1,15 +1,16 @@
 package hr.performancemanagement.service.impl;
 
 import org.springframework.stereotype.Service;
-import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.*;
-import hr.performancemanagement.repository.GoalRepository;
 import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.repository.TargetRepository;
+import hr.performancemanagement.service.api.ReportingDateService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,11 +20,11 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Autowired
     TargetRepository targetRepository;
     @Autowired
-    GoalRepository goalRepository;
-    @Autowired
     ScoreRepository scoreRepository;
     @Autowired
     ReportingDateService reportingDateService;
+    @PersistenceContext
+    EntityManager entityManager;
 
     @Override
     public List<Target> getAllTargetsByScorecard(long scorecardId){
@@ -34,6 +35,7 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
             if (target == null) {
                 continue;
             }
+            detachForReadHydration(target);
             populateTargetHierarchy(target);
             hydrateScoreSnapshot(target, reportingDate);
             targetList.add(target);
@@ -56,6 +58,7 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
     @Override
     public Target getTargetById(long id){
         Target target = targetRepository.findTargetById(id);
+        detachForReadHydration(target);
         populateTargetHierarchy(target);
         return target;
     }
@@ -79,59 +82,9 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
         targetRepository.deleteAll(targets);
     }
 
-//    public boolean  updateWeightedTargetScore(Target target){
-//
-//        double sumActual = targetRepository.totalWeightedScoreByTarget(target);
-//        target.setWeightedScore(sumActual);
-//        try {
-//            saveTarget(target);
-//            return true;
-//        }catch (Exception e){
-//            return false;
-//        }
-//    }
-//
-//    public boolean  updateActualTargetScore(Target target){
-//
-//        double avg = targetRepository.averageActualScoreByTarget(target);
-//        target.setActualScore(avg);
-//        try {
-//            saveTarget(target);
-//            return true;
-//        }catch (Exception e){
-//            return false;
-//        }
-//    }
-//
-//    public boolean  updateManagerTargetScore(Target target){
-//
-//        double avg = targetRepository.averageManagerScoreByTarget(target);
-//        target.setManagerScore(avg);
-//        try {
-//            saveTarget(target);
-//            return true;
-//        }catch (Exception e){
-//            return false;
-//        }
-//    }
-//
-//    public boolean  updateEmployeeTargetScore(Target target){
-//
-//        double avg = targetRepository.averageEmployeeScoreByTarget(target);
-//        target.setEmployeeScore(avg);
-//        try {
-//            saveTarget(target);
-//            return true;
-//        }catch (Exception e){
-//            return false;
-//        }
-//    }
-
-
     @Override
     @Transactional
     public Target saveTarget(Target target) {
-        normalizePersistedScores(target);
         Target savedTarget = targetRepository.save(target);
         return savedTarget;
     }
@@ -142,33 +95,10 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
         targetRepository.delete(target);
     }
 
-    private void normalizePersistedScores(Target target) {
-        if (target == null) {
-            return;
+    private void detachForReadHydration(Target target) {
+        if (target != null && entityManager != null && entityManager.contains(target)) {
+            entityManager.detach(target);
         }
-        target.setEmployeeScore(clamp(target.getEmployeeScore(), 0.0, 5.0));
-        target.setManagerScore(clamp(target.getManagerScore(), 0.0, 5.0));
-        target.setAgreedScore(clamp(target.getAgreedScore(), 0.0, 5.0));
-        target.setModeratedScore(clamp(target.getModeratedScore(), 0.0, 5.0));
-        target.setCurrentEmployeeScore(clamp(target.getCurrentEmployeeScore(), 0.0, 5.0));
-        target.setCurrentManagerScore(clamp(target.getCurrentManagerScore(), 0.0, 5.0));
-        target.setCurrentAgreedScore(clamp(target.getCurrentAgreedScore(), 0.0, 5.0));
-        target.setCurrentModeratedScore(clamp(target.getCurrentModeratedScore(), 0.0, 5.0));
-        target.setWeightedScore(clamp(target.getWeightedScore(), 0.0, 100.0));
-        target.setCurrentWeightedScore(clamp(target.getCurrentWeightedScore(), 0.0, 100.0));
-    }
-
-    private Double clamp(Double value, double minimum, double maximum) {
-        if (value == null) {
-            return null;
-        }
-        if (value < minimum) {
-            return minimum;
-        }
-        if (value > maximum) {
-            return maximum;
-        }
-        return value;
     }
 
     private void populateTargetHierarchy(Target target) {
@@ -233,67 +163,8 @@ public class TargetServiceImpl implements hr.performancemanagement.service.api.T
         target.setAgreedScore(toDouble(aggregateValue(valueBasedAggregates, 3)));
         target.setModeratedScore(toDouble(aggregateValue(valueBasedAggregates, 4)));
 
-        Score currentScore = resolveCurrentScore(target, output, reportingDate);
-        if (currentScore == null) {
-            target.setCurrentActual(null);
-            target.setCurrentEmployeeScore(null);
-            target.setCurrentManagerScore(null);
-            target.setCurrentAgreedScore(null);
-            target.setCurrentModeratedScore(null);
-            target.setCurrentWeightedScore(null);
-            target.setCurrentEvidence(null);
-            target.setCurrentAttachmentName(null);
-            target.setCurrentJustification(null);
-        } else {
-            target.setCurrentActual(currentScore.getActual());
-            target.setCurrentEmployeeScore(currentScore.getEmployeeScore());
-            target.setCurrentManagerScore(currentScore.getManagerScore());
-            target.setCurrentAgreedScore(currentScore.getAgreedScore());
-            target.setCurrentModeratedScore(currentScore.getModeratedScore());
-            target.setCurrentWeightedScore(currentScore.getWeightedScore());
-            target.setCurrentEvidence(currentScore.getEvidence());
-            target.setCurrentAttachmentName(currentScore.getAttachmentName());
-            target.setCurrentJustification(currentScore.getJustification());
-        }
-
         List<Score> history = resolveScoreHistory(target, output);
         target.setScores(history);
-    }
-
-    private Score resolveCurrentScore(Target target, Output output, ReportingDate reportingDate) {
-        if (reportingDate == null) {
-            return null;
-        }
-
-        if (target != null) {
-            List<Score> targetScores = scoreRepository.findScoresByTargetAndReportingDateOrderByIdDesc(target, reportingDate);
-            if (targetScores != null && !targetScores.isEmpty()) {
-                return targetScores.get(0);
-            }
-        }
-
-        if (output == null) {
-            return null;
-        }
-
-        List<Score> outputScores = scoreRepository.findScoresByOutputAndReportingDateOrderByIdDesc(output, reportingDate);
-        if (outputScores == null || outputScores.isEmpty()) {
-            return null;
-        }
-
-        if (target != null) {
-            for (Score score : outputScores) {
-                if (score != null && score.getTarget() != null && score.getTarget().getId() == target.getId()) {
-                    return score;
-                }
-            }
-            for (Score score : outputScores) {
-                if (score != null && score.getTarget() == null) {
-                    return score;
-                }
-            }
-        }
-        return outputScores.get(0);
     }
 
     private List<Score> resolveScoreHistory(Target target, Output output) {

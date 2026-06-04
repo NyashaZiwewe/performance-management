@@ -1,6 +1,9 @@
 package hr.performancemanagement.controllers.assessment;
 
 import hr.performancemanagement.entities.*;
+import hr.performancemanagement.repository.EvidenceRepository;
+import hr.performancemanagement.repository.ProbationAssessmentRepository;
+import hr.performancemanagement.repository.ProbationKpiRepository;
 import hr.performancemanagement.repository.ScoreRepository;
 import hr.performancemanagement.service.OutcomeService;
 import hr.performancemanagement.service.OutputService;
@@ -36,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -83,6 +87,14 @@ public class AssessmentController {
     OverallCommentService overallCommentService;
     @Autowired
     ScoreRepository scoreRepository;
+    @Autowired
+    EvidenceRepository evidenceRepository;
+    @Autowired
+    ProbationAssessmentRepository probationAssessmentRepository;
+    @Autowired
+    ProbationKpiRepository probationKpiRepository;
+    @Autowired
+    SystemSettingService systemSettingService;
     private List<Double> scores;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
@@ -107,10 +119,15 @@ public class AssessmentController {
 
     @RequestMapping(value="/view-scores-select-year")
     public ModelAndView viewScoresSelectYear(HttpServletRequest request) {
+        List<ReportingPeriod> reportingPeriods = reportingPeriodService.listAllReportingPeriods();
+        ReportingPeriod reportingPeriod = resolveDefaultScoresReportingPeriod(reportingPeriods);
+        if (reportingPeriod != null) {
+            return new ModelAndView("redirect:/performance-review/view-scores/" + reportingPeriod.getId());
+        }
+
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORES_SELECT_YEAR);
         modelAndView.addObject("pageTitle", "Select Reporting Period");
-        List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
-        modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
+        modelAndView.addObject("reportingPeriodsList", reportingPeriods);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -146,9 +163,14 @@ public class AssessmentController {
 
 
     @RequestMapping(value = "/view-scores-select-year", method = RequestMethod.POST)
-    public String goToViewScores(HttpServletRequest request, long reportingPeriodId) {
-
-        return "redirect:/performance-review/view-scores/"+ reportingPeriodId;
+    public String goToViewScores(HttpServletRequest request,
+                                 long reportingPeriodId,
+                                 @RequestParam(value = "reportingDateId", required = false) Long reportingDateId) {
+        String redirectUrl = "redirect:/performance-review/view-scores/" + reportingPeriodId;
+        if (reportingDateId != null && reportingDateId > 0) {
+            redirectUrl += "?reportingDateId=" + reportingDateId;
+        }
+        return redirectUrl;
     }
 
     @RequestMapping(value = "/view-performance-levels-select-year", method = RequestMethod.POST)
@@ -159,7 +181,10 @@ public class AssessmentController {
 
 
     @RequestMapping("/view-scores/{id}")
-    public ModelAndView viewScores(@PathVariable("id") long id, HttpServletRequest request) {
+    public ModelAndView viewScores(@PathVariable("id") long id,
+                                   @RequestParam(value = "reportingDateId", required = false) Long reportingDateId,
+                                   @RequestParam(value = "scoreFilter", required = false) String scoreFilter,
+                                   HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORES);
         modelAndView.addObject("pageTitle", "View Scores");
 
@@ -167,11 +192,29 @@ public class AssessmentController {
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
         List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
-        List<ReportingDate> reportingDates = reportingPeriod.getReportingDates();
+        if (scorecards == null) {
+            scorecards = new ArrayList<Scorecard>();
+        }
+        List<ReportingDate> reportingDates = sortReportingDates(reportingDateService.listAllReportingDates(reportingPeriod));
+        ReportingDate selectedReportingDate = resolveSelectedReviewReportingDate(reportingDates, reportingDateId);
         Map<Long, Map<Long, OverallScore>> overallScoresByDate =
                 overallScoreService.getOverallScoresByScorecardsAndReportingDates(scorecards, reportingDates);
+        ReportingDate insightReportingDate = selectedReportingDate;
+        Map<Long, OverallScore> selectedOverallScores = selectedReportingDate == null
+                ? null
+                : overallScoresByDate.get(selectedReportingDate.getId());
         Map<Long, Integer> pipCountsByScorecardId = new HashMap<>();
         Map<Long, Integer> actionPlanCountsByScorecardId = new HashMap<>();
+        Map<Long, ScorecardRiskProfile> riskProfilesByScorecardId = new HashMap<Long, ScorecardRiskProfile>();
+        Map<Long, OverallScore> latestOverallScoresByScorecardId = new HashMap<Long, OverallScore>();
+        double totalLatestWeightedScore = 0.0;
+        int scorecardsWithWeightedScore = 0;
+        int belowThresholdCount = 0;
+        int improvingCount = 0;
+        int decliningCount = 0;
+        int activePipCount = 0;
+        int openActionPlanCount = 0;
+        int probationDecisionCount = 0;
 
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
@@ -182,10 +225,36 @@ public class AssessmentController {
                 continue;
             }
             Account owner = scorecard.getOwner();
-            pipCountsByScorecardId.put(scorecard.getId(),
-                    performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod).size());
-            actionPlanCountsByScorecardId.put(scorecard.getId(),
-                    actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod).size());
+            List<PerformanceImprovementPlan> pips =
+                    performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
+            List<ActionPlan> actionPlans =
+                    actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
+            pipCountsByScorecardId.put(scorecard.getId(), pips.size());
+            actionPlanCountsByScorecardId.put(scorecard.getId(), actionPlans.size());
+
+            List<Target> targets = targetService.getAllTargetsByScorecard(scorecard.getId());
+            ReportInsight insight = buildReportInsight(scorecard, reportingPeriod, targets, pips, actionPlans, selectedReportingDate);
+            ScorecardRiskProfile riskProfile = buildScorecardRiskProfile(insight);
+            riskProfilesByScorecardId.put(scorecard.getId(), riskProfile);
+            latestOverallScoresByScorecardId.put(scorecard.getId(), resolveOverallScore(selectedOverallScores, scorecard, insightReportingDate));
+
+            if (riskProfile.latestWeightedScore > 0.0) {
+                totalLatestWeightedScore += riskProfile.latestWeightedScore;
+                scorecardsWithWeightedScore++;
+            }
+            if (riskProfile.latestWeightedScore > 0.0 && riskProfile.latestWeightedScore < 50.0) {
+                belowThresholdCount++;
+            }
+            if (insight.scoreMovement > 0.0) {
+                improvingCount++;
+            } else if (insight.scoreMovement < 0.0) {
+                decliningCount++;
+            }
+            activePipCount += insight.pipOpenCount + insight.pipInProgressCount;
+            openActionPlanCount += insight.actionOpenCount + insight.actionInProgressCount;
+            if (insight.probationDecisionRequired) {
+                probationDecisionCount++;
+            }
         }
 
         for(ReportingDate reportingDate : reportingDates) {
@@ -200,10 +269,43 @@ public class AssessmentController {
 
         }
 
+        List<ReportingPeriod> reviewReportingPeriods = reportingPeriodService.listAllReportingPeriods();
+        String activeScoreFilter = normalizeScoreFilter(scoreFilter);
+        List<Scorecard> filteredScorecards = filterScorecardsForView(scorecards, riskProfilesByScorecardId, activeScoreFilter);
         modelAndView.addObject("reportingDates", reportingDates);
-        modelAndView.addObject("scoresList", scorecards);
+        modelAndView.addObject("reviewReportingPeriods", reviewReportingPeriods);
+        modelAndView.addObject("reviewReportingDateOptions", buildReviewReportingDateOptions(reviewReportingPeriods));
+        modelAndView.addObject("selectedReportingPeriod", reportingPeriod);
+        modelAndView.addObject("selectedReportingPeriodId", reportingPeriod.getId());
+        modelAndView.addObject("selectedReportingDate", selectedReportingDate);
+        modelAndView.addObject("selectedReportingDateId", selectedReportingDate == null ? null : selectedReportingDate.getId());
+        modelAndView.addObject("selectedReportingPeriodLabel", startDate + " to " + endDate);
+        modelAndView.addObject("selectedReportingDateLabel", selectedReportingDate == null ? "No reporting date selected" : selectedReportingDate.getEndDate());
+        modelAndView.addObject("scoresList", filteredScorecards);
+        modelAndView.addObject("filteredScorecardCount", filteredScorecards.size());
+        modelAndView.addObject("activeScoreFilter", activeScoreFilter);
+        modelAndView.addObject("activeScoreFilterLabel", resolveScoreFilterLabel(activeScoreFilter));
+        modelAndView.addObject("allScorecardsFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "all"));
+        modelAndView.addObject("scoredScorecardsFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "scored"));
+        modelAndView.addObject("belowThresholdFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "below-threshold"));
+        modelAndView.addObject("probationDecisionFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "probation-decisions"));
+        modelAndView.addObject("improvingFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "improving"));
+        modelAndView.addObject("decliningFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "declining"));
+        modelAndView.addObject("activePipFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "active-pips"));
+        modelAndView.addObject("openActionPlanFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "open-action-plans"));
         modelAndView.addObject("pipCountsByScorecardId", pipCountsByScorecardId);
         modelAndView.addObject("actionPlanCountsByScorecardId", actionPlanCountsByScorecardId);
+        modelAndView.addObject("riskProfilesByScorecardId", riskProfilesByScorecardId);
+        modelAndView.addObject("latestOverallScoresByScorecardId", latestOverallScoresByScorecardId);
+        modelAndView.addObject("scoreSummaryReportingDateLabel", insightReportingDate == null ? "Latest available context" : insightReportingDate.getEndDate());
+        modelAndView.addObject("reportAverageScore", scorecardsWithWeightedScore == 0 ? 0.0 : roundTwoDecimals(totalLatestWeightedScore / scorecardsWithWeightedScore));
+        modelAndView.addObject("belowThresholdCount", belowThresholdCount);
+        modelAndView.addObject("improvingCount", improvingCount);
+        modelAndView.addObject("decliningCount", decliningCount);
+        modelAndView.addObject("activePipCount", activePipCount);
+        modelAndView.addObject("openActionPlanCount", openActionPlanCount);
+        modelAndView.addObject("probationDecisionCount", probationDecisionCount);
+        modelAndView.addObject("totalScorecards", scorecards == null ? 0 : scorecards.size());
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("role", role);
         modelAndView.addObject("startDate", startDate);
@@ -223,7 +325,9 @@ public class AssessmentController {
         List<Double> scores = new ArrayList<>();
         for(Scorecard scorecard : scorecardList){
             try {
-                scores.add(scorecard.getWeightedScore());
+                ReportingDate reportingDate = resolveInsightReportingDate(scorecard.getReportingPeriod());
+                OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+                scores.add(overallModeratedPercent(overallScore));
                 names.add(scorecard.getOwner().getFullName());
 
             }catch (Exception ignored){
@@ -243,46 +347,12 @@ public class AssessmentController {
     public ModelAndView viewIndividualTrends(@RequestParam("employeeId") Long employeeId, HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_INDIVIDUAL_TRENDS);
         modelAndView.addObject("pageTitle", "View Individual Trends");
-        List<Scorecard> scorecardList = scorecardService.getScorecardsByOwner(accountService.getAccountById(employeeId));
+        Account employee = accountService.getAccountById(employeeId);
+        ScorecardTrend trend = buildAccountTrend(employee);
 
-        List<String> monthNames = new ArrayList<>();
-        List<Double> scores = new ArrayList<>();
-        List<ReportingDate> reportingDates = new ArrayList<>();
-        for (Scorecard scorecard : scorecardList) {
-            if (scorecard != null
-                    && scorecard.getReportingPeriod() != null
-                    && scorecard.getReportingPeriod().getReportingDates() != null) {
-                reportingDates.addAll(scorecard.getReportingPeriod().getReportingDates());
-            }
-        }
-        Map<Long, Map<Long, Double>> scoresByDate =
-                scorecardService.getScoresByReportingDatesAndScorecardIds(reportingDates, scorecardList);
-        for(Scorecard scorecard : scorecardList){
-            List<ReportingDate> dates = scorecard.getReportingPeriod().getReportingDates();
-
-               for(ReportingDate date: dates){
-                   try {
-                       Double score = 0.0;
-                       if (date != null) {
-                           Map<Long, Double> scoreByScorecard = scoresByDate.get(date.getId());
-                           if (scoreByScorecard != null && scoreByScorecard.containsKey(scorecard.getId())) {
-                               score = scoreByScorecard.get(scorecard.getId());
-                           }
-                       }
-                        scores.add(score);
-                        monthNames.add(date.getEndDate());
-
-                    }catch (Exception ignored){
-
-                    }
-
-               }
-
-        }
-
-        modelAndView.addObject("monthNames", monthNames);
-        modelAndView.addObject("scores", scores);
-        modelAndView.addObject("employee", accountService.getAccountById(employeeId));
+        modelAndView.addObject("monthNames", trend.labels);
+        modelAndView.addObject("scores", trend.scores);
+        modelAndView.addObject("employee", employee);
 
         preparePage(modelAndView, request);
         return modelAndView;
@@ -334,6 +404,7 @@ public class AssessmentController {
         modelAndView.addObject("averageModeratedScore", averageModeratedScore);
         modelAndView.addObject("weightedScore", weightedScore);
         modelAndView.addObject("totalWeightedScore", totalWeightedScore);
+        modelAndView.addObject("browserReportLogoPath", browserReportLogoPath());
         populatePerformanceInsights(modelAndView, scoreCard, reportingPeriod, targetsList, pips, actionPlans);
         PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
         preparePage(modelAndView, request);
@@ -387,6 +458,7 @@ public class AssessmentController {
         modelAndView.addObject("targetsList", targetsList);
         modelAndView.addObject("averageModeratedScore", averageModeratedScore);
         modelAndView.addObject("totalWeightedScore", totalWeightedScore);
+        modelAndView.addObject("browserReportLogoPath", browserReportLogoPath());
         populatePerformanceInsights(modelAndView, scoreCard, reportingPeriod, targetsList, pips, actionPlans);
         PortletUtils.addInfoMsg("Showing scores for the period: "+ startDate + " to "+ endDate, request);
         preparePage(modelAndView, request);
@@ -488,12 +560,20 @@ public class AssessmentController {
             context.setVariable("username", username);
             context.setVariable("finalReportingDate", finalReportingDate);
             context.setVariable("finalOverallScore", finalOverallScore);
+            context.setVariable("reportLogoPath", pdfReportLogoPath());
             ReportInsight reportInsight = buildReportInsight(scorecard, reportingPeriod, targetsList, pips, actionPlans);
             context.setVariable("reportInsight", reportInsight);
             context.setVariable("averageEmployeeScore", reportInsight.averageEmployeeScore);
             context.setVariable("averageManagerScore", reportInsight.averageManagerScore);
             context.setVariable("averageAgreedScore", reportInsight.averageAgreedScore);
             context.setVariable("averageModeratedScore", reportInsight.averageModeratedScore);
+            context.setVariable("latestWeightedScore", reportInsight.latestWeightedScore);
+            context.setVariable("previousWeightedScore", reportInsight.previousWeightedScore);
+            context.setVariable("scoreMovement", reportInsight.scoreMovement);
+            context.setVariable("scoreMovementLabel", reportInsight.scoreMovementLabel);
+            context.setVariable("performanceBand", reportInsight.performanceBand);
+            context.setVariable("decisionRiskLevel", reportInsight.decisionRiskLevel);
+            context.setVariable("decisionRecommendation", reportInsight.decisionRecommendation);
             context.setVariable("alignmentGapEmployeeManager", reportInsight.alignmentGapEmployeeManager);
             context.setVariable("alignmentGapManagerAgreed", reportInsight.alignmentGapManagerAgreed);
             context.setVariable("alignmentGapAgreedModerated", reportInsight.alignmentGapAgreedModerated);
@@ -514,6 +594,23 @@ public class AssessmentController {
             context.setVariable("actionOpenCount", reportInsight.actionOpenCount);
             context.setVariable("actionInProgressCount", reportInsight.actionInProgressCount);
             context.setVariable("actionClosedCount", reportInsight.actionClosedCount);
+            context.setVariable("outstandingInterventionCount", reportInsight.outstandingInterventionCount);
+            context.setVariable("topRiskItems", reportInsight.topRiskItems);
+            context.setVariable("topStrengthItems", reportInsight.topStrengthItems);
+            context.setVariable("lowPerformingTargets", reportInsight.lowPerformingTargets);
+            context.setVariable("missingEvidenceTargets", reportInsight.missingEvidenceTargets);
+            context.setVariable("highVarianceTargets", reportInsight.highVarianceTargets);
+            context.setVariable("scoreTrendLabels", reportInsight.scoreTrendLabels);
+            context.setVariable("scoreTrendScores", reportInsight.scoreTrendScores);
+            context.setVariable("probationStatus", reportInsight.probationStatus);
+            context.setVariable("probationPeriod", reportInsight.probationPeriod);
+            context.setVariable("probationCurrentStep", reportInsight.probationCurrentStep);
+            context.setVariable("probationEndDate", reportInsight.probationEndDate);
+            context.setVariable("probationRecommendation", reportInsight.probationRecommendation);
+            context.setVariable("probationKpiCount", reportInsight.probationKpiCount);
+            context.setVariable("probationFlaggedKpiCount", reportInsight.probationFlaggedKpiCount);
+            context.setVariable("probationAverageProgress", reportInsight.probationAverageProgress);
+            context.setVariable("probationDecisionRequired", reportInsight.probationDecisionRequired);
 
             String fileName = owner.getFullName().toUpperCase();
             String page = Pages.DOWNLOADABLE_REPORT;
@@ -555,6 +652,13 @@ public class AssessmentController {
         modelAndView.addObject("averageManagerScore", reportInsight.averageManagerScore);
         modelAndView.addObject("averageAgreedScore", reportInsight.averageAgreedScore);
         modelAndView.addObject("averageModeratedScore", reportInsight.averageModeratedScore);
+        modelAndView.addObject("latestWeightedScore", reportInsight.latestWeightedScore);
+        modelAndView.addObject("previousWeightedScore", reportInsight.previousWeightedScore);
+        modelAndView.addObject("scoreMovement", reportInsight.scoreMovement);
+        modelAndView.addObject("scoreMovementLabel", reportInsight.scoreMovementLabel);
+        modelAndView.addObject("performanceBand", reportInsight.performanceBand);
+        modelAndView.addObject("decisionRiskLevel", reportInsight.decisionRiskLevel);
+        modelAndView.addObject("decisionRecommendation", reportInsight.decisionRecommendation);
         modelAndView.addObject("alignmentGapEmployeeManager", reportInsight.alignmentGapEmployeeManager);
         modelAndView.addObject("alignmentGapManagerAgreed", reportInsight.alignmentGapManagerAgreed);
         modelAndView.addObject("alignmentGapAgreedModerated", reportInsight.alignmentGapAgreedModerated);
@@ -575,6 +679,59 @@ public class AssessmentController {
         modelAndView.addObject("actionOpenCount", reportInsight.actionOpenCount);
         modelAndView.addObject("actionInProgressCount", reportInsight.actionInProgressCount);
         modelAndView.addObject("actionClosedCount", reportInsight.actionClosedCount);
+        modelAndView.addObject("outstandingInterventionCount", reportInsight.outstandingInterventionCount);
+        modelAndView.addObject("topRiskItems", reportInsight.topRiskItems);
+        modelAndView.addObject("topStrengthItems", reportInsight.topStrengthItems);
+        modelAndView.addObject("lowPerformingTargets", reportInsight.lowPerformingTargets);
+        modelAndView.addObject("missingEvidenceTargets", reportInsight.missingEvidenceTargets);
+        modelAndView.addObject("highVarianceTargets", reportInsight.highVarianceTargets);
+        modelAndView.addObject("scoreTrendLabels", reportInsight.scoreTrendLabels);
+        modelAndView.addObject("scoreTrendScores", reportInsight.scoreTrendScores);
+        modelAndView.addObject("probationStatus", reportInsight.probationStatus);
+        modelAndView.addObject("probationPeriod", reportInsight.probationPeriod);
+        modelAndView.addObject("probationCurrentStep", reportInsight.probationCurrentStep);
+        modelAndView.addObject("probationEndDate", reportInsight.probationEndDate);
+        modelAndView.addObject("probationRecommendation", reportInsight.probationRecommendation);
+        modelAndView.addObject("probationKpiCount", reportInsight.probationKpiCount);
+        modelAndView.addObject("probationFlaggedKpiCount", reportInsight.probationFlaggedKpiCount);
+        modelAndView.addObject("probationAverageProgress", reportInsight.probationAverageProgress);
+        modelAndView.addObject("probationDecisionRequired", reportInsight.probationDecisionRequired);
+    }
+
+    private String browserReportLogoPath() {
+        return reportLogoPath("/img/");
+    }
+
+    private String pdfReportLogoPath() {
+        return reportLogoPath("img/");
+    }
+
+    private String reportLogoPath(String imgPrefix) {
+        String logo = systemSettingService == null ? null : systemSettingService.getCompanyLogo();
+        if (!hasText(logo)) {
+            logo = "zimlogo.png";
+        }
+        logo = logo.trim().replace("\\", "/");
+        if (logo.startsWith("http://") || logo.startsWith("https://") || logo.startsWith("data:")) {
+            return logo;
+        }
+        while (logo.startsWith("/")) {
+            logo = logo.substring(1);
+        }
+        if (logo.startsWith("static/")) {
+            logo = logo.substring("static/".length());
+        }
+        if (logo.startsWith("img/")) {
+            logo = logo.substring("img/".length());
+        }
+        return imgPrefix + logo;
+    }
+
+    private double overallModeratedPercent(OverallScore overallScore) {
+        if (overallScore == null || overallScore.getModeratedOverall() == null || overallScore.getModeratedOverall() <= 0.0) {
+            return 0.0;
+        }
+        return roundTwoDecimals((overallScore.getModeratedOverall() / 5.0) * 100.0);
     }
 
     private ReportInsight buildReportInsight(Scorecard scorecard,
@@ -582,13 +739,24 @@ public class AssessmentController {
                                              List<Target> targetsList,
                                              List<PerformanceImprovementPlan> pips,
                                              List<ActionPlan> actionPlans) {
+        return buildReportInsight(scorecard, reportingPeriod, targetsList, pips, actionPlans, null);
+    }
+
+    private ReportInsight buildReportInsight(Scorecard scorecard,
+                                             ReportingPeriod reportingPeriod,
+                                             List<Target> targetsList,
+                                             List<PerformanceImprovementPlan> pips,
+                                             List<ActionPlan> actionPlans,
+                                             ReportingDate selectedReportingDate) {
         ReportInsight insight = new ReportInsight();
         if (scorecard == null) {
             return insight;
         }
 
         List<Target> safeTargets = targetsList == null ? Collections.emptyList() : targetsList;
-        ReportingDate insightReportingDate = resolveInsightReportingDate(reportingPeriod);
+        ReportingDate insightReportingDate = selectedReportingDate == null
+                ? resolveInsightReportingDate(reportingPeriod)
+                : selectedReportingDate;
         insight.insightReportingDateLabel = insightReportingDate == null || insightReportingDate.getEndDate() == null
                 ? "Latest available context"
                 : insightReportingDate.getEndDate();
@@ -598,35 +766,60 @@ public class AssessmentController {
         insight.alignmentGapManagerAgreed = roundTwoDecimals(Math.abs(insight.averageManagerScore - insight.averageAgreedScore));
         insight.alignmentGapAgreedModerated = roundTwoDecimals(Math.abs(insight.averageAgreedScore - insight.averageModeratedScore));
 
+        ScorecardTrend trend = buildScorecardTrend(scorecard, reportingPeriod, insightReportingDate);
+        insight.scoreTrendLabels = trend.labels;
+        insight.scoreTrendScores = trend.scores;
+        insight.latestWeightedScore = trend.latestScore > 0.0
+                ? trend.latestScore
+                : roundTwoDecimals((insight.averageModeratedScore / 5.0) * 100.0);
+        insight.previousWeightedScore = trend.previousScore;
+        insight.scoreMovement = trend.movement;
+        insight.scoreMovementLabel = trend.movementLabel;
+        insight.performanceBand = resolvePerformanceBand(insight.latestWeightedScore);
+
         insight.totalTargets = safeTargets.size();
 
         for (Target target : safeTargets) {
             if (target == null) {
                 continue;
             }
-            Score score = insightReportingDate == null ? null : resolveInsightScore(target, insightReportingDate);
-            double scoreValue = insightReportingDate == null
-                    ? resolveTargetInsightScore(target)
-                    : resolveInsightScoreValue(score);
+            Score score = insightReportingDate == null ? resolveLatestInsightScore(target) : resolveInsightScore(target, insightReportingDate);
+            double scoreValue = resolveInsightScoreValue(score);
+            if (scoreValue <= 0.0 && insightReportingDate == null) {
+                scoreValue = resolveTargetInsightScore(target);
+            }
             if (scoreValue > 0.0) {
                 insight.targetsWithScore++;
                 if (scoreValue < 2.5) {
                     insight.riskRedTargets++;
+                    addLimited(insight.lowPerformingTargets, describeTargetScore(target, scoreValue), 8);
+                    addLimited(insight.topRiskItems, "Low score: " + describeTargetScore(target, scoreValue), 5);
                 } else if (scoreValue < 3.5) {
                     insight.riskAmberTargets++;
+                    addLimited(insight.topRiskItems, "Watch target: " + describeTargetScore(target, scoreValue), 5);
                 } else {
                     insight.riskGreenTargets++;
+                    addLimited(insight.topStrengthItems, describeTargetScore(target, scoreValue), 5);
                 }
+            } else {
+                addLimited(insight.topRiskItems, "No score captured: " + targetLabel(target), 5);
             }
 
-            boolean hasEvidence = false;
-            if (insightReportingDate != null) {
-                hasEvidence = score != null && (hasText(score.getEvidence()) || hasText(score.getAttachmentName()));
-            } else {
-                hasEvidence = hasText(target.getCurrentEvidence()) || hasText(target.getCurrentAttachmentName());
-            }
+            Evidence evidence = insightReportingDate == null
+                    ? resolveLatestEvidence(target)
+                    : resolveLatestEvidence(target, insightReportingDate);
+            boolean hasEvidence = hasEvidence(evidence) || hasEvidence(score);
             if (hasEvidence) {
                 insight.targetsWithEvidence++;
+            } else {
+                addLimited(insight.missingEvidenceTargets, targetLabel(target), 8);
+                addLimited(insight.topRiskItems, "Missing evidence: " + targetLabel(target), 5);
+            }
+
+            double variance = score == null ? 0.0 : highestScoreVariance(score);
+            if (variance >= 1.0) {
+                addLimited(insight.highVarianceTargets, targetLabel(target) + " (gap " + roundTwoDecimals(variance) + ")", 8);
+                addLimited(insight.topRiskItems, "Rating alignment gap: " + targetLabel(target), 5);
             }
         }
 
@@ -664,7 +857,624 @@ public class AssessmentController {
                 insight.actionOpenCount++;
             }
         }
+        insight.outstandingInterventionCount = insight.pipOpenCount
+                + insight.pipInProgressCount
+                + insight.actionOpenCount
+                + insight.actionInProgressCount;
+        applyProbationSnapshot(insight, scorecard.getOwner());
+        finalizeDecisionSummary(insight);
         return insight;
+    }
+
+    private ScorecardRiskProfile buildScorecardRiskProfile(ReportInsight insight) {
+        ScorecardRiskProfile profile = new ScorecardRiskProfile();
+        if (insight == null) {
+            return profile;
+        }
+        profile.latestWeightedScore = insight.latestWeightedScore;
+        profile.previousWeightedScore = insight.previousWeightedScore;
+        profile.scoreMovement = insight.scoreMovement;
+        profile.scoreMovementLabel = insight.scoreMovementLabel;
+        profile.performanceBand = insight.performanceBand;
+        profile.decisionRiskLevel = insight.decisionRiskLevel;
+        profile.decisionRecommendation = insight.decisionRecommendation;
+        profile.openInterventionCount = insight.outstandingInterventionCount;
+        profile.activePipCount = insight.pipOpenCount + insight.pipInProgressCount;
+        profile.openActionPlanCount = insight.actionOpenCount + insight.actionInProgressCount;
+        profile.probationStatus = insight.probationStatus;
+        profile.probationDecisionRequired = insight.probationDecisionRequired;
+        profile.exceptionCount = insight.riskRedTargets
+                + insight.targetsWithoutScore
+                + insight.targetsWithoutEvidence
+                + insight.highVarianceTargets.size();
+        return profile;
+    }
+
+    private List<Scorecard> filterScorecardsForView(List<Scorecard> scorecards,
+                                                    Map<Long, ScorecardRiskProfile> riskProfilesByScorecardId,
+                                                    String scoreFilter) {
+        List<Scorecard> filteredScorecards = new ArrayList<Scorecard>();
+        if (scorecards == null) {
+            return filteredScorecards;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null) {
+                continue;
+            }
+            ScorecardRiskProfile profile = riskProfilesByScorecardId == null
+                    ? null
+                    : riskProfilesByScorecardId.get(scorecard.getId());
+            if (matchesScoreFilter(profile, scoreFilter)) {
+                filteredScorecards.add(scorecard);
+            }
+        }
+        return filteredScorecards;
+    }
+
+    private boolean matchesScoreFilter(ScorecardRiskProfile profile, String scoreFilter) {
+        String normalizedFilter = normalizeScoreFilter(scoreFilter);
+        if ("all".equals(normalizedFilter)) {
+            return true;
+        }
+        if (profile == null) {
+            return false;
+        }
+        if ("scored".equals(normalizedFilter)) {
+            return profile.latestWeightedScore > 0.0;
+        }
+        if ("below-threshold".equals(normalizedFilter)) {
+            return profile.latestWeightedScore > 0.0 && profile.latestWeightedScore < 50.0;
+        }
+        if ("probation-decisions".equals(normalizedFilter)) {
+            return profile.probationDecisionRequired;
+        }
+        if ("improving".equals(normalizedFilter)) {
+            return profile.scoreMovement > 0.0;
+        }
+        if ("declining".equals(normalizedFilter)) {
+            return profile.scoreMovement < 0.0;
+        }
+        if ("active-pips".equals(normalizedFilter)) {
+            return profile.activePipCount > 0;
+        }
+        if ("open-action-plans".equals(normalizedFilter)) {
+            return profile.openActionPlanCount > 0;
+        }
+        return true;
+    }
+
+    private String normalizeScoreFilter(String scoreFilter) {
+        if (!hasText(scoreFilter)) {
+            return "all";
+        }
+        String normalizedFilter = scoreFilter.trim().toLowerCase();
+        if ("scored".equals(normalizedFilter)
+                || "below-threshold".equals(normalizedFilter)
+                || "probation-decisions".equals(normalizedFilter)
+                || "improving".equals(normalizedFilter)
+                || "declining".equals(normalizedFilter)
+                || "active-pips".equals(normalizedFilter)
+                || "open-action-plans".equals(normalizedFilter)) {
+            return normalizedFilter;
+        }
+        return "all";
+    }
+
+    private String resolveScoreFilterLabel(String scoreFilter) {
+        String normalizedFilter = normalizeScoreFilter(scoreFilter);
+        if ("scored".equals(normalizedFilter)) {
+            return "Scorecards With Final Scores";
+        }
+        if ("below-threshold".equals(normalizedFilter)) {
+            return "Below Threshold";
+        }
+        if ("probation-decisions".equals(normalizedFilter)) {
+            return "Probation Decisions";
+        }
+        if ("improving".equals(normalizedFilter)) {
+            return "Improving";
+        }
+        if ("declining".equals(normalizedFilter)) {
+            return "Declining";
+        }
+        if ("active-pips".equals(normalizedFilter)) {
+            return "Active PIPs";
+        }
+        if ("open-action-plans".equals(normalizedFilter)) {
+            return "Open Action Plans";
+        }
+        return "All Scorecards";
+    }
+
+    private String buildViewScoresFilterUrl(long reportingPeriodId, ReportingDate reportingDate, String scoreFilter) {
+        StringBuilder url = new StringBuilder("/performance-review/view-scores/");
+        url.append(reportingPeriodId);
+        String separator = "?";
+        if (reportingDate != null && reportingDate.getId() > 0) {
+            url.append(separator).append("reportingDateId=").append(reportingDate.getId());
+            separator = "&";
+        }
+        String normalizedFilter = normalizeScoreFilter(scoreFilter);
+        if (!"all".equals(normalizedFilter)) {
+            url.append(separator).append("scoreFilter=").append(normalizedFilter);
+        }
+        return url.toString();
+    }
+
+    private ScorecardTrend buildScorecardTrend(Scorecard scorecard, ReportingPeriod reportingPeriod) {
+        return buildScorecardTrend(scorecard, reportingPeriod, null);
+    }
+
+    private ScorecardTrend buildScorecardTrend(Scorecard scorecard, ReportingPeriod reportingPeriod, ReportingDate selectedReportingDate) {
+        ScorecardTrend trend = new ScorecardTrend();
+        if (scorecard == null || reportingPeriod == null) {
+            return trend;
+        }
+
+        List<ScorecardTrendPoint> trendPoints = buildScorecardTrendPoints(scorecard, reportingPeriod, selectedReportingDate);
+        if (trendPoints.isEmpty()) {
+            return trend;
+        }
+
+        List<ReportingDate> reportingDates = new ArrayList<ReportingDate>();
+        List<Scorecard> trendScorecards = new ArrayList<Scorecard>();
+        for (ScorecardTrendPoint point : trendPoints) {
+            addUniqueReportingDate(reportingDates, point.reportingDate);
+            addUniqueScorecard(trendScorecards, point.scorecard);
+        }
+
+        Map<Long, Map<Long, Double>> scoresByDate;
+        try {
+            scoresByDate = scorecardService.getScoresByReportingDatesAndScorecardIds(
+                    reportingDates,
+                    trendScorecards
+            );
+        } catch (Exception exception) {
+            scoresByDate = Collections.emptyMap();
+        }
+
+        Double previousNonZeroScore = null;
+        Double latestNonZeroScore = null;
+        boolean selectedDateRequested = selectedReportingDate != null && selectedReportingDate.getId() > 0;
+        boolean selectedDateFound = false;
+        for (ScorecardTrendPoint point : trendPoints) {
+            ReportingDate reportingDate = point.reportingDate;
+            if (reportingDate == null || reportingDate.getId() <= 0) {
+                continue;
+            }
+            Double score = null;
+            Map<Long, Double> scoreByScorecard = scoresByDate.get(reportingDate.getId());
+            if (scoreByScorecard != null && point.scorecard != null) {
+                score = scoreByScorecard.get(point.scorecard.getId());
+            }
+            double safeValue = score == null ? 0.0 : roundTwoDecimals(score);
+            trend.labels.add(resolveTrendPointLabel(point));
+            trend.scores.add(safeValue);
+            if (selectedDateRequested
+                    && point.scorecard != null
+                    && point.scorecard.getId() == scorecard.getId()
+                    && reportingDate.getId() == selectedReportingDate.getId()) {
+                trend.latestScore = safeValue;
+                trend.previousScore = previousNonZeroScore == null ? 0.0 : previousNonZeroScore;
+                trend.movement = roundTwoDecimals(trend.latestScore - trend.previousScore);
+                trend.movementLabel = trend.latestScore <= 0.0
+                        ? "No score captured"
+                        : resolveMovementLabel(trend.movement, trend.previousScore);
+                selectedDateFound = true;
+                break;
+            }
+            if (safeValue > 0.0) {
+                previousNonZeroScore = latestNonZeroScore;
+                latestNonZeroScore = safeValue;
+            }
+        }
+
+        if (selectedDateRequested && selectedDateFound) {
+            return trend;
+        }
+        if (latestNonZeroScore == null && scorecard.getWeightedScore() > 0.0) {
+            latestNonZeroScore = roundTwoDecimals(scorecard.getWeightedScore());
+        }
+        trend.latestScore = latestNonZeroScore == null ? 0.0 : latestNonZeroScore;
+        trend.previousScore = previousNonZeroScore == null ? 0.0 : previousNonZeroScore;
+        trend.movement = roundTwoDecimals(trend.latestScore - trend.previousScore);
+        trend.movementLabel = resolveMovementLabel(trend.movement, trend.previousScore);
+        return trend;
+    }
+
+    private ScorecardTrend buildAccountTrend(Account owner) {
+        ScorecardTrend trend = new ScorecardTrend();
+        List<ScorecardTrendPoint> trendPoints = buildAccountTrendPoints(owner);
+        if (trendPoints.isEmpty()) {
+            return trend;
+        }
+
+        List<ReportingDate> reportingDates = new ArrayList<ReportingDate>();
+        List<Scorecard> trendScorecards = new ArrayList<Scorecard>();
+        for (ScorecardTrendPoint point : trendPoints) {
+            addUniqueReportingDate(reportingDates, point.reportingDate);
+            addUniqueScorecard(trendScorecards, point.scorecard);
+        }
+
+        Map<Long, Map<Long, Double>> scoresByDate;
+        try {
+            scoresByDate = scorecardService.getScoresByReportingDatesAndScorecardIds(
+                    reportingDates,
+                    trendScorecards
+            );
+        } catch (Exception exception) {
+            scoresByDate = Collections.emptyMap();
+        }
+
+        Double previousNonZeroScore = null;
+        Double latestNonZeroScore = null;
+        for (ScorecardTrendPoint point : trendPoints) {
+            ReportingDate reportingDate = point.reportingDate;
+            if (reportingDate == null || reportingDate.getId() <= 0) {
+                continue;
+            }
+            Double score = null;
+            Map<Long, Double> scoreByScorecard = scoresByDate.get(reportingDate.getId());
+            if (scoreByScorecard != null && point.scorecard != null) {
+                score = scoreByScorecard.get(point.scorecard.getId());
+            }
+            double safeValue = score == null ? 0.0 : roundTwoDecimals(score);
+            trend.labels.add(resolveTrendPointLabel(point));
+            trend.scores.add(safeValue);
+            if (safeValue > 0.0) {
+                previousNonZeroScore = latestNonZeroScore;
+                latestNonZeroScore = safeValue;
+            }
+        }
+
+        trend.latestScore = latestNonZeroScore == null ? 0.0 : latestNonZeroScore;
+        trend.previousScore = previousNonZeroScore == null ? 0.0 : previousNonZeroScore;
+        trend.movement = roundTwoDecimals(trend.latestScore - trend.previousScore);
+        trend.movementLabel = resolveMovementLabel(trend.movement, trend.previousScore);
+        return trend;
+    }
+
+    private List<ScorecardTrendPoint> buildAccountTrendPoints(Account owner) {
+        List<ScorecardTrendPoint> points = new ArrayList<ScorecardTrendPoint>();
+        if (owner == null) {
+            return points;
+        }
+
+        List<Scorecard> ownerScorecards = scorecardService.getScorecardsByOwner(owner);
+        if (ownerScorecards == null) {
+            return points;
+        }
+
+        for (Scorecard scorecard : ownerScorecards) {
+            if (scorecard == null || scorecard.getReportingPeriod() == null) {
+                continue;
+            }
+            ReportingPeriod reportingPeriod = scorecard.getReportingPeriod();
+            List<ReportingDate> reportingDates = sortReportingDates(reportingDateService.listAllReportingDates(reportingPeriod));
+            for (ReportingDate reportingDate : reportingDates) {
+                if (reportingDate == null || reportingDate.getId() <= 0) {
+                    continue;
+                }
+                points.add(new ScorecardTrendPoint(scorecard, reportingPeriod, reportingDate));
+            }
+        }
+
+        points.sort(Comparator
+                .comparing((ScorecardTrendPoint point) -> reportingPeriodSortKey(point.reportingPeriod))
+                .thenComparing(point -> sortDateKey(point.reportingDate))
+                .thenComparingLong(point -> point.reportingDate == null ? 0L : point.reportingDate.getId())
+                .thenComparingLong(point -> point.scorecard == null ? 0L : point.scorecard.getId()));
+        return points;
+    }
+
+    private List<ScorecardTrendPoint> buildScorecardTrendPoints(Scorecard currentScorecard,
+                                                                 ReportingPeriod currentReportingPeriod,
+                                                                 ReportingDate selectedReportingDate) {
+        List<ScorecardTrendPoint> points = new ArrayList<ScorecardTrendPoint>();
+        if (currentScorecard == null || currentReportingPeriod == null) {
+            return points;
+        }
+
+        List<Scorecard> ownerScorecards = currentScorecard.getOwner() == null
+                ? new ArrayList<Scorecard>()
+                : scorecardService.getScorecardsByOwner(currentScorecard.getOwner());
+        ownerScorecards = ownerScorecards == null
+                ? new ArrayList<Scorecard>()
+                : new ArrayList<Scorecard>(ownerScorecards);
+        addUniqueScorecard(ownerScorecards, currentScorecard);
+
+        for (Scorecard candidate : ownerScorecards) {
+            if (candidate == null || candidate.getReportingPeriod() == null) {
+                continue;
+            }
+            ReportingPeriod candidatePeriod = candidate.getReportingPeriod();
+            boolean samePeriod = candidatePeriod.getId() == currentReportingPeriod.getId();
+            if (samePeriod && candidate.getId() != currentScorecard.getId()) {
+                continue;
+            }
+            if (!samePeriod && !isReportingPeriodBefore(candidatePeriod, currentReportingPeriod)) {
+                continue;
+            }
+
+            List<ReportingDate> candidateDates = sortReportingDates(reportingDateService.listAllReportingDates(candidatePeriod));
+            for (ReportingDate reportingDate : candidateDates) {
+                if (reportingDate == null || reportingDate.getId() <= 0) {
+                    continue;
+                }
+                if (samePeriod && isReportingDateAfterSelection(reportingDate, selectedReportingDate)) {
+                    continue;
+                }
+                points.add(new ScorecardTrendPoint(candidate, candidatePeriod, reportingDate));
+            }
+        }
+
+        points.sort(Comparator
+                .comparing((ScorecardTrendPoint point) -> reportingPeriodSortKey(point.reportingPeriod))
+                .thenComparing(point -> sortDateKey(point.reportingDate))
+                .thenComparingLong(point -> point.reportingDate == null ? 0L : point.reportingDate.getId())
+                .thenComparingLong(point -> point.scorecard == null ? 0L : point.scorecard.getId()));
+        return points;
+    }
+
+    private boolean isReportingPeriodBefore(ReportingPeriod candidate, ReportingPeriod current) {
+        if (candidate == null || current == null) {
+            return false;
+        }
+        LocalDate candidateDate = reportingPeriodSortKey(candidate);
+        LocalDate currentDate = reportingPeriodSortKey(current);
+        if (!LocalDate.MIN.equals(candidateDate) && !LocalDate.MIN.equals(currentDate)) {
+            return candidateDate.isBefore(currentDate);
+        }
+        return candidate.getId() < current.getId();
+    }
+
+    private boolean isReportingDateAfterSelection(ReportingDate reportingDate, ReportingDate selectedReportingDate) {
+        if (reportingDate == null || selectedReportingDate == null || selectedReportingDate.getId() <= 0) {
+            return false;
+        }
+        LocalDate reportingDateKey = sortDateKey(reportingDate);
+        LocalDate selectedDateKey = sortDateKey(selectedReportingDate);
+        if (!LocalDate.MIN.equals(reportingDateKey) && !LocalDate.MIN.equals(selectedDateKey)) {
+            return reportingDateKey.isAfter(selectedDateKey);
+        }
+        return reportingDate.getId() > selectedReportingDate.getId();
+    }
+
+    private void addUniqueReportingDate(List<ReportingDate> reportingDates, ReportingDate reportingDate) {
+        if (reportingDates == null || reportingDate == null || reportingDate.getId() <= 0) {
+            return;
+        }
+        for (ReportingDate existing : reportingDates) {
+            if (existing != null && existing.getId() == reportingDate.getId()) {
+                return;
+            }
+        }
+        reportingDates.add(reportingDate);
+    }
+
+    private void addUniqueScorecard(List<Scorecard> scorecards, Scorecard scorecard) {
+        if (scorecards == null || scorecard == null || scorecard.getId() <= 0) {
+            return;
+        }
+        for (Scorecard existing : scorecards) {
+            if (existing != null && existing.getId() == scorecard.getId()) {
+                return;
+            }
+        }
+        scorecards.add(scorecard);
+    }
+
+    private LocalDate reportingPeriodSortKey(ReportingPeriod reportingPeriod) {
+        if (reportingPeriod == null) {
+            return LocalDate.MIN;
+        }
+        LocalDate endDate = parseLocalDate(reportingPeriod.getEndDate());
+        if (endDate != null) {
+            return endDate;
+        }
+        LocalDate startDate = parseLocalDate(reportingPeriod.getStartDate());
+        return startDate == null ? LocalDate.MIN : startDate;
+    }
+
+    private String resolveTrendPointLabel(ScorecardTrendPoint point) {
+        if (point == null) {
+            return "N/A";
+        }
+        return resolveReportingDateLabel(point.reportingDate);
+    }
+
+    private LocalDate sortDateKey(ReportingDate reportingDate) {
+        LocalDate parsedDate = reportingDate == null ? null : parseLocalDate(reportingDate.getEndDate());
+        return parsedDate == null ? LocalDate.MIN : parsedDate;
+    }
+
+    private String resolveReportingDateLabel(ReportingDate reportingDate) {
+        if (reportingDate != null && hasText(reportingDate.getEndDate())) {
+            return reportingDate.getEndDate();
+        }
+        return "N/A";
+    }
+
+    private String resolveMovementLabel(double movement, double previousScore) {
+        if (previousScore <= 0.0) {
+            return "No previous score";
+        }
+        if (movement > 0.0) {
+            return "Improved by " + movement + "%";
+        }
+        if (movement < 0.0) {
+            return "Declined by " + Math.abs(movement) + "%";
+        }
+        return "No movement";
+    }
+
+    private String resolvePerformanceBand(double weightedScore) {
+        if (weightedScore >= 80.0) {
+            return "Exceeds expectations";
+        }
+        if (weightedScore >= 70.0) {
+            return "Strong performance";
+        }
+        if (weightedScore >= 50.0) {
+            return "Meets expectations";
+        }
+        if (weightedScore >= 40.0) {
+            return "Needs improvement";
+        }
+        if (weightedScore > 0.0) {
+            return "Critical performance risk";
+        }
+        return "Not fully assessed";
+    }
+
+    private void applyProbationSnapshot(ReportInsight insight, Account owner) {
+        if (insight == null || owner == null) {
+            return;
+        }
+        List<ProbationAssessment> assessments = probationAssessmentRepository.findProbationAssessmentsByEmployeeOrderByDateDesc(owner);
+        if (assessments == null || assessments.isEmpty()) {
+            insight.probationStatus = "No probation contract";
+            insight.probationRecommendation = "No probation decision required from available records.";
+            return;
+        }
+
+        ProbationAssessment latest = assessments.get(0);
+        insight.probationStatus = blankToDefault(latest.getStatus(), "Draft");
+        insight.probationPeriod = blankToDefault(latest.getPerformancePeriod(), latest.getStartDate() + " to " + latest.getEndDate());
+        insight.probationCurrentStep = blankToDefault(latest.getCurrentStepName(), "Not submitted");
+        insight.probationEndDate = blankToDefault(latest.getEndDate(), "N/A");
+
+        List<ProbationKpi> kpis = probationKpiRepository.findProbationKpisByAssessmentOrderByIdAsc(latest);
+        insight.probationKpiCount = kpis == null ? 0 : kpis.size();
+        double progressTotal = 0.0;
+        int progressCount = 0;
+        if (kpis != null) {
+            for (ProbationKpi kpi : kpis) {
+                if (kpi == null) {
+                    continue;
+                }
+                if (hasText(kpi.getFlag())) {
+                    insight.probationFlaggedKpiCount++;
+                }
+                if (kpi.getProgressPercent() != null) {
+                    progressTotal += kpi.getProgressPercent();
+                    progressCount++;
+                }
+            }
+        }
+        insight.probationAverageProgress = progressCount == 0 ? 0.0 : roundTwoDecimals(progressTotal / progressCount);
+        boolean probationClosed = isClosedStatus(insight.probationStatus);
+        boolean probationDue = isPastDate(latest.getEndDate());
+        insight.probationDecisionRequired = !probationClosed
+                && (probationDue || insight.probationFlaggedKpiCount > 0 || insight.probationAverageProgress < 50.0);
+        if (insight.probationDecisionRequired) {
+            insight.probationRecommendation = "Review probation before confirmation; unresolved KPI flags or weak progress exist.";
+        } else if (probationClosed) {
+            insight.probationRecommendation = "Probation workflow is closed from available records.";
+        } else {
+            insight.probationRecommendation = "Continue monitoring probation contract progress.";
+        }
+    }
+
+    private void finalizeDecisionSummary(ReportInsight insight) {
+        if (insight == null) {
+            return;
+        }
+        if (insight.topRiskItems.isEmpty()) {
+            insight.topRiskItems.add("No critical target exceptions identified from available scores.");
+        }
+        if (insight.topStrengthItems.isEmpty()) {
+            insight.topStrengthItems.add("No high-performing targets identified from available scores.");
+        }
+
+        boolean highRisk = insight.latestWeightedScore > 0.0 && insight.latestWeightedScore < 50.0
+                || insight.riskRedTargets > 0
+                || insight.targetsWithoutScore > 0
+                || insight.probationDecisionRequired;
+        boolean mediumRisk = insight.riskAmberTargets > 0
+                || insight.targetsWithoutEvidence > 0
+                || insight.outstandingInterventionCount > 0
+                || insight.alignmentGapEmployeeManager >= 1.0
+                || insight.alignmentGapManagerAgreed >= 1.0
+                || insight.alignmentGapAgreedModerated >= 1.0;
+
+        if (highRisk) {
+            insight.decisionRiskLevel = "High";
+            insight.decisionRecommendation = "Escalate for management decision; confirm intervention ownership before closure.";
+        } else if (mediumRisk) {
+            insight.decisionRiskLevel = "Medium";
+            insight.decisionRecommendation = "Monitor with targeted follow-up on evidence, action plans, and score alignment.";
+        } else {
+            insight.decisionRiskLevel = "Low";
+            insight.decisionRecommendation = "Maintain current performance trajectory and close completed interventions.";
+        }
+    }
+
+    private void addLimited(List<String> values, String value, int limit) {
+        if (values == null || !hasText(value) || values.size() >= limit) {
+            return;
+        }
+        values.add(value);
+    }
+
+    private String describeTargetScore(Target target, double scoreValue) {
+        return targetLabel(target) + " (score " + roundTwoDecimals(scoreValue) + ", weight " + weightLabel(target) + ")";
+    }
+
+    private String targetLabel(Target target) {
+        if (target == null) {
+            return "Unknown target";
+        }
+        if (hasText(target.getMeasure())) {
+            return target.getMeasure();
+        }
+        if (target.getOutput() != null && hasText(target.getOutput().getName())) {
+            return target.getOutput().getName();
+        }
+        return "Target #" + target.getId();
+    }
+
+    private String weightLabel(Target target) {
+        if (target == null || target.getAllocatedWeight() == null) {
+            return "0%";
+        }
+        return roundTwoDecimals(target.getAllocatedWeight()) + "%";
+    }
+
+    private double highestScoreVariance(Score score) {
+        if (score == null) {
+            return 0.0;
+        }
+        double variance = 0.0;
+        variance = Math.max(variance, positiveGap(score.getEmployeeScore(), score.getManagerScore()));
+        variance = Math.max(variance, positiveGap(score.getManagerScore(), score.getAgreedScore()));
+        variance = Math.max(variance, positiveGap(score.getAgreedScore(), score.getModeratedScore()));
+        return roundTwoDecimals(variance);
+    }
+
+    private double positiveGap(double first, double second) {
+        if (first <= 0.0 || second <= 0.0) {
+            return 0.0;
+        }
+        return Math.abs(first - second);
+    }
+
+    private boolean isClosedStatus(String status) {
+        String normalized = status == null ? "" : status.trim().toUpperCase();
+        return "CLOSED".equals(normalized)
+                || "COMPLETED".equals(normalized)
+                || "APPROVED".equals(normalized)
+                || "CONFIRMED".equals(normalized)
+                || "ARCHIVED".equals(normalized);
+    }
+
+    private boolean isPastDate(String value) {
+        LocalDate date = parseLocalDate(value);
+        return date != null && date.isBefore(LocalDate.now());
+    }
+
+    private String blankToDefault(String value, String fallback) {
+        return hasText(value) ? value.trim() : fallback;
     }
 
     private void applyReportInsightAverages(ReportInsight insight,
@@ -781,6 +1591,63 @@ public class AssessmentController {
         return byOutput.get(0);
     }
 
+    private Score resolveLatestInsightScore(Target target) {
+        if (target == null) {
+            return null;
+        }
+        List<Score> byTarget = scoreRepository.findScoresByTargetOrderByReportingDate_DateDescIdDesc(target);
+        if (byTarget != null && !byTarget.isEmpty()) {
+            return byTarget.get(0);
+        }
+        if (target.getOutput() == null) {
+            return null;
+        }
+        List<Score> byOutput = scoreRepository.findScoresByOutputOrderByReportingDate_DateDescIdDesc(target.getOutput());
+        if (byOutput == null || byOutput.isEmpty()) {
+            return null;
+        }
+        for (Score score : byOutput) {
+            if (isScoreForTarget(score, target)) {
+                return score;
+            }
+        }
+        for (Score score : byOutput) {
+            if (score != null && score.getTarget() == null) {
+                return score;
+            }
+        }
+        return byOutput.get(0);
+    }
+
+    private Evidence resolveLatestEvidence(Target target, ReportingDate reportingDate) {
+        if (target == null || target.getId() <= 0 || reportingDate == null || reportingDate.getId() <= 0) {
+            return null;
+        }
+        List<Evidence> evidenceList = evidenceRepository.findEvidenceByTarget_IdAndReportingDate_IdOrderByIdDesc(target.getId(), reportingDate.getId());
+        if (evidenceList == null || evidenceList.isEmpty()) {
+            return null;
+        }
+        return evidenceList.get(0);
+    }
+
+    private Evidence resolveLatestEvidence(Target target) {
+        if (target == null || target.getId() <= 0) {
+            return null;
+        }
+        List<Evidence> evidenceList = evidenceRepository.findEvidenceByTarget_IdOrderByReportingDate_DateDescIdDesc(target.getId());
+        if (evidenceList == null || evidenceList.isEmpty()) {
+            return null;
+        }
+        return evidenceList.get(0);
+    }
+
+    private boolean isScoreForTarget(Score score, Target target) {
+        return score != null
+                && score.getTarget() != null
+                && target != null
+                && score.getTarget().getId() == target.getId();
+    }
+
     private ReportingDate resolveInsightReportingDate(ReportingPeriod reportingPeriod) {
         if (reportingPeriod == null || reportingPeriod.getReportingDates() == null || reportingPeriod.getReportingDates().isEmpty()) {
             return null;
@@ -827,13 +1694,9 @@ public class AssessmentController {
             return 0.0;
         }
         Double[] candidates = new Double[]{
-                target.getCurrentModeratedScore(),
                 target.getModeratedScore(),
-                target.getCurrentAgreedScore(),
                 target.getAgreedScore(),
-                target.getCurrentManagerScore(),
                 target.getManagerScore(),
-                target.getCurrentEmployeeScore(),
                 target.getEmployeeScore()
         };
         for (Double candidate : candidates) {
@@ -863,6 +1726,14 @@ public class AssessmentController {
         return 0.0;
     }
 
+    private boolean hasEvidence(Evidence evidence) {
+        return evidence != null && (hasText(evidence.getEvidence()) || hasText(evidence.getAttachmentName()));
+    }
+
+    private boolean hasEvidence(Score score) {
+        return score != null && (hasText(score.getEvidence()) || hasText(score.getAttachmentName()));
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }
@@ -885,6 +1756,99 @@ public class AssessmentController {
         return Math.round(value * 100.0) / 100.0;
     }
 
+    private ReportingPeriod resolveDefaultScoresReportingPeriod(List<ReportingPeriod> reportingPeriods) {
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        if (activeReportingPeriod != null) {
+            return activeReportingPeriod;
+        }
+        if (reportingPeriods == null || reportingPeriods.isEmpty()) {
+            return null;
+        }
+
+        ReportingPeriod selected = null;
+        LocalDate selectedEndDate = null;
+        for (ReportingPeriod reportingPeriod : reportingPeriods) {
+            if (reportingPeriod == null) {
+                continue;
+            }
+            LocalDate endDate = parseLocalDate(reportingPeriod.getEndDate());
+            if (selected == null
+                    || (endDate != null && (selectedEndDate == null || endDate.isAfter(selectedEndDate)))) {
+                selected = reportingPeriod;
+                selectedEndDate = endDate;
+            }
+        }
+        return selected;
+    }
+
+    private List<ReportingDate> sortReportingDates(List<ReportingDate> reportingDates) {
+        List<ReportingDate> sortedReportingDates = reportingDates == null
+                ? new ArrayList<ReportingDate>()
+                : new ArrayList<ReportingDate>(reportingDates);
+        sortedReportingDates.sort(Comparator.comparing(this::sortDateKey));
+        return sortedReportingDates;
+    }
+
+    private ReportingDate resolveSelectedReviewReportingDate(List<ReportingDate> reportingDates, Long reportingDateId) {
+        if (reportingDates == null || reportingDates.isEmpty()) {
+            return null;
+        }
+        if (reportingDateId != null && reportingDateId > 0) {
+            for (ReportingDate reportingDate : reportingDates) {
+                if (reportingDate != null && reportingDate.getId() == reportingDateId) {
+                    return reportingDate;
+                }
+            }
+        }
+        return resolveLatestReportingDate(reportingDates);
+    }
+
+    private ReportingDate resolveLatestReportingDate(List<ReportingDate> reportingDates) {
+        ReportingDate selected = null;
+        LocalDate selectedDate = null;
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null) {
+                continue;
+            }
+            LocalDate candidateDate = parseLocalDate(reportingDate.getEndDate());
+            if (candidateDate == null) {
+                if (selected == null) {
+                    selected = reportingDate;
+                }
+                continue;
+            }
+            if (selectedDate == null || candidateDate.isAfter(selectedDate)) {
+                selected = reportingDate;
+                selectedDate = candidateDate;
+            }
+        }
+        return selected;
+    }
+
+    private List<ReviewReportingDateOption> buildReviewReportingDateOptions(List<ReportingPeriod> reportingPeriods) {
+        List<ReviewReportingDateOption> options = new ArrayList<ReviewReportingDateOption>();
+        if (reportingPeriods == null) {
+            return options;
+        }
+        for (ReportingPeriod reportingPeriod : reportingPeriods) {
+            if (reportingPeriod == null || reportingPeriod.getId() <= 0) {
+                continue;
+            }
+            List<ReportingDate> reportingDates = sortReportingDates(reportingDateService.listAllReportingDates(reportingPeriod));
+            for (ReportingDate reportingDate : reportingDates) {
+                if (reportingDate == null || reportingDate.getId() <= 0) {
+                    continue;
+                }
+                options.add(new ReviewReportingDateOption(
+                        reportingPeriod.getId(),
+                        reportingDate.getId(),
+                        resolveReportingDateLabel(reportingDate)
+                ));
+            }
+        }
+        return options;
+    }
+
     private int classifyProgressStatus(String status, double progress) {
         String normalized = status == null ? "" : status.trim().toUpperCase();
         if (progress >= 100.0
@@ -904,11 +1868,131 @@ public class AssessmentController {
         return 0;
     }
 
+    public static class ReviewReportingDateOption {
+        private final long periodId;
+        private final long id;
+        private final String label;
+
+        ReviewReportingDateOption(long periodId, long id, String label) {
+            this.periodId = periodId;
+            this.id = id;
+            this.label = label;
+        }
+
+        public long getPeriodId() {
+            return periodId;
+        }
+
+        public long getId() {
+            return id;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    public static class ScorecardRiskProfile {
+        private double latestWeightedScore = 0.0;
+        private double previousWeightedScore = 0.0;
+        private double scoreMovement = 0.0;
+        private String scoreMovementLabel = "No previous score";
+        private String performanceBand = "Not fully assessed";
+        private String decisionRiskLevel = "Low";
+        private String decisionRecommendation = "";
+        private int openInterventionCount = 0;
+        private int activePipCount = 0;
+        private int openActionPlanCount = 0;
+        private int exceptionCount = 0;
+        private String probationStatus = "No probation contract";
+        private boolean probationDecisionRequired = false;
+
+        public double getLatestWeightedScore() {
+            return latestWeightedScore;
+        }
+
+        public double getPreviousWeightedScore() {
+            return previousWeightedScore;
+        }
+
+        public double getScoreMovement() {
+            return scoreMovement;
+        }
+
+        public String getScoreMovementLabel() {
+            return scoreMovementLabel;
+        }
+
+        public String getPerformanceBand() {
+            return performanceBand;
+        }
+
+        public String getDecisionRiskLevel() {
+            return decisionRiskLevel;
+        }
+
+        public String getDecisionRecommendation() {
+            return decisionRecommendation;
+        }
+
+        public int getOpenInterventionCount() {
+            return openInterventionCount;
+        }
+
+        public int getActivePipCount() {
+            return activePipCount;
+        }
+
+        public int getOpenActionPlanCount() {
+            return openActionPlanCount;
+        }
+
+        public int getExceptionCount() {
+            return exceptionCount;
+        }
+
+        public String getProbationStatus() {
+            return probationStatus;
+        }
+
+        public boolean isProbationDecisionRequired() {
+            return probationDecisionRequired;
+        }
+    }
+
+    private static class ScorecardTrend {
+        private List<String> labels = new ArrayList<String>();
+        private List<Double> scores = new ArrayList<Double>();
+        private double latestScore = 0.0;
+        private double previousScore = 0.0;
+        private double movement = 0.0;
+        private String movementLabel = "No previous score";
+    }
+
+    private static class ScorecardTrendPoint {
+        private final Scorecard scorecard;
+        private final ReportingPeriod reportingPeriod;
+        private final ReportingDate reportingDate;
+
+        private ScorecardTrendPoint(Scorecard scorecard, ReportingPeriod reportingPeriod, ReportingDate reportingDate) {
+            this.scorecard = scorecard;
+            this.reportingPeriod = reportingPeriod;
+            this.reportingDate = reportingDate;
+        }
+    }
+
     private static class ReportInsight {
         private double averageEmployeeScore = 0.0;
         private double averageManagerScore = 0.0;
         private double averageAgreedScore = 0.0;
         private double averageModeratedScore = 0.0;
+        private double latestWeightedScore = 0.0;
+        private double previousWeightedScore = 0.0;
+        private double scoreMovement = 0.0;
+        private String scoreMovementLabel = "No previous score";
+        private String performanceBand = "Not fully assessed";
+        private String decisionRiskLevel = "Low";
+        private String decisionRecommendation = "";
         private double alignmentGapEmployeeManager = 0.0;
         private double alignmentGapManagerAgreed = 0.0;
         private double alignmentGapAgreedModerated = 0.0;
@@ -929,6 +2013,23 @@ public class AssessmentController {
         private int actionOpenCount = 0;
         private int actionInProgressCount = 0;
         private int actionClosedCount = 0;
+        private int outstandingInterventionCount = 0;
+        private List<String> topRiskItems = new ArrayList<String>();
+        private List<String> topStrengthItems = new ArrayList<String>();
+        private List<String> lowPerformingTargets = new ArrayList<String>();
+        private List<String> missingEvidenceTargets = new ArrayList<String>();
+        private List<String> highVarianceTargets = new ArrayList<String>();
+        private List<String> scoreTrendLabels = new ArrayList<String>();
+        private List<Double> scoreTrendScores = new ArrayList<Double>();
+        private String probationStatus = "No probation contract";
+        private String probationPeriod = "N/A";
+        private String probationCurrentStep = "N/A";
+        private String probationEndDate = "N/A";
+        private String probationRecommendation = "No probation decision required from available records.";
+        private int probationKpiCount = 0;
+        private int probationFlaggedKpiCount = 0;
+        private double probationAverageProgress = 0.0;
+        private boolean probationDecisionRequired = false;
     }
 
     private OverallScore resolveOverallScore(Map<Long, OverallScore> scoreByScorecard, Scorecard scorecard, ReportingDate reportingDate) {

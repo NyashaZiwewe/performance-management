@@ -4,6 +4,7 @@ import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.CommentRepository;
 import hr.performancemanagement.repository.EvidenceRepository;
 import hr.performancemanagement.repository.ScoreRepository;
+import hr.performancemanagement.service.EvidenceService;
 import hr.performancemanagement.service.GearService;
 import hr.performancemanagement.service.OverallCommentService;
 import hr.performancemanagement.service.OverallScoreService;
@@ -142,6 +143,8 @@ public class ScorecardController {
     @Autowired
     private final EvidenceRepository evidenceRepository;
     @Autowired
+    private final EvidenceService evidenceService;
+    @Autowired
     private final CommentRepository commentRepository;
     @Autowired
     private final ScoreRepository scoreRepository;
@@ -153,7 +156,7 @@ public class ScorecardController {
     private final Environment environment;
 
 
-    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, ScorecardWorkflowService scorecardWorkflowService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, ScorecardWorkflowService scorecardWorkflowService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, EvidenceService evidenceService, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
         this.departmentService = departmentService;
@@ -176,6 +179,7 @@ public class ScorecardController {
         this.scorecardWorkflowService = scorecardWorkflowService;
         this.scorecardReportingDateStageService = scorecardReportingDateStageService;
         this.evidenceRepository = evidenceRepository;
+        this.evidenceService = evidenceService;
         this.commentRepository = commentRepository;
         this.scoreRepository = scoreRepository;
         this.overallScoreService = overallScoreService;
@@ -605,12 +609,6 @@ public class ScorecardController {
                 }
                 target.setOutcome(outcome);
                 target.setGear(gear);
-                if (target.getGoal() == null && goal != null) {
-                    target.setGoal(goal);
-                }
-                if (target.getAllocatedWeight() == null && output.getAllocatedWeight() != null) {
-                    target.setAllocatedWeight(output.getAllocatedWeight());
-                }
                 targetsList.add(target);
 
                 Gear selectedGear = selectedById.get(gear.getId());
@@ -812,13 +810,17 @@ public class ScorecardController {
                         row.getEvidenceByReportingDate().put(reportingDate.getId(), evidence);
                     }
                 }
-                row.getTarget().setComments(commentRepository.findCommentsByTarget(row.getTarget()));
+                row.setScoreHistory(resolveScoreHistory(row.getTarget()));
+                row.setComments(commentRepository.findCommentsByTarget(row.getTarget()));
             }
         }
     }
 
     private Evidence resolveLatestEvidence(Target target, ReportingDate reportingDate) {
-        List<Evidence> evidenceList = evidenceRepository.findEvidenceByTargetAndReportingDateOrderByIdDesc(target, reportingDate);
+        if (target == null || target.getId() <= 0 || reportingDate == null || reportingDate.getId() <= 0) {
+            return null;
+        }
+        List<Evidence> evidenceList = evidenceRepository.findEvidenceByTarget_IdAndReportingDate_IdOrderByIdDesc(target.getId(), reportingDate.getId());
         if (evidenceList == null || evidenceList.isEmpty()) {
             return null;
         }
@@ -1288,48 +1290,88 @@ public class ScorecardController {
             return;
         }
 
-        List<Target> hydratedTargets = targetService.getAllTargetsByScorecard(scorecardId);
-        if (hydratedTargets == null || hydratedTargets.isEmpty()) {
-            return;
-        }
-
-        Map<Long, Target> hydratedById = new HashMap<Long, Target>();
-        for (Target hydratedTarget : hydratedTargets) {
-            if (hydratedTarget == null || hydratedTarget.getId() <= 0) {
-                continue;
-            }
-            hydratedById.put(hydratedTarget.getId(), hydratedTarget);
-        }
-
         for (Target target : targetsList) {
             if (target == null || target.getId() <= 0) {
                 continue;
             }
-            Target hydrated = hydratedById.get(target.getId());
-            if (hydrated == null) {
-                continue;
-            }
-            copyScoreSnapshot(target, hydrated);
+            hydrateTargetScoreSnapshot(target);
         }
     }
 
-    private void copyScoreSnapshot(Target destination, Target source) {
-        destination.setActual(source.getActual());
-        destination.setEmployeeScore(source.getEmployeeScore());
-        destination.setManagerScore(source.getManagerScore());
-        destination.setAgreedScore(source.getAgreedScore());
-        destination.setModeratedScore(source.getModeratedScore());
-        destination.setWeightedScore(source.getWeightedScore());
-        destination.setCurrentActual(source.getCurrentActual());
-        destination.setCurrentEmployeeScore(source.getCurrentEmployeeScore());
-        destination.setCurrentManagerScore(source.getCurrentManagerScore());
-        destination.setCurrentAgreedScore(source.getCurrentAgreedScore());
-        destination.setCurrentModeratedScore(source.getCurrentModeratedScore());
-        destination.setCurrentWeightedScore(source.getCurrentWeightedScore());
-        destination.setCurrentEvidence(source.getCurrentEvidence());
-        destination.setCurrentAttachmentName(source.getCurrentAttachmentName());
-        destination.setCurrentJustification(source.getCurrentJustification());
-        destination.setScores(source.getScores());
+    private void hydrateTargetScoreSnapshot(Target target) {
+        if (target == null) {
+            return;
+        }
+        Output output = target.getOutput();
+
+        Object[] standardAggregates = scoreRepository.aggregateStandardTargetScores(target, output);
+        double weightedScore = toDouble(aggregateValue(standardAggregates, 0));
+        double averageActual = toDouble(aggregateValue(standardAggregates, 1));
+        double sumActual = toDouble(aggregateValue(standardAggregates, 2));
+        target.setWeightedScore(weightedScore);
+        if ("%".equalsIgnoreCase(target.getUnit())) {
+            target.setActual(averageActual);
+        } else {
+            target.setActual(sumActual);
+        }
+
+        Object[] valueBasedAggregates = scoreRepository.aggregateValueBasedTargetScores(target, output);
+        target.setEmployeeScore(toDouble(aggregateValue(valueBasedAggregates, 1)));
+        target.setManagerScore(toDouble(aggregateValue(valueBasedAggregates, 2)));
+        target.setAgreedScore(toDouble(aggregateValue(valueBasedAggregates, 3)));
+        target.setModeratedScore(toDouble(aggregateValue(valueBasedAggregates, 4)));
+    }
+
+    private List<Score> resolveScoreHistory(Target target) {
+        if (target == null) {
+            return new ArrayList<Score>();
+        }
+        List<Score> targetHistory = scoreRepository.findScoresByTargetOrderByReportingDate_DateDescIdDesc(target);
+        if (targetHistory != null && !targetHistory.isEmpty()) {
+            return targetHistory;
+        }
+        if (target.getOutput() == null) {
+            return new ArrayList<Score>();
+        }
+        List<Score> outputHistory = scoreRepository.findScoresByOutputOrderByReportingDate_DateDescIdDesc(target.getOutput());
+        if (outputHistory == null || outputHistory.isEmpty()) {
+            return new ArrayList<Score>();
+        }
+        List<Score> filteredHistory = new ArrayList<Score>();
+        for (Score score : outputHistory) {
+            if (score == null) {
+                continue;
+            }
+            if (score.getTarget() == null || score.getTarget().getId() == target.getId()) {
+                filteredHistory.add(score);
+            }
+        }
+        return filteredHistory.isEmpty() ? outputHistory : filteredHistory;
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return 0.0;
+    }
+
+    private Object aggregateValue(Object[] aggregates, int index) {
+        Object[] row = unwrapAggregateRow(aggregates);
+        if (row == null || index < 0 || index >= row.length) {
+            return null;
+        }
+        return row[index];
+    }
+
+    private Object[] unwrapAggregateRow(Object[] aggregates) {
+        if (aggregates == null) {
+            return null;
+        }
+        if (aggregates.length == 1 && aggregates[0] instanceof Object[]) {
+            return (Object[]) aggregates[0];
+        }
+        return aggregates;
     }
 
     @RequestMapping("/capture-scores/{id}")
@@ -1392,13 +1434,15 @@ public class ScorecardController {
             addScorecardDisplayModel(modelAndView, scorecard, targetsList, reportingDates);
             List<ScorecardDisplaySection> displaySections =
                     (List<ScorecardDisplaySection>) modelAndView.getModel().get("displaySections");
+            Map<Long, Double> displayWeightedScoreTotalsByReportingDate =
+                    buildDisplayWeightedScoreTotalsByReportingDate(displaySections, reportingDates, hierarchyModel);
             modelAndView.addObject("averageEmployeeScore", averageEmployeeScore);
             modelAndView.addObject("averageManagerScore", averageManagerScore);
             modelAndView.addObject("averageAgreedScore", averageAgreedScore);
             modelAndView.addObject("averageModeratedScore", averageModeratedScore);
             modelAndView.addObject("weightedScore", weightedScore);
             modelAndView.addObject("totalAllocatedWeight", totalAllocatedWeight);
-            modelAndView.addObject("totalCaptureWeightedScore", sumCurrentWeightedScores(targetsList));
+            modelAndView.addObject("totalCaptureWeightedScore", reportingDateWeightedTotal(displayWeightedScoreTotalsByReportingDate, reportingDate));
             modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("reportingDate", reportingDate);
             modelAndView.addObject("reportingDateLabel", resolveReportingDateLabel(reportingDate));
@@ -1409,18 +1453,15 @@ public class ScorecardController {
             modelAndView.addObject("scoreCaptureBlockedMessage", scoreCaptureBlockedMessage);
             modelAndView.addObject("activeReportingDateId", resolveDefaultReportingDateId(reportingDates));
             modelAndView.addObject("overallScoresByReportingDate", buildOverallScoresByReportingDate(scorecard, reportingDates));
-            modelAndView.addObject(
-                    "displayWeightedScoreTotalsByReportingDate",
-                    buildDisplayWeightedScoreTotalsByReportingDate(displaySections, reportingDates, hierarchyModel)
-            );
+            modelAndView.addObject("displayWeightedScoreTotalsByReportingDate", displayWeightedScoreTotalsByReportingDate);
             if (PMConstants.STANDARD_SCORECARD.equalsIgnoreCase(scorecardModel)) {
                 modelAndView.addObject("captureViewSummaryLabelColspan", displayHierarchyColumnCount + 4);
                 modelAndView.addObject("captureEntrySummaryLabelColspan", displayHierarchyColumnCount + 4);
                 modelAndView.addObject("captureViewTableColumnCount", displayHierarchyColumnCount + 10);
                 modelAndView.addObject("captureEntryTableColumnCount", displayHierarchyColumnCount + 9);
             } else if (PMConstants.VALUE_BASED.equalsIgnoreCase(scorecardModel) && captureStage != null) {
-                modelAndView.addObject("captureViewSummaryLabelColspan", displayHierarchyColumnCount + 3);
-                modelAndView.addObject("captureEntrySummaryLabelColspan", displayHierarchyColumnCount + 3);
+                modelAndView.addObject("captureViewSummaryLabelColspan", displayHierarchyColumnCount + 4);
+                modelAndView.addObject("captureEntrySummaryLabelColspan", displayHierarchyColumnCount + 4);
                 modelAndView.addObject("captureViewTableColumnCount", resolveValueBasedViewTableColumnCount(displayHierarchyColumnCount, captureStage));
                 modelAndView.addObject("captureEntryTableColumnCount", resolveValueBasedCaptureTableColumnCount(displayHierarchyColumnCount, captureStage));
             }
@@ -1566,21 +1607,16 @@ public class ScorecardController {
         return configured.trim();
     }
 
-    private double sumCurrentWeightedScores(List<Target> targets) {
-        if (targets == null || targets.isEmpty()) {
+    private double reportingDateWeightedTotal(Map<Long, Double> totalsByReportingDate, ReportingDate reportingDate) {
+        if (totalsByReportingDate == null || reportingDate == null) {
             return 0.0;
         }
-        double total = 0.0;
-        for (Target target : targets) {
-            if (target != null && target.getCurrentWeightedScore() != null) {
-                total += target.getCurrentWeightedScore();
-            }
-        }
-        return total;
+        Double total = totalsByReportingDate.get(reportingDate.getId());
+        return total == null ? 0.0 : total;
     }
 
     private int resolveValueBasedViewTableColumnCount(int hierarchyColumnCount, ValueBasedCaptureStage captureStage) {
-        int columns = hierarchyColumnCount + 8; // measure, unit, target, weight, employee score, evidence, justification, action
+        int columns = hierarchyColumnCount + 9; // measure, unit, base, stretch, weight, employee score, evidence, justification, action
         if (captureStage != ValueBasedCaptureStage.EMPLOYEE) {
             columns += 1; // manager score
         }
@@ -1591,7 +1627,7 @@ public class ScorecardController {
     }
 
     private int resolveValueBasedCaptureTableColumnCount(int hierarchyColumnCount, ValueBasedCaptureStage captureStage) {
-        int columns = hierarchyColumnCount + 8; // measure, unit, target, weight, employee, evidence, justification, action
+        int columns = hierarchyColumnCount + 9; // measure, unit, base, stretch, weight, employee, evidence, justification, action
         if (captureStage != ValueBasedCaptureStage.EMPLOYEE) {
             columns += 1; // manager
             if (captureStage != ValueBasedCaptureStage.MODERATED) {
@@ -2872,19 +2908,18 @@ public class ScorecardController {
                 return "redirect:/scorecards/capture-scores/"+ scorecard.getId();
             }
 
-            Score score = new Score();
-            score.setTarget(target);
-            score.setOutput(target.getOutput());
-            score.setReportingDate(reportingDate);
-            score.setEvidence(wrapper.getEvidence());
+            Evidence evidence = new Evidence();
+            evidence.setTarget(target);
+            evidence.setReportingDate(reportingDate);
+            evidence.setEvidence(wrapper.getEvidence());
 
             MultipartFile file = wrapper.getAttachment();
             if (file != null && !file.isEmpty()) {
                 String storedFileName = storeEvidenceFile(file);
-                score.setAttachmentName(storedFileName);
+                evidence.setAttachmentName(storedFileName);
             }
 
-            valueBasedScoreService.saveEvidence(score);
+            evidenceService.saveEvidence(evidence);
             PortletUtils.addInfoMsg("Evidence saved successfully.", request);
         }catch (IllegalArgumentException exception){
             PortletUtils.addErrorMsg(exception.getMessage(), request, exception);
