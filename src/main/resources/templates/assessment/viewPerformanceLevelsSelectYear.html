@@ -42,19 +42,51 @@
 
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom col-10">
-                <form th:action="@{/performance-review/view-performance-levels-select-year}" method="post">
+                <form id="performanceLevelSelectionForm" th:action="@{/performance-review/view-performance-levels}" method="post">
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4">Reporting Period</label>
+                                <label class="col-form-label col-lg-4">From Reporting Date</label>
                                 <div class="col-lg-8">
-                                    <div class="input-group m-b">
-                                        <select name="reportingPeriodId" class="form-control">
-                                            <option th:each="period :${reportingPeriodsList}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
-                                                1
-                                            </option>
-                                        </select>
-                                    </div>
+                                    <select id="fromReportingDateId" name="fromReportingDateId" class="form-control" required>
+                                        <option th:each="dateOption : ${performanceLevelReportingDateOptions}"
+                                                th:value="${dateOption.id}"
+                                                th:attr="data-date=${dateOption.dateValue}"
+                                                th:text="${dateOption.label}"
+                                                th:selected="${selectedFromReportingDateId != null and selectedFromReportingDateId == dateOption.id}">
+                                            Reporting Date
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4">To Reporting Date</label>
+                                <div class="col-lg-8">
+                                    <select id="toReportingDateId" name="toReportingDateId" class="form-control" required>
+                                        <option th:each="dateOption : ${performanceLevelReportingDateOptions}"
+                                                th:value="${dateOption.id}"
+                                                th:attr="data-date=${dateOption.dateValue}"
+                                                th:text="${dateOption.label}"
+                                                th:selected="${selectedToReportingDateId != null and selectedToReportingDateId == dateOption.id}">
+                                            Reporting Date
+                                        </option>
+                                    </select>
+                                    <small class="form-text text-muted">From date cannot be greater than To date.</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4">Employees</label>
+                                <div class="col-lg-8">
+                                    <select class="form-control dual_select" multiple size="20" name="employeeIds">
+                                        <option th:each="account : ${accountsList}"
+                                                th:value="${account.id}"
+                                                th:selected="${selectedEmployeeIds != null and selectedEmployeeIds.contains(account.id)}"
+                                                th:text="${account.fullName + '___' + (account.department == null ? 'No Department' : account.department.name) + '_' + account.accountType + '_' + account.position}">
+                                            Employee
+                                        </option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -65,7 +97,7 @@
                         <div class="col-lg-8">
                                 <a th:href="@{/}" class="btn btn-warning">Cancel</a>
 
-                            <button class="btn btn-success" type="submit">Next</button>
+                            <button class="btn btn-success" type="submit">View Graph</button>
                         </div>
                     </div>
                         </div>
@@ -117,6 +149,15 @@
 
     $('.dual_select').bootstrapDualListbox({
         selectorMinimalHeight: 160
+    });
+
+    $('#performanceLevelSelectionForm').on('submit', function (event) {
+        const fromDate = $('#fromReportingDateId option:selected').data('date');
+        const toDate = $('#toReportingDateId option:selected').data('date');
+        if (fromDate && toDate && fromDate > toDate) {
+            event.preventDefault();
+            alert('From date cannot be greater than To date.');
+        }
     });
 
 </script>

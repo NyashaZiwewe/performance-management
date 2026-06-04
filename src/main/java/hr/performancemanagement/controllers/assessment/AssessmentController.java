@@ -133,11 +133,25 @@ public class AssessmentController {
     }
 
     @RequestMapping(value="/view-performance-levels-select-year")
-    public ModelAndView viewPerformanceLevelsSelectYear(HttpServletRequest request) {
+    public ModelAndView viewPerformanceLevelsSelectYear(@RequestParam(value = "fromDate", required = false) String fromDate,
+                                                        @RequestParam(value = "toDate", required = false) String toDate,
+                                                        @RequestParam(value = "fromReportingDateId", required = false) Long fromReportingDateId,
+                                                        @RequestParam(value = "toReportingDateId", required = false) Long toReportingDateId,
+                                                        @RequestParam(value = "employeeIds", required = false) List<Long> employeeIds,
+                                                        HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_LEVELS_SELECT_YEAR);
-        modelAndView.addObject("pageTitle", "Select Reporting Period");
-        List<ReportingPeriod> REPORTING_PERIODS_LIST = reportingPeriodService.listAllReportingPeriods();
-        modelAndView.addObject("reportingPeriodsList", REPORTING_PERIODS_LIST);
+        modelAndView.addObject("pageTitle", "Select Employees");
+        List<ReportingDate> reportingDates = resolveAllReportingDates(reportingPeriodService.listAllReportingPeriods());
+        String defaultDate = resolveDefaultPerformanceLevelDate(reportingDates);
+        ReportingDate selectedFromReportingDate = resolvePerformanceLevelReportingDateSelection(reportingDates, fromReportingDateId, fromDate, defaultDate);
+        ReportingDate selectedToReportingDate = resolvePerformanceLevelReportingDateSelection(reportingDates, toReportingDateId, toDate, defaultDate);
+        modelAndView.addObject("accountsList", accountService.listAllAccounts());
+        modelAndView.addObject("performanceLevelReportingDateOptions", buildPerformanceLevelReportingDateOptions(reportingDates));
+        modelAndView.addObject("selectedFromReportingDateId", selectedFromReportingDate == null ? null : selectedFromReportingDate.getId());
+        modelAndView.addObject("selectedToReportingDateId", selectedToReportingDate == null ? null : selectedToReportingDate.getId());
+        modelAndView.addObject("selectedEmployeeIds", normalizeEmployeeIds(employeeIds));
+        modelAndView.addObject("selectedFromDate", selectedFromReportingDate == null ? (hasText(fromDate) ? fromDate : defaultDate) : resolveReportingDateLabel(selectedFromReportingDate));
+        modelAndView.addObject("selectedToDate", selectedToReportingDate == null ? (hasText(toDate) ? toDate : defaultDate) : resolveReportingDateLabel(selectedToReportingDate));
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -151,12 +165,24 @@ public class AssessmentController {
     }
 
     @RequestMapping(value="/select-scorecards/{reportingPeriodId}")
-    public ModelAndView viewPerformanceLevelsSelectScorecards(@PathVariable("reportingPeriodId") long reportingPeriodId, HttpServletRequest request) {
+    public ModelAndView viewPerformanceLevelsSelectScorecards(@PathVariable("reportingPeriodId") long reportingPeriodId,
+                                                              @RequestParam(value = "fromDate", required = false) String fromDate,
+                                                              @RequestParam(value = "toDate", required = false) String toDate,
+                                                              @RequestParam(value = "fromReportingDateId", required = false) Long fromReportingDateId,
+                                                              @RequestParam(value = "toReportingDateId", required = false) Long toReportingDateId,
+                                                              @RequestParam(value = "employeeIds", required = false) List<Long> employeeIds,
+                                                              HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_LEVELS_SELECT_SCORECARDS);
         modelAndView.addObject("pageTitle", "Select Scorecards");
         ReportingPeriod period = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
         List<Scorecard> scoresList = scorecardService.getScoresByPeriodId(period);
         modelAndView.addObject("scoresList", scoresList);
+        modelAndView.addObject("selectedReportingPeriodId", period == null ? null : period.getId());
+        modelAndView.addObject("selectedEmployeeIds", normalizeEmployeeIds(employeeIds));
+        modelAndView.addObject("selectedFromDate", fromDate);
+        modelAndView.addObject("selectedToDate", toDate);
+        modelAndView.addObject("selectedFromReportingDateId", fromReportingDateId);
+        modelAndView.addObject("selectedToReportingDateId", toReportingDateId);
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -315,29 +341,144 @@ public class AssessmentController {
         return modelAndView;
     }
 
+    @RequestMapping(value = "/view-performance-levels", method = RequestMethod.GET)
+    public ModelAndView viewPerformanceLevels(@RequestParam(value = "reportingDateId", required = false) Long reportingDateId,
+                                              @RequestParam(value = "fromDate", required = false) String fromDate,
+                                              @RequestParam(value = "toDate", required = false) String toDate,
+                                              @RequestParam(value = "fromReportingDateId", required = false) Long fromReportingDateId,
+                                              @RequestParam(value = "toReportingDateId", required = false) Long toReportingDateId,
+                                              @RequestParam(value = "employeeIds", required = false) List<Long> employeeIds,
+                                              HttpServletRequest request) {
+        return buildPerformanceLevelsView(fromDate, toDate, fromReportingDateId, toReportingDateId, reportingDateId, null, employeeIds, request);
+    }
+
     @RequestMapping(value = "/view-performance-levels", method = RequestMethod.POST)
-    public ModelAndView viewPerformanceLevels(@RequestParam("scorecards") List<Long> scorecardIds, HttpServletRequest request) {
+    public ModelAndView viewPerformanceLevels(@RequestParam(value = "scorecards", required = false) List<Long> scorecardIds,
+                                              @RequestParam(value = "reportingDateId", required = false) Long reportingDateId,
+                                              @RequestParam(value = "fromDate", required = false) String fromDate,
+                                              @RequestParam(value = "toDate", required = false) String toDate,
+                                              @RequestParam(value = "fromReportingDateId", required = false) Long fromReportingDateId,
+                                              @RequestParam(value = "toReportingDateId", required = false) Long toReportingDateId,
+                                              @RequestParam(value = "employeeIds", required = false) List<Long> employeeIds,
+                                              HttpServletRequest request) {
+        return buildPerformanceLevelsView(fromDate, toDate, fromReportingDateId, toReportingDateId, reportingDateId, scorecardIds, employeeIds, request);
+    }
+
+    private ModelAndView buildPerformanceLevelsView(String fromDate,
+                                                    String toDate,
+                                                    Long fromReportingDateId,
+                                                    Long toReportingDateId,
+                                                    Long reportingDateId,
+                                                    List<Long> scorecardIds,
+                                                    List<Long> employeeIds,
+                                                    HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PERFORMANCE_LEVELS);
         modelAndView.addObject("pageTitle", "View performance Levels");
-        List<Scorecard> scorecardList = scorecardService.getScorecardsByIds(scorecardIds);
+        List<ReportingPeriod> reportingPeriods = reportingPeriodService.listAllReportingPeriods();
+        List<ReportingDate> allReportingDates = resolveAllReportingDates(reportingPeriods);
+        PerformanceLevelDateRange dateRange = resolvePerformanceLevelDateRange(
+                fromDate,
+                toDate,
+                fromReportingDateId,
+                toReportingDateId,
+                reportingDateId,
+                allReportingDates,
+                request
+        );
+        List<ReportingDate> selectedReportingDates = dateRange.valid
+                ? filterReportingDatesByRange(allReportingDates, dateRange.from, dateRange.to)
+                : new ArrayList<ReportingDate>();
+
+        List<Scorecard> postedScorecards = scorecardIds == null || scorecardIds.isEmpty()
+                ? new ArrayList<Scorecard>()
+                : scorecardService.getScorecardsByIds(scorecardIds);
+
+        List<Long> selectedEmployeeIds = normalizeEmployeeIds(employeeIds);
+        if (selectedEmployeeIds.isEmpty()) {
+            selectedEmployeeIds = extractEmployeeIdsFromScorecards(postedScorecards);
+        }
+        boolean groupSelectionActive = !selectedEmployeeIds.isEmpty();
+
+        List<Account> selectedEmployees = resolvePerformanceLevelEmployees(selectedEmployeeIds, selectedReportingDates);
+        List<Long> formEmployeeIds = groupSelectionActive
+                ? extractEmployeeIdsFromAccounts(selectedEmployees)
+                : new ArrayList<Long>();
+
+        List<Scorecard> scorecardList = resolvePerformanceLevelScorecards(selectedEmployees, selectedReportingDates);
+        Map<Long, Map<Long, OverallScore>> overallScoresByDate =
+                overallScoreService.getOverallScoresByScorecardsAndReportingDates(scorecardList, selectedReportingDates);
+        Map<String, Scorecard> scorecardByEmployeeAndPeriod = mapScorecardsByEmployeeAndPeriod(scorecardList);
+
+        List<Account> graphEmployees = filterEmployeesWithScorecardInRange(
+                selectedEmployees,
+                selectedReportingDates,
+                scorecardByEmployeeAndPeriod
+        );
 
         List<String> names = new ArrayList<>();
-        List<Double> scores = new ArrayList<>();
-        for(Scorecard scorecard : scorecardList){
-            try {
-                ReportingDate reportingDate = resolveInsightReportingDate(scorecard.getReportingPeriod());
-                OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-                scores.add(overallModeratedPercent(overallScore));
-                names.add(scorecard.getOwner().getFullName());
-
-            }catch (Exception ignored){
-
+        for (Account employee : graphEmployees) {
+            if (employee == null) {
+                continue;
             }
+            names.add(employee.getFullName());
+        }
 
+        List<String> dateLabels = new ArrayList<String>();
+        List<List<Double>> scoreSeries = new ArrayList<List<Double>>();
+        List<List<String>> colorSeries = new ArrayList<List<String>>();
+        for (ReportingDate reportingDate : selectedReportingDates) {
+            dateLabels.add(resolvePerformanceLevelDateLabel(reportingDate));
+            List<Double> dateScores = new ArrayList<Double>();
+            List<String> dateColors = new ArrayList<String>();
+            Map<Long, OverallScore> scoreByScorecard = reportingDate == null ? null : overallScoresByDate.get(reportingDate.getId());
+            for (Account employee : graphEmployees) {
+                Scorecard scorecard = resolveEmployeeScorecardForReportingDate(scorecardByEmployeeAndPeriod, employee, reportingDate);
+                if (scorecard == null) {
+                    dateScores.add(null);
+                    dateColors.add(resolvePerformanceLevelMissingColor());
+                    continue;
+                }
+                OverallScore overallScore = resolveOverallScore(scoreByScorecard, scorecard, reportingDate);
+                double score = overallModeratedPercent(overallScore);
+                dateScores.add(score);
+                dateColors.add(resolvePerformanceLevelColor(score));
+            }
+            scoreSeries.add(dateScores);
+            colorSeries.add(dateColors);
+        }
+
+        List<String> missingScorecardDetails = resolveEmployeesWithoutScorecardsInRange(selectedEmployees, selectedReportingDates, scorecardByEmployeeAndPeriod);
+        List<String> reportingPeriodLabels = resolveReportingPeriodLabels(selectedReportingDates);
+
+        List<Double> scores = scoreSeries.isEmpty() ? new ArrayList<Double>() : scoreSeries.get(0);
+        if (dateRange.valid && selectedReportingDates.isEmpty()) {
+            PortletUtils.addErrorMsg("No reporting dates found in the selected range.", request);
         }
 
         modelAndView.addObject("names", names);
         modelAndView.addObject("scores", scores);
+        modelAndView.addObject("performanceLevelDateLabels", dateLabels);
+        modelAndView.addObject("performanceLevelScoreSeries", scoreSeries);
+        modelAndView.addObject("performanceLevelColorSeries", colorSeries);
+        modelAndView.addObject("performanceLevelDateCount", selectedReportingDates.size());
+        modelAndView.addObject("performanceLevelReportingPeriodLabels", reportingPeriodLabels);
+        modelAndView.addObject("missingScorecardEmployees", missingScorecardDetails);
+        modelAndView.addObject("missingScorecardDetails", missingScorecardDetails);
+        modelAndView.addObject("performanceLevelScorecardCount", names.size());
+        modelAndView.addObject("selectedEmployeeIds", formEmployeeIds);
+        modelAndView.addObject("selectedEmployeeCount", selectedEmployees.size());
+        modelAndView.addObject("groupSelectionActive", groupSelectionActive);
+        modelAndView.addObject("selectEmployeeGroupUrl", buildPerformanceLevelEmployeeSelectionUrl(dateRange, formEmployeeIds));
+        modelAndView.addObject("performanceLevelReportingDateOptions", buildPerformanceLevelReportingDateOptions(allReportingDates));
+        modelAndView.addObject("selectedFromReportingDateId", dateRange.fromReportingDateId);
+        modelAndView.addObject("selectedToReportingDateId", dateRange.toReportingDateId);
+        modelAndView.addObject("selectedFromDate", dateRange.fromDate);
+        modelAndView.addObject("selectedToDate", dateRange.toDate);
+        modelAndView.addObject("selectedDateRangeLabel", dateRange.fromDate + " to " + dateRange.toDate);
+        modelAndView.addObject("selectedReportingPeriodLabel", reportingPeriodLabels.isEmpty() ? "No reporting period in range" : String.join(", ", reportingPeriodLabels));
+        modelAndView.addObject("selectedReportingDateLabel", dateRange.fromDate.equals(dateRange.toDate) ? dateRange.fromDate : dateRange.fromDate + " to " + dateRange.toDate);
+        modelAndView.addObject("startDate", dateRange.fromDate);
+        modelAndView.addObject("endDate", dateRange.toDate);
 
         preparePage(modelAndView, request);
         return modelAndView;
@@ -1781,6 +1922,501 @@ public class AssessmentController {
         return selected;
     }
 
+    private ReportingPeriod resolveReportingPeriodForPerformanceLevels(List<ReportingPeriod> reportingPeriods, Long reportingPeriodId) {
+        if (reportingPeriodId != null && reportingPeriodId > 0) {
+            ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(reportingPeriodId);
+            if (reportingPeriod != null) {
+                return reportingPeriod;
+            }
+        }
+        return resolveDefaultScoresReportingPeriod(reportingPeriods);
+    }
+
+    private ReportingPeriod resolveReportingPeriodFromScorecards(List<Scorecard> scorecards) {
+        if (scorecards == null) {
+            return null;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard != null && scorecard.getReportingPeriod() != null) {
+                return scorecard.getReportingPeriod();
+            }
+        }
+        return null;
+    }
+
+    private List<Long> extractEmployeeIdsFromScorecards(List<Scorecard> scorecards) {
+        List<Long> employeeIds = new ArrayList<Long>();
+        if (scorecards == null) {
+            return employeeIds;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getOwner() == null || scorecard.getOwner().getId() <= 0) {
+                continue;
+            }
+            addUniqueLong(employeeIds, scorecard.getOwner().getId());
+        }
+        return employeeIds;
+    }
+
+    private List<Long> normalizeEmployeeIds(List<Long> employeeIds) {
+        List<Long> normalizedEmployeeIds = new ArrayList<Long>();
+        if (employeeIds == null) {
+            return normalizedEmployeeIds;
+        }
+        for (Long employeeId : employeeIds) {
+            if (employeeId != null && employeeId > 0) {
+                addUniqueLong(normalizedEmployeeIds, employeeId);
+            }
+        }
+        return normalizedEmployeeIds;
+    }
+
+    private List<Scorecard> filterScorecardsByEmployeeIds(List<Scorecard> scorecards, List<Long> employeeIds) {
+        List<Scorecard> filteredScorecards = new ArrayList<Scorecard>();
+        if (scorecards == null || employeeIds == null || employeeIds.isEmpty()) {
+            return filteredScorecards;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getOwner() == null) {
+                continue;
+            }
+            if (containsLong(employeeIds, scorecard.getOwner().getId())) {
+                filteredScorecards.add(scorecard);
+            }
+        }
+        return filteredScorecards;
+    }
+
+    private void addUniqueLong(List<Long> values, Long value) {
+        if (values == null || value == null || value <= 0) {
+            return;
+        }
+        if (!containsLong(values, value)) {
+            values.add(value);
+        }
+    }
+
+    private boolean containsLong(List<Long> values, Long value) {
+        if (values == null || value == null) {
+            return false;
+        }
+        for (Long existing : values) {
+            if (existing != null && existing.equals(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<ReportingDate> resolveAllReportingDates(List<ReportingPeriod> reportingPeriods) {
+        List<ReportingDate> reportingDates = new ArrayList<ReportingDate>();
+        if (reportingPeriods == null) {
+            return reportingDates;
+        }
+        for (ReportingPeriod reportingPeriod : reportingPeriods) {
+            if (reportingPeriod == null || reportingPeriod.getId() <= 0) {
+                continue;
+            }
+            List<ReportingDate> periodReportingDates = reportingDateService.listAllReportingDates(reportingPeriod);
+            if (periodReportingDates == null) {
+                continue;
+            }
+            for (ReportingDate reportingDate : periodReportingDates) {
+                addUniqueReportingDate(reportingDates, reportingDate);
+            }
+        }
+        return sortReportingDates(reportingDates);
+    }
+
+    private String resolveDefaultPerformanceLevelDate(List<ReportingDate> reportingDates) {
+        ReportingDate latestReportingDate = resolveLatestReportingDate(reportingDates);
+        return latestReportingDate == null ? "" : resolveReportingDateLabel(latestReportingDate);
+    }
+
+    private PerformanceLevelDateRange resolvePerformanceLevelDateRange(String fromDate,
+                                                                       String toDate,
+                                                                       Long fromReportingDateId,
+                                                                       Long toReportingDateId,
+                                                                       Long reportingDateId,
+                                                                       List<ReportingDate> reportingDates,
+                                                                       HttpServletRequest request) {
+        String defaultDate = resolveDefaultPerformanceLevelDate(reportingDates);
+        ReportingDate selectedReportingDate = findReportingDateById(reportingDates, reportingDateId);
+        if (selectedReportingDate != null && !hasText(fromDate) && !hasText(toDate)) {
+            defaultDate = resolveReportingDateLabel(selectedReportingDate);
+        }
+
+        ReportingDate fromReportingDate = resolvePerformanceLevelReportingDateSelection(reportingDates, fromReportingDateId, fromDate, defaultDate);
+        ReportingDate toReportingDate = resolvePerformanceLevelReportingDateSelection(reportingDates, toReportingDateId, toDate, null);
+        if (toReportingDate == null) {
+            toReportingDate = fromReportingDate;
+        }
+
+        String resolvedFromDate = fromReportingDate == null
+                ? (hasText(fromDate) ? fromDate.trim() : defaultDate)
+                : resolveReportingDateLabel(fromReportingDate);
+        String resolvedToDate = toReportingDate == null
+                ? (hasText(toDate) ? toDate.trim() : resolvedFromDate)
+                : resolveReportingDateLabel(toReportingDate);
+        LocalDate resolvedFrom = parseLocalDate(resolvedFromDate);
+        LocalDate resolvedTo = parseLocalDate(resolvedToDate);
+        boolean valid = true;
+
+        if (resolvedFrom == null || resolvedTo == null) {
+            valid = false;
+            if (hasText(resolvedFromDate) || hasText(resolvedToDate)) {
+                PortletUtils.addErrorMsg("Select valid From and To dates.", request);
+            }
+        } else if (resolvedFrom.isAfter(resolvedTo)) {
+            valid = false;
+            PortletUtils.addErrorMsg("From date cannot be greater than To date.", request);
+        }
+
+        return new PerformanceLevelDateRange(
+                resolvedFromDate,
+                resolvedToDate,
+                resolvedFrom,
+                resolvedTo,
+                fromReportingDate == null ? 0L : fromReportingDate.getId(),
+                toReportingDate == null ? 0L : toReportingDate.getId(),
+                valid
+        );
+    }
+
+    private ReportingDate findReportingDateById(List<ReportingDate> reportingDates, Long reportingDateId) {
+        if (reportingDates == null || reportingDateId == null || reportingDateId <= 0) {
+            return null;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate != null && reportingDate.getId() == reportingDateId) {
+                return reportingDate;
+            }
+        }
+        return null;
+    }
+
+    private ReportingDate resolvePerformanceLevelReportingDateSelection(List<ReportingDate> reportingDates,
+                                                                        Long reportingDateId,
+                                                                        String reportingDateValue,
+                                                                        String defaultDateValue) {
+        ReportingDate reportingDate = findReportingDateById(reportingDates, reportingDateId);
+        if (reportingDate != null) {
+            return reportingDate;
+        }
+        reportingDate = findReportingDateByValue(reportingDates, reportingDateValue);
+        if (reportingDate != null) {
+            return reportingDate;
+        }
+        return findReportingDateByValue(reportingDates, defaultDateValue);
+    }
+
+    private ReportingDate findReportingDateByValue(List<ReportingDate> reportingDates, String reportingDateValue) {
+        if (reportingDates == null || !hasText(reportingDateValue)) {
+            return null;
+        }
+        LocalDate selectedDate = parseLocalDate(reportingDateValue);
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null) {
+                continue;
+            }
+            if (selectedDate != null) {
+                LocalDate candidateDate = parseLocalDate(reportingDate.getEndDate());
+                if (selectedDate.equals(candidateDate)) {
+                    return reportingDate;
+                }
+            } else if (reportingDateValue.trim().equals(reportingDate.getEndDate())) {
+                return reportingDate;
+            }
+        }
+        return null;
+    }
+
+    private List<PerformanceLevelReportingDateOption> buildPerformanceLevelReportingDateOptions(List<ReportingDate> reportingDates) {
+        List<PerformanceLevelReportingDateOption> options = new ArrayList<PerformanceLevelReportingDateOption>();
+        if (reportingDates == null) {
+            return options;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null || reportingDate.getId() <= 0) {
+                continue;
+            }
+            LocalDate reportingDateKey = sortDateKey(reportingDate);
+            options.add(new PerformanceLevelReportingDateOption(
+                    reportingDate.getId(),
+                    LocalDate.MIN.equals(reportingDateKey) ? resolveReportingDateLabel(reportingDate) : reportingDateKey.toString(),
+                    resolvePerformanceLevelDateLabel(reportingDate)
+            ));
+        }
+        return options;
+    }
+
+    private List<ReportingDate> filterReportingDatesByRange(List<ReportingDate> reportingDates, LocalDate fromDate, LocalDate toDate) {
+        List<ReportingDate> filteredReportingDates = new ArrayList<ReportingDate>();
+        if (reportingDates == null || fromDate == null || toDate == null) {
+            return filteredReportingDates;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            LocalDate reportingDateKey = reportingDate == null ? null : parseLocalDate(reportingDate.getEndDate());
+            if (reportingDateKey == null) {
+                continue;
+            }
+            if (!reportingDateKey.isBefore(fromDate) && !reportingDateKey.isAfter(toDate)) {
+                filteredReportingDates.add(reportingDate);
+            }
+        }
+        return sortReportingDates(filteredReportingDates);
+    }
+
+    private List<Account> resolvePerformanceLevelEmployees(List<Long> selectedEmployeeIds, List<ReportingDate> reportingDates) {
+        List<Account> employees = new ArrayList<Account>();
+        if (selectedEmployeeIds != null && !selectedEmployeeIds.isEmpty()) {
+            for (Long employeeId : selectedEmployeeIds) {
+                if (employeeId == null || employeeId <= 0) {
+                    continue;
+                }
+                try {
+                    addUniqueAccount(employees, accountService.getAccountById(employeeId));
+                } catch (Exception ignored) {
+
+                }
+            }
+            return employees;
+        }
+
+        List<Scorecard> scorecards = resolveScorecardsForReportingDates(reportingDates);
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard != null && scorecard.getOwner() != null) {
+                addUniqueAccount(employees, scorecard.getOwner());
+            }
+        }
+        return employees;
+    }
+
+    private List<Long> extractEmployeeIdsFromAccounts(List<Account> accounts) {
+        List<Long> employeeIds = new ArrayList<Long>();
+        if (accounts == null) {
+            return employeeIds;
+        }
+        for (Account account : accounts) {
+            if (account != null && account.getId() > 0) {
+                addUniqueLong(employeeIds, account.getId());
+            }
+        }
+        return employeeIds;
+    }
+
+    private String buildPerformanceLevelEmployeeSelectionUrl(PerformanceLevelDateRange dateRange, List<Long> employeeIds) {
+        StringBuilder url = new StringBuilder("/performance-review/view-performance-levels-select-year");
+        String separator = "?";
+        if (dateRange != null && dateRange.fromReportingDateId > 0) {
+            url.append(separator).append("fromReportingDateId=").append(dateRange.fromReportingDateId);
+            separator = "&";
+        }
+        if (dateRange != null && dateRange.toReportingDateId > 0) {
+            url.append(separator).append("toReportingDateId=").append(dateRange.toReportingDateId);
+            separator = "&";
+        }
+        if (employeeIds != null) {
+            for (Long employeeId : employeeIds) {
+                if (employeeId == null || employeeId <= 0) {
+                    continue;
+                }
+                url.append(separator).append("employeeIds=").append(employeeId);
+                separator = "&";
+            }
+        }
+        return url.toString();
+    }
+
+    private List<Scorecard> resolvePerformanceLevelScorecards(List<Account> employees, List<ReportingDate> reportingDates) {
+        List<Scorecard> scorecards = resolveScorecardsForReportingDates(reportingDates);
+        List<Long> employeeIds = extractEmployeeIdsFromAccounts(employees);
+        if (employeeIds.isEmpty()) {
+            return scorecards;
+        }
+        return filterScorecardsByEmployeeIds(scorecards, employeeIds);
+    }
+
+    private List<Scorecard> resolveScorecardsForReportingDates(List<ReportingDate> reportingDates) {
+        List<Scorecard> scorecards = new ArrayList<Scorecard>();
+        if (reportingDates == null) {
+            return scorecards;
+        }
+        List<ReportingPeriod> reportingPeriods = new ArrayList<ReportingPeriod>();
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null || reportingDate.getReportingPeriod() == null) {
+                continue;
+            }
+            addUniqueReportingPeriod(reportingPeriods, reportingDate.getReportingPeriod());
+        }
+        for (ReportingPeriod reportingPeriod : reportingPeriods) {
+            List<Scorecard> periodScorecards = scorecardService.getScoresByPeriodId(reportingPeriod);
+            if (periodScorecards == null) {
+                continue;
+            }
+            for (Scorecard scorecard : periodScorecards) {
+                addUniqueScorecard(scorecards, scorecard);
+            }
+        }
+        return scorecards;
+    }
+
+    private Map<String, Scorecard> mapScorecardsByEmployeeAndPeriod(List<Scorecard> scorecards) {
+        Map<String, Scorecard> scorecardByEmployeeAndPeriod = new HashMap<String, Scorecard>();
+        if (scorecards == null) {
+            return scorecardByEmployeeAndPeriod;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard == null || scorecard.getOwner() == null || scorecard.getReportingPeriod() == null) {
+                continue;
+            }
+            scorecardByEmployeeAndPeriod.put(
+                    performanceLevelScorecardKey(scorecard.getOwner().getId(), scorecard.getReportingPeriod().getId()),
+                    scorecard
+            );
+        }
+        return scorecardByEmployeeAndPeriod;
+    }
+
+    private Scorecard resolveEmployeeScorecardForReportingDate(Map<String, Scorecard> scorecardByEmployeeAndPeriod,
+                                                               Account employee,
+                                                               ReportingDate reportingDate) {
+        if (scorecardByEmployeeAndPeriod == null
+                || employee == null
+                || reportingDate == null
+                || reportingDate.getReportingPeriod() == null) {
+            return null;
+        }
+        return scorecardByEmployeeAndPeriod.get(performanceLevelScorecardKey(employee.getId(), reportingDate.getReportingPeriod().getId()));
+    }
+
+    private String performanceLevelScorecardKey(long employeeId, long reportingPeriodId) {
+        return employeeId + ":" + reportingPeriodId;
+    }
+
+    private List<Account> filterEmployeesWithScorecardInRange(List<Account> employees,
+                                                              List<ReportingDate> reportingDates,
+                                                              Map<String, Scorecard> scorecardByEmployeeAndPeriod) {
+        List<Account> filteredEmployees = new ArrayList<Account>();
+        if (employees == null || reportingDates == null || reportingDates.isEmpty()) {
+            return filteredEmployees;
+        }
+        for (Account employee : employees) {
+            if (hasAnyScorecardInRange(employee, reportingDates, scorecardByEmployeeAndPeriod)) {
+                filteredEmployees.add(employee);
+            }
+        }
+        return filteredEmployees;
+    }
+
+    private List<String> resolveEmployeesWithoutScorecardsInRange(List<Account> employees,
+                                                                  List<ReportingDate> reportingDates,
+                                                                  Map<String, Scorecard> scorecardByEmployeeAndPeriod) {
+        List<String> missingEmployees = new ArrayList<String>();
+        if (employees == null || reportingDates == null || reportingDates.isEmpty()) {
+            return missingEmployees;
+        }
+        for (Account employee : employees) {
+            if (employee == null || hasAnyScorecardInRange(employee, reportingDates, scorecardByEmployeeAndPeriod)) {
+                continue;
+            }
+            missingEmployees.add(employee.getFullName());
+        }
+        return missingEmployees;
+    }
+
+    private boolean hasAnyScorecardInRange(Account employee,
+                                           List<ReportingDate> reportingDates,
+                                           Map<String, Scorecard> scorecardByEmployeeAndPeriod) {
+        if (employee == null || reportingDates == null || reportingDates.isEmpty()) {
+            return false;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (resolveEmployeeScorecardForReportingDate(scorecardByEmployeeAndPeriod, employee, reportingDate) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> resolveReportingPeriodLabels(List<ReportingDate> reportingDates) {
+        List<String> labels = new ArrayList<String>();
+        if (reportingDates == null) {
+            return labels;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null || reportingDate.getReportingPeriod() == null) {
+                continue;
+            }
+            addUniqueString(labels, resolveReportingPeriodLabel(reportingDate.getReportingPeriod()));
+        }
+        return labels;
+    }
+
+    private String resolveReportingPeriodLabel(ReportingPeriod reportingPeriod) {
+        if (reportingPeriod == null) {
+            return "Unknown period";
+        }
+        return blankToDefault(reportingPeriod.getStartDate(), "N/A") + " to " + blankToDefault(reportingPeriod.getEndDate(), "N/A");
+    }
+
+    private String resolvePerformanceLevelDateLabel(ReportingDate reportingDate) {
+        if (reportingDate == null) {
+            return "N/A";
+        }
+        return resolveReportingDateLabel(reportingDate) + " | " + resolveReportingPeriodLabel(reportingDate.getReportingPeriod());
+    }
+
+    private String resolvePerformanceLevelColor(double score) {
+        if (score < 50.0) {
+            return "#bf4a4a";
+        }
+        if (score < 70.0) {
+            return "rgba(217, 165, 52, 0.74)";
+        }
+        return "rgba(31, 143, 95, 0.74)";
+    }
+
+    private String resolvePerformanceLevelMissingColor() {
+        return "rgba(140, 153, 165, 0.42)";
+    }
+
+    private void addUniqueReportingPeriod(List<ReportingPeriod> reportingPeriods, ReportingPeriod reportingPeriod) {
+        if (reportingPeriods == null || reportingPeriod == null || reportingPeriod.getId() <= 0) {
+            return;
+        }
+        for (ReportingPeriod existing : reportingPeriods) {
+            if (existing != null && existing.getId() == reportingPeriod.getId()) {
+                return;
+            }
+        }
+        reportingPeriods.add(reportingPeriod);
+    }
+
+    private void addUniqueAccount(List<Account> accounts, Account account) {
+        if (accounts == null || account == null || account.getId() <= 0) {
+            return;
+        }
+        for (Account existing : accounts) {
+            if (existing != null && existing.getId() == account.getId()) {
+                return;
+            }
+        }
+        accounts.add(account);
+    }
+
+    private void addUniqueString(List<String> values, String value) {
+        if (values == null || !hasText(value)) {
+            return;
+        }
+        for (String existing : values) {
+            if (value.equals(existing)) {
+                return;
+            }
+        }
+        values.add(value);
+    }
+
     private List<ReportingDate> sortReportingDates(List<ReportingDate> reportingDates) {
         List<ReportingDate> sortedReportingDates = reportingDates == null
                 ? new ArrayList<ReportingDate>()
@@ -1978,6 +2614,56 @@ public class AssessmentController {
             this.scorecard = scorecard;
             this.reportingPeriod = reportingPeriod;
             this.reportingDate = reportingDate;
+        }
+    }
+
+    private static class PerformanceLevelDateRange {
+        private final String fromDate;
+        private final String toDate;
+        private final LocalDate from;
+        private final LocalDate to;
+        private final long fromReportingDateId;
+        private final long toReportingDateId;
+        private final boolean valid;
+
+        private PerformanceLevelDateRange(String fromDate,
+                                          String toDate,
+                                          LocalDate from,
+                                          LocalDate to,
+                                          long fromReportingDateId,
+                                          long toReportingDateId,
+                                          boolean valid) {
+            this.fromDate = fromDate == null ? "" : fromDate;
+            this.toDate = toDate == null ? "" : toDate;
+            this.from = from;
+            this.to = to;
+            this.fromReportingDateId = fromReportingDateId;
+            this.toReportingDateId = toReportingDateId;
+            this.valid = valid;
+        }
+    }
+
+    public static class PerformanceLevelReportingDateOption {
+        private final long id;
+        private final String dateValue;
+        private final String label;
+
+        private PerformanceLevelReportingDateOption(long id, String dateValue, String label) {
+            this.id = id;
+            this.dateValue = dateValue;
+            this.label = label;
+        }
+
+        public long getId() {
+            return id;
+        }
+
+        public String getDateValue() {
+            return dateValue;
+        }
+
+        public String getLabel() {
+            return label;
         }
     }
 

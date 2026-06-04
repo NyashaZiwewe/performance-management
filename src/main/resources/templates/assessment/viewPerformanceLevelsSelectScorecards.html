@@ -43,12 +43,18 @@
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom col-10">
                 <form th:action="@{/performance-review/view-performance-levels}" method="post">
+                    <input type="hidden" name="reportingPeriodId" th:value="${selectedReportingPeriodId}">
+                    <input type="hidden" name="fromDate" th:value="${selectedFromDate}">
+                    <input type="hidden" name="toDate" th:value="${selectedToDate}">
+                    <input type="hidden" name="fromReportingDateId" th:value="${selectedFromReportingDateId}">
+                    <input type="hidden" name="toReportingDateId" th:value="${selectedToReportingDateId}">
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
                                 <div class="col-lg-12">
                                     <select class="form-control dual_select" multiple size="20" name="scorecards">
                                         <option th:each="scorecard :${scoresList}" th:value="${scorecard.id}"
+                                                th:selected="${selectedEmployeeIds != null and scorecard.owner != null and selectedEmployeeIds.contains(scorecard.owner.id)}"
                                                 th:text="${scorecard?.owner?.fullName +'___'+ scorecard?.owner?.department?.name +'_'+ scorecard?.owner?.accountType +'_'+ scorecard?.owner?.position}">Option 1
                                         </option>
                                     </select>
