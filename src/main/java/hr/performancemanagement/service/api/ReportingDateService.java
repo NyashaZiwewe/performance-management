@@ -1,11 +1,7 @@
 package hr.performancemanagement.service.api;
 
-import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
-import hr.performancemanagement.repository.ReportingDateRepository;
-import hr.performancemanagement.utils.constants.PMConstants;
-import java.util.ArrayList;
 import java.util.List;
 
 public interface ReportingDateService {
@@ -17,5 +13,4 @@ public interface ReportingDateService {
     List<ReportingDate> listAllReportingDates(ReportingPeriod reportingPeriod);
     long countReportingDates(long reportingPeriodId);
     void saveReportingDate(ReportingDate reportingDate);
-    void deleteReportingDate(ReportingDate reportingDate);
 }

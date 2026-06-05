@@ -59,11 +59,6 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
-    public void addDepartment(Department department) {
-        saveDepartment(department);
-    }
-
-    @Override
     public Department saveDepartment(Department department) {
         if (department == null) {
             throw new IllegalArgumentException("Department cannot be null");

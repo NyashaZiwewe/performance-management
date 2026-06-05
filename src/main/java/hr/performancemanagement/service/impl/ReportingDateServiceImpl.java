@@ -129,12 +129,6 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
         reportingDateRepository.save(reportingDate);
     }
 
-    @Transactional
-    @Override
-    public void deleteReportingDate(ReportingDate reportingDate){
-        reportingDateRepository.delete(reportingDate);
-    }
-
     private String normalizeStatus(String status) {
         if (status == null || status.trim().isEmpty()) {
             return PMConstants.REPORTING_DATE_STATUS_CLOSED;

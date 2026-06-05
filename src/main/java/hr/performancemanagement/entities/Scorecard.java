@@ -96,9 +96,6 @@ public class Scorecard {
     @Pattern(regexp = "OPEN|LOCKED|CLOSED", message = "Invalid lock status")
     private String lockStatus;
 
-    @Transient
-    private OverallScore overallScore;
-
     public String getApprovalStatus() {
         if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
             return approvalStage.getStatusCode();

@@ -61,29 +61,6 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Async
-    public void sendScheduledTaskStatus(String taskName, boolean success, String details) {
-        String subject = taskName + " " + (success ? "Succeeded" : "Failed");
-        String body = buildMessage(
-                greeting("Administrator"),
-                "Scheduled task: " + defaultText(taskName, "Unknown Task"),
-                "Status: " + (success ? "SUCCESS" : "FAILED"),
-                details
-        );
-        send(systemSettingService.getAdminEmail(), subject, body);
-    }
-
-    @Override
-    @Async
-    public void sendDepartmentAssignmentUpdate(Account recipient, String subject, String message) {
-        String body = buildMessage(
-                greeting(recipient != null ? recipient.getFullName() : null),
-                message
-        );
-        send(recipient != null ? recipient.getEmail() : null, subject, body);
-    }
-
-    @Override
     public boolean sendUserMessage(String recipientEmail, String recipientName, String subject, String message) {
         String body = buildMessage(greeting(recipientName), normalizeUserMessage(message));
         return send(recipientEmail, subject, body);

@@ -6,7 +6,6 @@ import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.entities.Comment;
 import hr.performancemanagement.repository.CommentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,11 +36,5 @@ public class CommentServiceImpl implements hr.performancemanagement.service.api.
     @Override
     public void saveComment(Comment comment) {
             commentRepository.save(comment);
-    }
-
-    @Transactional
-    @Override
-    public void deleteComment(Comment comment){
-        commentRepository.delete(comment);
     }
 }

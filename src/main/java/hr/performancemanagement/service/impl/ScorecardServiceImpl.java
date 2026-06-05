@@ -251,16 +251,6 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     }
 
     @Override
-    public Double getScoresByReportingDateAndScorecardId(ReportingDate date, Scorecard scorecard){
-        if (date == null || scorecard == null) {
-            return 0.0;
-        }
-        Map<Long, Double> scoresByScorecardId = getScoresByReportingDateAndScorecardIds(date, Collections.singletonList(scorecard));
-        Double finalScorePercent = scoresByScorecardId.get(scorecard.getId());
-        return finalScorePercent == null ? 0.0 : finalScorePercent;
-    }
-
-    @Override
     public Map<Long, Double> getScoresByReportingDateAndScorecardIds(ReportingDate date, List<Scorecard> scorecards) {
         if (date == null || scorecards == null || scorecards.isEmpty()) {
             return Collections.emptyMap();
@@ -316,36 +306,6 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             scoresByScorecard.put(scorecardId, finalScorePercent);
         }
         return finalScoresByDate;
-    }
-
-    @Override
-    public int countPassedScorecardsByPeriodId(ReportingPeriod reportingPeriod){
-
-        List<Scorecard> scorecardList = getScoresByPeriodId(reportingPeriod);
-        int passedScorecards = 0;
-
-        for(Scorecard scorecard : scorecardList){
-            double moderatedScore = safeScore(scorecard.getModeratedScore());
-            if(moderatedScore >= 2.5){
-                passedScorecards ++;
-            }
-        }
-        return passedScorecards;
-    }
-
-    @Override
-    public int countFailedScorecardsByPeriodId(ReportingPeriod reportingPeriod){
-
-        List<Scorecard> scorecardList = getScoresByPeriodId(reportingPeriod);
-        int failedScorecards = 0;
-
-        for(Scorecard scorecard : scorecardList){
-            double moderatedScore = safeScore(scorecard.getModeratedScore());
-            if(moderatedScore < 2.5){
-                failedScorecards ++;
-            }
-        }
-        return failedScorecards;
     }
 
     @Override

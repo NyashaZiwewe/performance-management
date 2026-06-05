@@ -11,8 +11,6 @@ public interface DivisionService {
 
     Division getDivisionById(long id);
 
-    void addDivision(Division division);
-
     Division saveDivision(Division division);
 
     void deleteDivision(Division division);

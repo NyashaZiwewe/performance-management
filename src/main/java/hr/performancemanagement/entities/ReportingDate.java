@@ -24,12 +24,9 @@ public class ReportingDate {
     @ManyToOne
     @JoinColumn(name = "reporting_period_id")
     private ReportingPeriod reportingPeriod;
-    private String assessmentStatus;
     private String status;
     @Transient
     private List<OverallScore> overallScores;
-    @Transient
-    private OverallScore overallScore;
     @CreationTimestamp
     private Date date;
 

@@ -46,11 +46,6 @@ public class DivisionServiceImpl implements DivisionService {
     }
 
     @Override
-    public void addDivision(Division division) {
-        saveDivision(division);
-    }
-
-    @Override
     public Division saveDivision(Division division) {
         if (division == null) {
             throw new IllegalArgumentException("Division cannot be null");

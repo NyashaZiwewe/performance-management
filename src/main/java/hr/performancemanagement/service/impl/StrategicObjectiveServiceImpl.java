@@ -3,10 +3,7 @@ package hr.performancemanagement.service.impl;
 import org.springframework.stereotype.Service;
 import hr.performancemanagement.service.api.*;
 
-import hr.performancemanagement.entities.Account;
-import hr.performancemanagement.entities.Perspective;
 import hr.performancemanagement.entities.StrategicObjective;
-import hr.performancemanagement.repository.ReportingPeriodRepository;
 import hr.performancemanagement.repository.StrategicObjectiveRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,17 +35,6 @@ public class StrategicObjectiveServiceImpl implements hr.performancemanagement.s
     @Override
     public long countStrategicObjectives(long reportingPeriodId) {
         return strategicObjectiveRepository.countByReportingPeriodId(reportingPeriodId);
-    }
-
-    @Override
-    public List<StrategicObjective> listStrategicObjectivesByScorecard(long scorecardId)
-    {
-        List<StrategicObjective> strategicObjectiveList = new ArrayList<>();
-        strategicObjectiveRepository.strategicObjectivesByScorecard(scorecardId).forEach(strategicObjective -> strategicObjectiveList.add(strategicObjective));
-        for(StrategicObjective objective : strategicObjectiveList){
-            objective.setWeightedScore(strategicObjectiveRepository.weightedScoreByScorecardAndStrategicObjective(objective));
-        }
-        return strategicObjectiveList;
     }
 
     @Override

@@ -647,8 +647,6 @@ public class AssessmentController {
 //        String role = loggedUser.getRole();
 //
 //        for(ReportingDate reportingDate: reportingPeriod.getReportingDates()){
-//            OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
-//            reportingDate.setOverallScore(overallScore);
 //        }
 //
 //        context.setVariable("loggedUserId", loggedUserId);
@@ -684,15 +682,8 @@ public class AssessmentController {
             List<ReportingDate> reportingDates = reportingPeriod == null || reportingPeriod.getReportingDates() == null
                     ? Collections.emptyList()
                     : reportingPeriod.getReportingDates();
-            Map<Long, Map<Long, OverallScore>> overallScoresByDate =
-                    overallScoreService.getOverallScoresByScorecardsAndReportingDates(Collections.singletonList(scorecard), reportingDates);
             ReportingDate finalReportingDate = resolveInsightReportingDate(reportingPeriod);
 
-            for (ReportingDate reportingDate : reportingDates) {
-                Map<Long, OverallScore> scoreByScorecard = reportingDate == null ? null : overallScoresByDate.get(reportingDate.getId());
-                OverallScore overallScore = resolveOverallScore(scoreByScorecard, scorecard, reportingDate);
-                reportingDate.setOverallScore(overallScore);
-            }
             OverallScore finalOverallScore = finalReportingDate == null
                     ? null
                     : overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, finalReportingDate);

@@ -9,10 +9,6 @@ public interface NotificationService {
 
     void sendAccountSetupAsync(Account account, String resetLink);
 
-    void sendScheduledTaskStatus(String taskName, boolean success, String details);
-
-    void sendDepartmentAssignmentUpdate(Account recipient, String subject, String message);
-
     boolean sendUserMessage(String recipientEmail, String recipientName, String subject, String message);
 
     void sendUserMessageAsync(String recipientEmail, String recipientName, String subject, String message);
