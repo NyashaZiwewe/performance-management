@@ -874,15 +874,24 @@ public class ProbationAssessmentController {
 
     @RequestMapping(value = "/save-dimension-template", method = RequestMethod.POST)
     public String saveDimensionTemplate(HttpServletRequest request, ProbationDimensionTemplate template) {
-        probationConfigService.saveDimensionTemplate(template);
-        PortletUtils.addInfoMsg("Dimension template saved.", request);
+        boolean update = template != null && template.getId() > 0;
+        ProbationDimensionTemplate savedTemplate = probationConfigService.saveDimensionTemplate(template);
+        if (savedTemplate == null) {
+            PortletUtils.addErrorMsg("Dimension template could not be saved.", request);
+        } else {
+            PortletUtils.addInfoMsg(update ? "Dimension template updated." : "Dimension template saved.", request);
+        }
         return "redirect:/probation-assessments/config";
     }
 
     @RequestMapping(value = "/delete-dimension-template", method = RequestMethod.POST)
     public String deleteDimensionTemplate(HttpServletRequest request, long id) {
-        probationConfigService.deactivateDimensionTemplate(id);
-        PortletUtils.addInfoMsg("Dimension template deactivated.", request);
+        boolean deleted = probationConfigService.deleteDimensionTemplate(id);
+        if (deleted) {
+            PortletUtils.addInfoMsg("Dimension template deleted.", request);
+        } else {
+            PortletUtils.addInfoMsg("Dimension template is used by existing assessments, so it was marked inactive instead.", request);
+        }
         return "redirect:/probation-assessments/config";
     }
 

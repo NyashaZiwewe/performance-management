@@ -1420,6 +1420,7 @@ public class ScorecardController {
 
             modelAndView.addObject("pageTitle", "Capture Scores");
             modelAndView.addObject("scorecard", scorecard);
+            modelAndView.addObject("comment", new Comment());
             List<Target> targetsList;
             if (isLegacyHierarchyModel(hierarchyModel)) {
                 List<Gear> selectedGears = gearService.listSelectedGears(scorecard);
@@ -2009,15 +2010,14 @@ public class ScorecardController {
     public void saveComment(HttpServletRequest request, HttpServletResponse response, Long scorecardId, String userType, String comment) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
-
-        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
-            scorecard.setOwnerComment(comment);
-        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
-            scorecard.setSupervisorComment(comment);
-        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
-            scorecard.setModeratorComment(comment);
+        if (scorecard == null) {
+            writeScoreSaveResponse(response, true, "Scorecard could not be resolved");
+            return;
         }
+
+        applyScorecardOverallComment(scorecard, userType, comment);
         scorecardService.saveScorecard(scorecard);
+        saveReportingDateOverallComment(scorecard, userType, comment);
 
         if(!PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
             URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
@@ -2036,21 +2036,38 @@ public class ScorecardController {
             }
         }
 
-        JSONObject jsonObject = new JSONObject();
+        writeScoreSaveResponse(response);
+    }
 
-        jsonObject.put("alreadyExists", false);
-
-        String jsonString = jsonObject.toString();
-
-        try(OutputStream outputStream = response.getOutputStream()){
-            response.setContentType("application/json; charset=UTF-8");
-            response.setCharacterEncoding("UTF-8");
-            outputStream.write(jsonString.getBytes(StandardCharsets.UTF_8));
-
-        }catch (IOException exception){
-            log.error("Failed to write overall comment response for scorecardId={}", scorecardId, exception);
-            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+    private void applyScorecardOverallComment(Scorecard scorecard, String userType, String comment) {
+        if (scorecard == null) {
+            return;
         }
+        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
+            scorecard.setOwnerComment(comment);
+        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
+            scorecard.setSupervisorComment(comment);
+        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
+            scorecard.setModeratorComment(comment);
+        }
+    }
+
+    private void saveReportingDateOverallComment(Scorecard scorecard, String userType, String comment) {
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        if (scorecard == null || reportingDate == null || !isReportingDateForScorecard(scorecard, reportingDate)) {
+            return;
+        }
+        OverallComment overallComment = new OverallComment();
+        overallComment.setScorecard(scorecard);
+        overallComment.setReportingDate(reportingDate);
+        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
+            overallComment.setOwnerComment(comment);
+        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
+            overallComment.setSupervisorComment(comment);
+        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
+            overallComment.setModeratorComment(comment);
+        }
+        overallCommentService.saveOverallComment(overallComment);
     }
 
     @RequestMapping(value = "/delete-target", method = RequestMethod.POST)
@@ -2765,19 +2782,28 @@ public class ScorecardController {
     }
 
     @RequestMapping(value = "/save-comment", method = RequestMethod.POST)
-    public String saveComment(HttpServletRequest request, Comment comment) throws MalformedURLException {
+    public String saveComment(HttpServletRequest request,
+                              Comment comment,
+                              @RequestParam(value = "target", required = false) Long targetId,
+                              @RequestParam(value = "returnUrl", required = false) String returnUrl) throws MalformedURLException {
         Account loggedUser = commonService.getLoggedUser();
+        Target target = resolveSubmittedCommentTarget(comment, targetId);
+        if (target == null) {
+            PortletUtils.addErrorMsg("Target could not be resolved.", request);
+            return redirectAfterTargetNote(returnUrl, 0);
+        }
+        comment.setTarget(target);
         comment.setSender(loggedUser);
         commentService.saveComment(comment);
-        Long scorecardId = comment.getTarget().getGoal().getScorecardId();
-        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        Scorecard scorecard = resolveScorecardFromTarget(target);
+        long scorecardId = scorecard == null ? 0 : scorecard.getId();
         URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
 
-        String recipient = scorecard.getOwner().getEmail();
+        String recipient = scorecard == null || scorecard.getOwner() == null ? null : scorecard.getOwner().getEmail();
         String subject = "Scorecard Comment,";
         String template = "Good day, \n\n"
                 + "Please note that"+ loggedUser.getFullName() +" added a comment on your scorecard. "
-                + "Goal - measure: [" + comment.getTarget().getGoal().getName() +" - "+ comment.getTarget().getMeasure() +"]\n"
+                + "Goal - measure: [" + resolveTargetGoalName(target) +" - "+ target.getMeasure() +"]\n"
                 + "Message: "+ comment.getName() + "\n"
                 + "You can now login and response or action\n"
                 + "Link: "+ link + "\n\n";
@@ -2787,25 +2813,37 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
         PortletUtils.addInfoMsg("Comment successfully saved", request);
-        return "redirect:/scorecards/view-scorecard/"+ scorecardId;
+        return redirectAfterTargetNote(returnUrl, scorecardId);
+    }
+
+    private Target resolveSubmittedCommentTarget(Comment comment, Long targetId) {
+        long resolvedTargetId = targetId == null ? 0 : targetId;
+        if (resolvedTargetId <= 0 && comment != null && comment.getTarget() != null) {
+            resolvedTargetId = comment.getTarget().getId();
+        }
+        return resolvedTargetId > 0 ? targetService.getTargetById(resolvedTargetId) : null;
     }
 
     @RequestMapping(value = "/save-flag", method = RequestMethod.POST)
-    public String saveFlag(HttpServletRequest request, Target updatedTarget) throws MalformedURLException {
+    public String saveFlag(HttpServletRequest request, Target updatedTarget, @RequestParam(value = "returnUrl", required = false) String returnUrl) throws MalformedURLException {
 
         Target target = targetService.getTargetById(updatedTarget.getId());
-        long scorecardId = target.getGoal().getScorecardId();
-        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (target == null) {
+            PortletUtils.addErrorMsg("Target could not be resolved.", request);
+            return redirectAfterTargetNote(returnUrl, 0);
+        }
+        Scorecard scorecard = resolveScorecardFromTarget(target);
+        long scorecardId = scorecard == null ? 0 : scorecard.getId();
         target.setFlag(updatedTarget.getFlag());
         targetService.saveTarget(target);
         URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
         String fullName = commonService.getLoggedUser().getFullName();
 
-        String recipient = scorecard.getOwner().getEmail();
+        String recipient = scorecard == null || scorecard.getOwner() == null ? null : scorecard.getOwner().getEmail();
         String subject = "Scorecard Comment,";
         String template = "Good day, \n\n"
                 + "Please note that"+ fullName +" flagged a goal on your scorecard. "
-                + "Goal - measure: [" + target.getGoal().getName() +" - "+ target.getMeasure() +"]\n"
+                + "Goal - measure: [" + resolveTargetGoalName(target) +" - "+ target.getMeasure() +"]\n"
                 + "Message: "+ target.getFlag() + "\n"
                 + "You can now login and response or action\n"
                 + "Link: "+ link + "\n\n";
@@ -2815,7 +2853,27 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
         PortletUtils.addInfoMsg("Measure successfully flagged and the reason was saved", request);
-        return "redirect:/scorecards/view-scorecard/"+ scorecardId;
+        return redirectAfterTargetNote(returnUrl, scorecardId);
+    }
+
+    private String redirectAfterTargetNote(String returnUrl, long scorecardId) {
+        if (StringUtils.hasText(returnUrl) && returnUrl.startsWith("/") && !returnUrl.startsWith("//")) {
+            return "redirect:" + returnUrl;
+        }
+        if (scorecardId > 0) {
+            return "redirect:/scorecards/view-scorecard/" + scorecardId;
+        }
+        return "redirect:/scorecards";
+    }
+
+    private String resolveTargetGoalName(Target target) {
+        if (target != null && target.getGoal() != null && StringUtils.hasText(target.getGoal().getName())) {
+            return target.getGoal().getName();
+        }
+        if (target != null && target.getOutcome() != null && StringUtils.hasText(target.getOutcome().getName())) {
+            return target.getOutcome().getName();
+        }
+        return "Target";
     }
 
     @RequestMapping(value = "/save-standard-score", method = RequestMethod.POST, consumes = {"*/*"})
@@ -2973,8 +3031,8 @@ public class ScorecardController {
 
             OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
             overallScore.setModeratedOverall(score);
-            overallScoreService.saveOverallScore(overallScore);
-            writeScoreSaveResponse(response);
+            overallScore = overallScoreService.saveOverallScore(overallScore);
+            writeScoreSaveResponse(response, overallScore);
         } catch (Exception exception) {
             log.error("Failed to save overall score for scorecardId={}", scorecardId, exception);
             writeScoreSaveResponse(response, true, "Score could not be saved");
@@ -3038,7 +3096,8 @@ public class ScorecardController {
                 score.setReportingDate(reportingDate);
                 score.setJustification(justification);
                 persistScoreByStage(score, scoreValue, stage);
-                writeScoreSaveResponse(response);
+                OverallScore overallScore = recalculateAndSaveValueBasedOverallScore(scorecard, reportingDate);
+                writeScoreSaveResponse(response, overallScore);
                 return;
             }
             writeScoreSaveResponse(response, true, "You are not allowed to capture this score at the current stage");
@@ -3153,17 +3212,86 @@ public class ScorecardController {
         }
     }
 
+    private OverallScore recalculateAndSaveValueBasedOverallScore(Scorecard scorecard, ReportingDate reportingDate) {
+        OverallScore overallScore = overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate);
+        if (scorecard == null || reportingDate == null || reportingDate.getId() <= 0) {
+            return overallScore;
+        }
+
+        String hierarchyModel = resolveHierarchyModel(scorecard);
+        List<Target> targetsList = isLegacyHierarchyModel(hierarchyModel)
+                ? attachLegacyTargets(scorecard, gearService.listSelectedGears(scorecard))
+                : targetService.getAllTargetsByScorecard(scorecard.getId());
+        List<ScorecardDisplaySection> displaySections = buildDisplaySections(scorecard, hierarchyModel, targetsList);
+        hydrateDisplayScores(displaySections, Collections.singletonList(reportingDate), hierarchyModel);
+
+        double employeeOverall = 0.0;
+        double managerOverall = 0.0;
+        double agreedOverall = 0.0;
+        boolean legacyHierarchy = isLegacyHierarchyModel(hierarchyModel);
+        for (ScorecardDisplaySection section : displaySections) {
+            if (section == null || section.getRows() == null) {
+                continue;
+            }
+            for (ScorecardDisplayRow row : section.getRows()) {
+                if (row == null || row.getTarget() == null || (legacyHierarchy && !row.isShowOutput())) {
+                    continue;
+                }
+                Score score = row.getScoresByReportingDate().get(reportingDate.getId());
+                if (score == null) {
+                    continue;
+                }
+                double weight = resolveValueBasedOverallWeight(row.getTarget(), hierarchyModel);
+                employeeOverall += (score.getEmployeeScore() * weight) / 100.0;
+                managerOverall += (score.getManagerScore() * weight) / 100.0;
+                agreedOverall += (score.getAgreedScore() * weight) / 100.0;
+            }
+        }
+
+        overallScore.setEmployeeOverall(roundTwoDecimals(employeeOverall));
+        overallScore.setManagerOverall(roundTwoDecimals(managerOverall));
+        overallScore.setAgreedOverall(roundTwoDecimals(agreedOverall));
+        return overallScoreService.saveOverallScore(overallScore);
+    }
+
+    private double resolveValueBasedOverallWeight(Target target, String hierarchyModel) {
+        if (target == null) {
+            return 0.0;
+        }
+        if (isLegacyHierarchyModel(hierarchyModel)
+                && target.getOutput() != null
+                && target.getOutput().getAllocatedWeight() != null) {
+            return target.getOutput().getAllocatedWeight();
+        }
+        if (target.getAllocatedWeight() != null) {
+            return target.getAllocatedWeight();
+        }
+        if (target.getOutput() != null && target.getOutput().getAllocatedWeight() != null) {
+            return target.getOutput().getAllocatedWeight();
+        }
+        return 0.0;
+    }
+
     private void writeScoreSaveResponse(HttpServletResponse response) {
         writeScoreSaveResponse(response, false, null);
     }
 
+    private void writeScoreSaveResponse(HttpServletResponse response, OverallScore overallScore) {
+        writeScoreSaveResponse(response, false, null, overallScore);
+    }
+
     private void writeScoreSaveResponse(HttpServletResponse response, boolean captureBlocked, String message) {
+        writeScoreSaveResponse(response, captureBlocked, message, null);
+    }
+
+    private void writeScoreSaveResponse(HttpServletResponse response, boolean captureBlocked, String message, OverallScore overallScore) {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("alreadyExists", false);
         jsonObject.put("captureBlocked", captureBlocked);
         if (message != null && !message.trim().isEmpty()) {
             jsonObject.put("message", message);
         }
+        putOverallScoreValues(jsonObject, overallScore);
         String jsonString = jsonObject.toString();
 
         try(OutputStream outputStream = response.getOutputStream()){
@@ -3173,6 +3301,27 @@ public class ScorecardController {
         }catch (IOException exception){
             log.error("Failed to write score save response", exception);
         }
+    }
+
+    private void putOverallScoreValues(JSONObject jsonObject, OverallScore overallScore) {
+        if (jsonObject == null || overallScore == null) {
+            return;
+        }
+        jsonObject.put("employeeOverall", formatScoreValue(overallScore.getEmployeeOverall()));
+        jsonObject.put("managerOverall", formatScoreValue(overallScore.getManagerOverall()));
+        jsonObject.put("agreedOverall", formatScoreValue(overallScore.getAgreedOverall()));
+        jsonObject.put("moderatedOverall", formatScoreValue(overallScore.getModeratedOverall()));
+    }
+
+    private String formatScoreValue(Double value) {
+        if (value == null) {
+            return "";
+        }
+        return String.format(Locale.ENGLISH, "%.2f", value);
+    }
+
+    private double roundTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private void sendScorecardEmail(HttpServletRequest request, String recipient, String subject, String body) throws UnsupportedEncodingException, MalformedURLException {

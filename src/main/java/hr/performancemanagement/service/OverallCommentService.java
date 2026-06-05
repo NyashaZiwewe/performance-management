@@ -20,13 +20,13 @@ public class OverallCommentService {
         OverallComment comment;
         if (exists) {
             comment = overallCommentRepository.findOverallCommentByScorecardAndReportingDate(overallComment.getScorecard(),overallComment.getReportingDate());
-            if(overallComment.getOwnerComment() != null && !"".equalsIgnoreCase(overallComment.getOwnerComment())){
+            if(overallComment.getOwnerComment() != null){
                 comment.setOwnerComment(overallComment.getOwnerComment());
             }
-            if(overallComment.getSupervisorComment() != null && !"".equalsIgnoreCase(overallComment.getSupervisorComment())){
+            if(overallComment.getSupervisorComment() != null){
                 comment.setSupervisorComment(overallComment.getSupervisorComment());
             }
-            if(overallComment.getModeratorComment() != null && !"".equalsIgnoreCase(overallComment.getModeratorComment())){
+            if(overallComment.getModeratorComment() != null){
                 comment.setModeratorComment(overallComment.getModeratorComment());
             }
            comment = overallCommentRepository.save(comment);

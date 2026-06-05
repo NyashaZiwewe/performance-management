@@ -298,6 +298,12 @@ public class AssessmentController {
         List<ReportingPeriod> reviewReportingPeriods = reportingPeriodService.listAllReportingPeriods();
         String activeScoreFilter = normalizeScoreFilter(scoreFilter);
         List<Scorecard> filteredScorecards = filterScorecardsForView(scorecards, riskProfilesByScorecardId, activeScoreFilter);
+        List<Long> scorecardIdsForView = new ArrayList<Long>();
+        for (Scorecard scorecard : filteredScorecards) {
+            if (scorecard != null) {
+                scorecardIdsForView.add(scorecard.getId());
+            }
+        }
         modelAndView.addObject("reportingDates", reportingDates);
         modelAndView.addObject("reviewReportingPeriods", reviewReportingPeriods);
         modelAndView.addObject("reviewReportingDateOptions", buildReviewReportingDateOptions(reviewReportingPeriods));
@@ -308,6 +314,7 @@ public class AssessmentController {
         modelAndView.addObject("selectedReportingPeriodLabel", startDate + " to " + endDate);
         modelAndView.addObject("selectedReportingDateLabel", selectedReportingDate == null ? "No reporting date selected" : selectedReportingDate.getEndDate());
         modelAndView.addObject("scoresList", filteredScorecards);
+        modelAndView.addObject("scorecardIdsForView", scorecardIdsForView);
         modelAndView.addObject("filteredScorecardCount", filteredScorecards.size());
         modelAndView.addObject("activeScoreFilter", activeScoreFilter);
         modelAndView.addObject("activeScoreFilterLabel", resolveScoreFilterLabel(activeScoreFilter));

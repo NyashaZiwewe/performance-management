@@ -5,10 +5,12 @@ import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.ProbationDimensionTemplate;
 import hr.performancemanagement.entities.ProbationWorkflowStep;
+import hr.performancemanagement.repository.ProbationAssessmentDimensionRepository;
 import hr.performancemanagement.repository.ProbationDimensionTemplateRepository;
 import hr.performancemanagement.repository.ProbationWorkflowStepRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -19,6 +21,8 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Autowired
     private ProbationDimensionTemplateRepository dimensionTemplateRepository;
+    @Autowired
+    private ProbationAssessmentDimensionRepository assessmentDimensionRepository;
     @Autowired
     private ProbationWorkflowStepRepository workflowStepRepository;
     @Autowired
@@ -43,6 +47,25 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public ProbationDimensionTemplate saveDimensionTemplate(ProbationDimensionTemplate template) {
+        if (template == null) {
+            return null;
+        }
+        if (template.getId() > 0) {
+            ProbationDimensionTemplate existingTemplate = getDimensionTemplateById(template.getId());
+            if (existingTemplate == null) {
+                return null;
+            }
+            existingTemplate.setCode(template.getCode());
+            existingTemplate.setTitle(template.getTitle());
+            existingTemplate.setDescription(template.getDescription());
+            existingTemplate.setDisplayOrder(template.getDisplayOrder() == null ? 100 : template.getDisplayOrder());
+            if (StringUtils.hasText(template.getStatus())) {
+                existingTemplate.setStatus(template.getStatus());
+            } else if (!StringUtils.hasText(existingTemplate.getStatus())) {
+                existingTemplate.setStatus(PMConstants.STATUS_ACTIVE);
+            }
+            return dimensionTemplateRepository.save(existingTemplate);
+        }
         if (template.getClientId() < 1) {
             template.setClientId(commonService.getLoggedUser().getClientId());
         }
@@ -62,6 +85,21 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
             template.setStatus(PMConstants.STATUS_IN_ACTIVE);
             saveDimensionTemplate(template);
         }
+    }
+
+    @Override
+    public boolean deleteDimensionTemplate(long id) {
+        ProbationDimensionTemplate template = getDimensionTemplateById(id);
+        if (template == null) {
+            return false;
+        }
+        if (assessmentDimensionRepository.existsProbationAssessmentDimensionByDimensionTemplate(template)) {
+            template.setStatus(PMConstants.STATUS_IN_ACTIVE);
+            saveDimensionTemplate(template);
+            return false;
+        }
+        dimensionTemplateRepository.delete(template);
+        return true;
     }
 
     @Override

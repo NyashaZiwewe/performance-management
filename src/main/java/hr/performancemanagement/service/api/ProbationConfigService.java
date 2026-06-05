@@ -14,6 +14,7 @@ public interface ProbationConfigService {
     ProbationDimensionTemplate getDimensionTemplateById(long id);
     ProbationDimensionTemplate saveDimensionTemplate(ProbationDimensionTemplate template);
     void deactivateDimensionTemplate(long id);
+    boolean deleteDimensionTemplate(long id);
     List<ProbationWorkflowStep> listAllWorkflowSteps();
     List<ProbationWorkflowStep> listActiveWorkflowSteps();
     ProbationWorkflowStep getWorkflowStepById(long id);

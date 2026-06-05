@@ -42,6 +42,25 @@ function setScoreStatus(message, isError) {
     }
 }
 
+function setScoreText(elementId, value) {
+    var element = document.getElementById(elementId);
+    if (!element || value === undefined || value === null) {
+        return;
+    }
+    element.textContent = value;
+}
+
+function updateOverallScores(response) {
+    setScoreText("employeeOverall", response.employeeOverall);
+    setScoreText("managerOverall", response.managerOverall);
+    setScoreText("agreedOverall", response.agreedOverall);
+    setScoreText("moderatedOverall", response.moderatedOverall);
+    var moderatedInput = document.getElementById("overallScore");
+    if (moderatedInput && response.moderatedOverall !== undefined && response.moderatedOverall !== null) {
+        moderatedInput.value = response.moderatedOverall;
+    }
+}
+
 function notifyScoreRangeError() {
     setScoreStatus("Score must be between 1 and 5.", true);
 }
@@ -78,6 +97,7 @@ function sendScoreRequest(url, payload) {
                 setScoreStatus(response.message || "Score capture is blocked for the current stage.", true);
                 return;
             }
+            updateOverallScores(response);
             setScoreStatus("Changes saved.", false);
         },
         error: function (xhr) {
