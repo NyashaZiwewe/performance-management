@@ -192,13 +192,14 @@
 
                         <div class="col-sm-12">
                             <div class="form-group row">
-                                <label class="col-form-label col-lg-4 required">Is HR Moderator</label>
+                                <label class="col-form-label col-lg-4 required">Legacy HR Moderator</label>
                                 <div class="col-lg-8">
                                     <select class="select2_demo_1 form-control" required th:field="*{role}">
                                         <option selected th:value="${account.role}" th:text="${account.role}"></option>
                                         <option value="NONE">NO</option>
                                         <option value="MODERATOR">YES</option>
                                     </select>
+                                    <small class="form-text text-muted">Use Access Roles to grant or revoke HR workflow rights without changing this employee record.</small>
                                 </div>
                             </div>
                         </div>

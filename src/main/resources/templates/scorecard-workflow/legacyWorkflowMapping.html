@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legacy Workflow Mapping</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet">
+    <link th:href="@{/font-awesome/css/font-awesome.css}" rel="stylesheet">
+    <link th:href="@{/css/animate.css}" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+    <link th:href="@{/css/custom.css}" rel="stylesheet">
+</head>
+<body class="fixed-nav">
+<div id="wrapper">
+    <div th:replace="fragments/template :: side-menu"></div>
+    <div id="page-wrapper" class="gray-bg">
+        <div th:replace="fragments/template :: top-navbar"></div>
+        <div th:replace="fragments/template :: page-heading"></div>
+        <div th:replace="fragments/template :: alerts"></div>
+
+        <div class="wrapper wrapper-content animated fadeInRight">
+            <div class="alert alert-warning">
+                This repair screen only lists scorecards without a workflow stage. Mapping a scorecard enables normal
+                workflow actions. Existing reporting-date workflow stages are never overwritten.
+            </div>
+
+            <form method="post" th:action="@{/legacy-workflow-mapping/assign}">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>Unmapped legacy scorecards</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="alert alert-info" th:if="${unmappedScorecards == null or #lists.isEmpty(unmappedScorecards)}">
+                            All scorecards are linked to workflow stages.
+                        </div>
+                        <div class="table-responsive" th:if="${unmappedScorecards != null and !#lists.isEmpty(unmappedScorecards)}">
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="selectAll"></th>
+                                    <th>Scorecard ID</th>
+                                    <th>Owner</th>
+                                    <th>Department</th>
+                                    <th>Reporting Period</th>
+                                    <th>Model</th>
+                                    <th>Record Status</th>
+                                    <th>Lock Status</th>
+                                    <th>Score History Evidence</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="scorecard : ${unmappedScorecards}">
+                                    <td>
+                                        <input type="checkbox" name="scorecardIds" class="scorecard-selection"
+                                               th:value="${scorecard.id}">
+                                    </td>
+                                    <td th:text="${scorecard.id}"></td>
+                                    <td th:text="${scorecard.owner != null ? scorecard.owner.fullName : 'Owner unavailable'}"></td>
+                                    <td th:text="${scorecard.owner != null and scorecard.owner.department != null ? scorecard.owner.department.name : '-'}"></td>
+                                    <td th:text="${scorecard.reportingPeriod != null ? scorecard.reportingPeriod.startDate + ' - ' + scorecard.reportingPeriod.endDate : 'Reporting period unavailable'}"></td>
+                                    <td th:text="${scorecard.scorecardModel != null ? scorecard.scorecardModel.name : '-'}"></td>
+                                    <td th:text="${scorecard.status}"></td>
+                                    <td th:text="${scorecard.lockStatus}"></td>
+                                    <td th:text="${scoreHistorySummaries.get(scorecard.id)}"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ibox" th:if="${unmappedScorecards != null and !#lists.isEmpty(unmappedScorecards)}">
+                    <div class="ibox-title"><h5>Assign selected scorecards</h5></div>
+                    <div class="ibox-content">
+                        <div class="form-group">
+                            <label class="required">Workflow stage</label>
+                            <select class="form-control" name="workflowStageId" required>
+                                <option value="">Select workflow stage</option>
+                                <option th:each="stage : ${workflowStages}"
+                                        th:value="${stage.id}"
+                                        th:text="${stage.stageOrder + '. ' + stage.name + ' - ' + (stage.statusLabel != null and !stage.statusLabel.isEmpty() ? stage.statusLabel : stage.statusCode)}">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="initializeReportingDateStages" value="true" checked>
+                                Initialize missing OPEN/ACTIVE reporting-date stage records
+                            </label>
+                            <div class="small text-muted">
+                                Existing dated workflow progress will not be changed.
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Reason</label>
+                            <textarea class="form-control" name="reason" maxlength="1000" rows="3" required
+                                      placeholder="Explain why these legacy scorecards should be linked to this stage."></textarea>
+                        </div>
+                        <button class="btn btn-success" type="submit"
+                                onclick="return confirm('Map the selected legacy scorecards to this workflow stage?');">
+                            Assign Workflow Stage
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="ibox">
+                <div class="ibox-title"><h5>Recent legacy workflow mappings</h5></div>
+                <div class="ibox-content table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Scorecard</th>
+                            <th>Owner</th>
+                            <th>Previous Stage</th>
+                            <th>New Stage</th>
+                            <th>Dated Stages Initialized</th>
+                            <th>Performed By</th>
+                            <th>Reason</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${mappingAudit == null or #lists.isEmpty(mappingAudit)}">
+                            <td colspan="8">No manual legacy workflow mappings have been recorded.</td>
+                        </tr>
+                        <tr th:each="audit : ${mappingAudit}">
+                            <td th:text="${audit.dateCreated}"></td>
+                            <td th:text="${audit.scorecard != null ? audit.scorecard.id : '-'}"></td>
+                            <td th:text="${audit.scorecard != null and audit.scorecard.owner != null ? audit.scorecard.owner.fullName : '-'}"></td>
+                            <td th:text="${audit.previousStage != null ? audit.previousStage.name : 'Not assigned'}"></td>
+                            <td th:text="${audit.newStage != null ? audit.newStage.name : '-'}"></td>
+                            <td th:text="${audit.reportingDateStagesInitialized}"></td>
+                            <td th:text="${audit.actor != null ? audit.actor.fullName : '-'}"></td>
+                            <td th:text="${audit.reason}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div th:replace="fragments/template :: footer"></div>
+    </div>
+</div>
+<script th:src="@{/js/jquery-3.6.0.min.js}"></script>
+<script th:src="@{/js/popper.min.js}"></script>
+<script th:src="@{/js/bootstrap.js}"></script>
+<script th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
+<script th:src="@{/js/inspinia.js}"></script>
+<script>
+    (function () {
+        var selectAll = document.getElementById('selectAll');
+        if (!selectAll) {
+            return;
+        }
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.scorecard-selection').forEach(function (checkbox) {
+                checkbox.checked = selectAll.checked;
+            });
+        });
+    })();
+</script>
+</body>
+</html>

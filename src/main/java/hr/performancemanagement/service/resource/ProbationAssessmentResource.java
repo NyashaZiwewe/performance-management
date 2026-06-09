@@ -6,6 +6,7 @@ import hr.performancemanagement.service.api.ProbationAssessmentService;
 import hr.performancemanagement.service.api.ProbationConfigService;
 import hr.performancemanagement.utils.constants.PMConstants;
 import hr.performancemanagement.utils.dto.CommonResponse;
+import hr.performancemanagement.utils.dto.ProbationResultSummary;
 import hr.performancemanagement.utils.wrappers.ProbationDimensionResponseWrapper;
 import hr.performancemanagement.utils.wrappers.RemarksWrapper;
 import lombok.RequiredArgsConstructor;
@@ -177,11 +178,11 @@ public class ProbationAssessmentResource {
 
     @DeleteMapping("/kpis/{kpiId}")
     public ResponseEntity<CommonResponse<Void>> deleteKpi(@PathVariable long kpiId) {
-        probationAssessmentService.deleteKpi(kpiId);
+        boolean deleted = probationAssessmentService.deleteKpi(kpiId);
         return ResponseEntity.ok(CommonResponse.<Void>builder()
-                .isSuccess(true)
+                .isSuccess(deleted)
                 .statusCode(HttpStatus.OK.value())
-                .message("KPI deleted successfully")
+                .message(deleted ? "KPI deleted successfully" : "KPI could not be deleted. Check access, stage, or review history.")
                 .data(null)
                 .build());
     }
@@ -194,6 +195,21 @@ public class ProbationAssessmentResource {
                 .statusCode(HttpStatus.OK.value())
                 .message("Approval history retrieved successfully")
                 .data(approvals)
+                .build());
+    }
+
+    @GetMapping("/{id}/result")
+    public ResponseEntity<CommonResponse<ProbationResultSummary>> getResult(@PathVariable long id) {
+        ProbationAssessment assessment = probationAssessmentService.getAssessmentById(id);
+        if (assessment == null) {
+            throw new ResourceNotFoundException("Probation assessment not found with id " + id);
+        }
+        ProbationResultSummary result = probationAssessmentService.getResultSummary(id);
+        return ResponseEntity.ok(CommonResponse.<ProbationResultSummary>builder()
+                .isSuccess(true)
+                .statusCode(HttpStatus.OK.value())
+                .message("Probation result retrieved successfully")
+                .data(result)
                 .build());
     }
 
@@ -246,6 +262,9 @@ public class ProbationAssessmentResource {
     @PostMapping("/config/dimension-templates")
     public ResponseEntity<CommonResponse<ProbationDimensionTemplate>> saveDimensionTemplate(@RequestBody ProbationDimensionTemplate template) {
         ProbationDimensionTemplate savedTemplate = probationConfigService.saveDimensionTemplate(template);
+        if (savedTemplate == null) {
+            throw new ResourceNotFoundException("Dimension template could not be saved. Check configuration access.");
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(CommonResponse.<ProbationDimensionTemplate>builder()
                 .isSuccess(true)
                 .statusCode(HttpStatus.CREATED.value())
@@ -280,6 +299,9 @@ public class ProbationAssessmentResource {
     public ResponseEntity<CommonResponse<ProbationWorkflowStep>> saveWorkflowStep(@RequestBody ProbationWorkflowStep step) {
         normalizeWorkflowStep(step);
         ProbationWorkflowStep savedStep = probationConfigService.saveWorkflowStep(step);
+        if (savedStep == null) {
+            throw new ResourceNotFoundException("Workflow step could not be saved. Check configuration access.");
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(CommonResponse.<ProbationWorkflowStep>builder()
                 .isSuccess(true)
                 .statusCode(HttpStatus.CREATED.value())

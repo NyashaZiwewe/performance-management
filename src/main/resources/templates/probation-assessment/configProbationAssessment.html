@@ -151,76 +151,18 @@
                 </div>
 
                 <div class="ibox-content border-bottom col-6">
-                    <h4>Workflow Steps</h4>
-                    <form th:action="@{/probation-assessments/save-workflow-step}" method="post" th:object="${workflowStep}">
-                        <div class="form-group">
-                            <label>Step Name</label>
-                            <input class="form-control" th:field="*{name}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Step Order</label>
-                            <input class="form-control" type="number" th:field="*{stepOrder}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Approver Mode</label>
-                            <select class="form-control" id="approverMode" th:field="*{approverMode}" onchange="toggleWorkflowFields()">
-                                <option th:each="mode : ${approverModes}" th:value="${mode}" th:text="${mode}"></option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="accountTypeGroup">
-                            <label>Approver Account Type</label>
-                            <select class="form-control" th:field="*{approverAccountType}">
-                                <option value="">-- Select Account Type --</option>
-                                <option th:each="accountType : ${accountTypes}" th:value="${accountType}" th:text="${accountType}"></option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="sameDivisionGroup">
-                            <label><input type="checkbox" th:field="*{sameDivisionOnly}"> Same Division Only</label>
-                        </div>
-                        <div class="form-group" id="roleGroup">
-                            <label>Approver Role</label>
-                            <select class="form-control" th:field="*{approverRole}">
-                                <option value="">-- Select Role --</option>
-                                <option th:each="role : ${roles}" th:value="${role}" th:text="${role}"></option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="userGroup">
-                            <label>Specific Approver</label>
-                            <select class="select2_demo_1 form-control" th:field="*{approverAccount}">
-                                <option value="">-- Select --</option>
-                                <option th:each="account : ${accountsList}" th:value="${account.id}" th:text="${account.fullName}"></option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <button class="btn btn-success" type="submit">Save Workflow Step</button>
-                        </div>
-                    </form>
-
-                    <table class="table table-striped">
-                        <thead>
-                        <tr>
-                            <th>Order</th>
-                            <th>Step</th>
-                            <th>Mode</th>
-                            <th>Status</th>
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="step : ${workflowSteps}">
-                            <td th:text="${step.stepOrder}"></td>
-                            <td th:text="${step.name}"></td>
-                            <td th:text="${step.approverMode}"></td>
-                            <td th:text="${step.status}"></td>
-                            <td>
-                                <form th:action="@{/probation-assessments/delete-workflow-step}" method="post">
-                                    <input type="hidden" name="id" th:value="${step.id}">
-                                    <button class="btn btn-xs btn-danger" type="submit">Deactivate</button>
-                                </form>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
+                    <h4>Approval Route</h4>
+                    <div class="alert alert-info">
+                        The probation UAT workflow uses a fixed approval route so every contract is reviewed consistently.
+                    </div>
+                    <ol>
+                        <li>Incumbent captures and submits the KPI contract.</li>
+                        <li>Assigned supervisor reviews the KPI contract.</li>
+                        <li>HR approves the KPI contract.</li>
+                        <li>Incumbent captures KPI progress and self-assessment marks.</li>
+                        <li>Assigned supervisor captures supervisor marks and personal dimensions.</li>
+                        <li>HR reviews the calculated result and approves the final evaluation.</li>
+                    </ol>
                 </div>
             </div>
         </div>

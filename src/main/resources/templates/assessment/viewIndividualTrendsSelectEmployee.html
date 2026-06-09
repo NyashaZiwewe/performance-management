@@ -47,7 +47,8 @@
                                     <label>Employee</label>
                                 </div>
                                 <div class="col-lg-8">
-                                    <select class="form-control select2_demo_1" size="20" name="employeeId">
+                                    <select class="form-control select2_demo_1" name="employeeId" required style="width: 100%">
+                                        <option value="">Select employee</option>
                                         <option th:each="account :${accountsList}" th:value="${account.id}"
                                                 th:text="${account.fullName}">Option 1
                                         </option>
@@ -99,7 +100,10 @@
 <script>
 
     $(document).ready(function () {
-        $('.select2_demo_1').select2({});
+        $('.select2_demo_1').select2({
+            placeholder: 'Select employee',
+            allowClear: true
+        });
         $('#submit-btn').prop('disabled', true);
     })
 

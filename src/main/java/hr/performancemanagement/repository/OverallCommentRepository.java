@@ -7,11 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OverallCommentRepository extends JpaRepository<OverallComment, Long> {
 
-    boolean existsOverallCommentByScorecardAndAndReportingDate(Scorecard scorecard, ReportingDate reportingDate);
-    OverallComment findOverallCommentByScorecardAndReportingDate(Scorecard scorecard, ReportingDate reportingDate);
+    Optional<OverallComment> findOverallCommentByScorecardAndReportingDate(Scorecard scorecard, ReportingDate reportingDate);
     List<OverallComment> findOverallCommentsByScorecard(Scorecard scorecard);
 }

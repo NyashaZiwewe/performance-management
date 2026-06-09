@@ -13,4 +13,6 @@ public interface ProbationKpiRepository extends JpaRepository<ProbationKpi, Long
     List<ProbationKpi> findProbationKpisByAssessmentOrderByIdAsc(ProbationAssessment assessment);
 
     ProbationKpi findProbationKpiById(long id);
+
+    ProbationKpi findProbationKpiByIdAndAssessment_ClientId(long id, long clientId);
 }

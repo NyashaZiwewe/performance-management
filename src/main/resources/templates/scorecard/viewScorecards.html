@@ -128,6 +128,11 @@
                             </form>
                             <fieldset class="p2">
                                 <legend class="w-auto">Scorecards Information</legend>
+                                <div class="alert alert-warning" th:if="${unmappedWorkflowScorecardCount != null and unmappedWorkflowScorecardCount > 0}">
+                                    <strong th:text="${unmappedWorkflowScorecardCount}">0</strong>
+                                    scorecard(s) require workflow-stage mapping. Their workflow actions may be unavailable until the workflow migration is completed.
+                                    <a th:if="${canManageLegacyWorkflowMapping}" th:href="@{/legacy-workflow-mapping}" class="alert-link">Open legacy mapping</a>
+                                </div>
                                 <div class="table-responsive" th:fragement="administration">
                                 <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap">
                                     <thead>
@@ -135,17 +140,19 @@
                                         <th>Owner</th>
                                         <th>Reporting Period</th>
                                         <th>Model</th>
-                                        <th>Status</th>
+                                        <th>Record Status</th>
                                         <th>Lock Status</th>
-                                        <th>Stage</th>
-                                        <th>Status</th>
+                                        <th>Workflow Stage</th>
+                                        <th>Workflow Status</th>
                                         <th>Last Updated</th>
                                         <th>Date Created</th>
                                         <th>Actions</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr th:each="scorecard :${scorecards}">
+                                    <tr th:each="scorecard :${scorecards}"
+                                        th:with="workflowStage=${scorecard.approvalStage},
+                                                 workflowStatus=${scorecard.approvalStage != null ? scorecard.approvalStage.statusCode : null}">
                                         <td th:text="${scorecard.owner?.fullName}"></td>
                                         <td th:text="${scorecard.reportingPeriod?.startDate} +' - '+ ${scorecard.reportingPeriod?.endDate}"></td>
                                         <td th:text="${scorecard.scorecardModel?.name}"></td>
@@ -153,6 +160,9 @@
                                             <div th:switch="${scorecard.status}">
                                                 <label class="label label-primary" th:case="ACTIVE" th:text="${scorecard.status}"></label>
                                                 <label class="label label-danger" th:case="IN_ACTIVE" th:text="${scorecard.status}"></label>
+                                                <label class="label label-danger" th:case="INACTIVE">IN_ACTIVE</label>
+                                                <label class="label label-default" th:case="ARCHIVED" th:text="${scorecard.status}"></label>
+                                                <label class="label label-default" th:case="DELETED" th:text="${scorecard.status}"></label>
                                                 <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
                                             </div>
                                         </td>
@@ -160,15 +170,17 @@
                                             <div th:switch="${scorecard.lockStatus}">
                                                 <label class="label label-primary" th:case="OPEN" th:text="${scorecard.lockStatus}"></label>
                                                 <label class="label label-danger" th:case="LOCKED" th:text="${scorecard.lockStatus}"></label>
+                                                <label class="label label-default" th:case="CLOSED" th:text="${scorecard.lockStatus}"></label>
                                                 <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
                                             </div>
                                         </td>
                                         <td>
-                                            <label th:text="${scorecard.approvalStatus != null and approvalStatusStages != null and approvalStatusStages[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusStages[#strings.toUpperCase(scorecard.approvalStatus)] : 'Workflow'}"></label>
+                                            <label th:class="${workflowStage != null ? 'label label-info' : 'label label-warning'}"
+                                                   th:text="${workflowStage != null and workflowStage.name != null and !workflowStage.name.isEmpty() ? workflowStage.name : (workflowStage != null and workflowStage.roleKey != null ? workflowStage.roleKey : 'Stage not assigned')}"></label>
                                         </td>
                                         <td>
-                                            <label th:class="${scorecard.approvalStatus != null and approvalStatusCssClasses[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusCssClasses[#strings.toUpperCase(scorecard.approvalStatus)] : 'label label-danger'}"
-                                                   th:text="${scorecard.approvalStatus != null and approvalStatusLabels != null and approvalStatusLabels[#strings.toUpperCase(scorecard.approvalStatus)] != null ? approvalStatusLabels[#strings.toUpperCase(scorecard.approvalStatus)] : (scorecard.approvalStatus != null ? scorecard.approvalStatus : 'UNKNOWN STATUS')}"></label>
+                                            <label th:class="${workflowStatus != null and approvalStatusCssClasses != null and approvalStatusCssClasses[#strings.toUpperCase(workflowStatus)] != null ? approvalStatusCssClasses[#strings.toUpperCase(workflowStatus)] : (workflowStage != null ? 'label label-info' : 'label label-warning')}"
+                                                   th:text="${workflowStage != null and workflowStage.statusLabel != null and !workflowStage.statusLabel.isEmpty() ? workflowStage.statusLabel : (workflowStatus != null and !workflowStatus.isEmpty() ? workflowStatus : 'Workflow mapping required')}"></label>
                                         </td>
                                         <td th:text="${scorecard.lastUpdate}"></td>
                                         <td th:text="${scorecard.date}"></td>

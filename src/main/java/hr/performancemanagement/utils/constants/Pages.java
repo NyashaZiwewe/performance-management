@@ -8,6 +8,7 @@ public class Pages {
     public static final String VIEW_ACCOUNT = "account/viewAccount";
     public static final String ADD_ACCOUNT = "account/addAccount";
     public static final String EDIT_ACCOUNT = "account/editAccount";
+    public static final String ACCESS_CONTROL = "access-control/manageAccess";
     public static final String VIEW_DIVISIONS = "divisions/viewDivisions";
     public static final String VIEW_DEPARTMENTS = "departments/viewDepartments";
 
@@ -53,6 +54,7 @@ public class Pages {
     public static final String CONFIG_PROBATION_ASSESSMENT = "probation-assessment/configProbationAssessment";
     public static final String VIEW_SYSTEM_SETTINGS = "settings/viewSystemSettings";
     public static final String CONFIG_SCORECARD_WORKFLOW = "scorecard-workflow/configScorecardWorkflow";
+    public static final String LEGACY_WORKFLOW_MAPPING = "scorecard-workflow/legacyWorkflowMapping";
     public static final String AUDIT_REPORTS = "audit/viewAuditLogs";
     public static final String VIEW_SCORES_SELECT_YEAR = "assessment/viewScoresSelectYear";
     public static final String VIEW_SCORECARDS_SELECT_YEAR = "scorecard/viewScoreCardsSelectYear";

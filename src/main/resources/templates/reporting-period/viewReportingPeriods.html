@@ -64,7 +64,6 @@
                                         <th>Metrics / Goals</th>
                                         <th>Reporting Dates</th>
                                         <th></th>
-                                        <th></th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -81,6 +80,8 @@
                                             <div th:switch="${period.status}">
                                                 <label class="label label-primary" th:case="ACTIVE" th:text="${period.status}"></label>
                                                 <label class="label label-danger" th:case="IN_ACTIVE" th:text="${period.status}"></label>
+                                                <label class="label label-danger" th:case="INACTIVE">IN_ACTIVE</label>
+                                                <label class="label label-default" th:case="ARCHIVED" th:text="${period.status}"></label>
                                                 <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
                                             </div>
                                         </td>
@@ -96,13 +97,14 @@
                                         </td>
                                         <td>
                                             <a th:href="@{/reporting-periods/edit-reporting-period/} + ${period.id}">
-                                               <button class="btn btn-danger btn-sm" type="button">Delete</button>
-                                            </a>
-                                        </td>
-                                        <td>
-                                            <a th:href="@{/reporting-periods/edit-reporting-period/} + ${period.id}">
                                                <button class="btn btn-success btn-sm">Edit</button>
                                             </a>
+                                            <form method="post"
+                                                  th:action="@{/reporting-periods/delete-reporting-period/{id}(id=${period.id})}"
+                                                  style="display:inline"
+                                                  onsubmit="return confirm('Delete this reporting period? This cannot be undone if the record is not linked elsewhere.');">
+                                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                            </form>
 
                                         </td>
                                     </tr>
@@ -156,23 +158,23 @@
             buttons: [
                 { extend: 'copy'},
                 {extend: 'csv',
-                    title: 'System Users',
+                    title: 'Reporting Periods',
                     exportOptions: {
                         columns: [0,1,2,3,4,5]
                     }},
                 {extend: 'excel',
-                    title: 'System Users',
+                    title: 'Reporting Periods',
                     exportOptions: {
                         columns: [0,1,2,3,4,5]
                     }},
                 {extend: 'pdf',
-                    title: 'System Users',
+                    title: 'Reporting Periods',
                     exportOptions: {
                         columns: [0,1,2,3,4,5]
                     }},
 
                 {extend: 'print',
-                    title: 'System Users',
+                    title: 'Reporting Periods',
                     exportOptions: {
                         columns: [0,1,2,3,4,5]
                     },

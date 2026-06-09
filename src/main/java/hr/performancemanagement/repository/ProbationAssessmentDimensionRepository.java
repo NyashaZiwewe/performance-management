@@ -18,4 +18,6 @@ public interface ProbationAssessmentDimensionRepository extends JpaRepository<Pr
     boolean existsProbationAssessmentDimensionByDimensionTemplate(ProbationDimensionTemplate dimensionTemplate);
 
     ProbationAssessmentDimension findProbationAssessmentDimensionById(long id);
+
+    ProbationAssessmentDimension findProbationAssessmentDimensionByIdAndAssessment_ClientId(long id, long clientId);
 }

@@ -14,11 +14,18 @@ public class PMConstants {
 
     public static final String LOCK_STATUS_OPEN = "OPEN";
     public static final String LOCK_STATUS_LOCKED = "LOCKED";
+    public static final String LOCK_STATUS_CLOSED = "CLOSED";
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_IN_ACTIVE = "IN_ACTIVE";
     public static final String REPORTING_DATE_STATUS_OPEN = "OPEN";
     public static final String REPORTING_DATE_STATUS_CLOSED = "CLOSED";
+    public static final String REPORTING_ACTIVITY_TARGET_CAPTURE = "TARGET_CAPTURE";
+    public static final String REPORTING_ACTIVITY_SCORE_CAPTURE = "SCORE_CAPTURE";
+    public static final String REPORTING_ACTIVITY_MODERATION = "MODERATION";
+    public static final String REPORTING_ACTIVITY_SCHEDULED = "SCHEDULED";
+    public static final String REPORTING_ACTIVITY_BETWEEN_PERIODS = "BETWEEN_PERIODS";
+    public static final String REPORTING_ACTIVITY_COMPLETED = "COMPLETED";
 
     public static final String APPROVAL_STATUS_NEW = "NEW";
     public static final String APPROVAL_STATUS_PENDING_APPROVAL = "PENDING_APPROVAL";

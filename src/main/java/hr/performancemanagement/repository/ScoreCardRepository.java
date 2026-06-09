@@ -23,6 +23,15 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     Scorecard findScorecardById(long id);
     int countScorecardsByOwnerAndReportingPeriod(Account owner, ReportingPeriod reportingPeriod);
 
+    @Query("SELECT s FROM Scorecard s " +
+            "LEFT JOIN s.client c " +
+            "LEFT JOIN s.owner o " +
+            "LEFT JOIN o.client oc " +
+            "WHERE s.approvalStage IS NULL " +
+            "AND (c.clientId = :clientId OR oc.clientId = :clientId) " +
+            "ORDER BY s.reportingPeriod.id DESC, s.id ASC")
+    List<Scorecard> findUnmappedScorecardsByClientId(@Param("clientId") long clientId);
+
     @Nullable
     @Query("SELECT coalesce(AVG(s.employeeScore), 0) FROM Score s " +
             "LEFT JOIN Target t ON s.target = t " +
@@ -70,20 +79,6 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
             "LEFT JOIN Output o ON s.output = o " +
             "WHERE s.reportingDate = :date AND (g.scorecardId = :scorecardId OR o.scorecard.id = :scorecardId)")
     Double findAverageWeightedScoreByReportingDate(@Param("date") ReportingDate date, @Param("scorecardId") long scorecardId);
-
-    @Query("SELECT COALESCE(g.scorecardId, o.scorecard.id), " +
-            "coalesce(AVG(s.employeeScore), 0), " +
-            "coalesce(AVG(s.managerScore), 0), " +
-            "coalesce(AVG(s.agreedScore), 0), " +
-            "coalesce(AVG(s.moderatedScore), 0), " +
-            "coalesce(AVG(s.weightedScore), 0) " +
-            "FROM Score s " +
-            "LEFT JOIN s.target t " +
-            "LEFT JOIN t.goal g " +
-            "LEFT JOIN s.output o " +
-            "WHERE (g.scorecardId IN :scorecardIds OR o.scorecard.id IN :scorecardIds) " +
-            "GROUP BY COALESCE(g.scorecardId, o.scorecard.id)")
-    List<Object[]> findScoreAveragesByScorecardIds(@Param("scorecardIds") List<Long> scorecardIds);
 
     @Query("SELECT COALESCE(g.scorecardId, o.scorecard.id), s.reportingDate.id, coalesce(AVG(s.weightedScore), 0) " +
             "FROM Score s " +

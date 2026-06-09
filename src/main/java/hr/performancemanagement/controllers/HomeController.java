@@ -78,6 +78,8 @@ public class HomeController {
     ProbationAssessmentService probationAssessmentService;
     @Autowired
     TargetService targetService;
+    @Autowired
+    StrategicObjectiveService strategicObjectiveService;
 
     public HomeController(ReportingPeriodService reportingPeriodService, ScorecardService scorecardService) {
         this.reportingPeriodService = reportingPeriodService;
@@ -87,15 +89,16 @@ public class HomeController {
     @RequestMapping
     public ModelAndView goToHome(@RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
                                  @RequestParam(value = "reportingDateId", required = false) Long reportingDateId,
+                                 @RequestParam(value = "applyFilters", defaultValue = "false") boolean applyFilters,
                                  HttpServletRequest request) {
         ModelAndView modelAndView =  new ModelAndView("index");
         modelAndView.addObject("pageDomain", "Home");
         modelAndView.addObject("pageName", "Home");
         modelAndView.addObject("pageTitle", "Home");
+        modelAndView.addObject("dashboardFiltersApplied", applyFilters);
 
         Account loggedUser = commonService.getLoggedUser();
         boolean adminOrSpecial = commonService.isAdmin() || commonService.hasSpecialRights();
-        addReportingDateConflictAlertForAdmin(loggedUser, request);
         modelAndView.addObject("dashboardAdminOrSpecial", adminOrSpecial);
         modelAndView.addObject("dashboardLoggedUser", loggedUser);
 
@@ -106,7 +109,11 @@ public class HomeController {
         List<ReportingDate> reportingDates = selectedPeriod == null
                 ? Collections.emptyList()
                 : sortReportingDates(Optional.ofNullable(reportingDateService.listAllReportingDates(selectedPeriod)).orElse(Collections.emptyList()));
-        ReportingDate selectedReportingDate = resolveSelectedReportingDate(reportingDates, reportingDateId, selectedPeriod);
+        ReportingDate selectedReportingDate = resolveSelectedReportingDate(
+                reportingDates,
+                reportingDateId,
+                null
+        );
 
         modelAndView.addObject("dashboardReportingPeriods", reportingPeriods);
         modelAndView.addObject("dashboardReportingDates", reportingDates);
@@ -125,6 +132,15 @@ public class HomeController {
             PortletUtils.addMessagesToPage(modelAndView, request);
             return modelAndView;
         }
+
+        if (!applyFilters) {
+            applyDefaultDashboardState(modelAndView);
+            modelAndView.addObject("dashboardAccessScope", "Apply filters to generate dashboard data");
+            PortletUtils.addMessagesToPage(modelAndView, request);
+            return modelAndView;
+        }
+
+        addReportingDateConflictAlertForAdmin(loggedUser, request);
 
         LocalDate periodStart = parseLocalDate(selectedPeriod.getStartDate());
         LocalDate periodEnd = parseLocalDate(selectedPeriod.getEndDate());
@@ -209,6 +225,7 @@ public class HomeController {
         double averageWeightedScore = scoredCount > 0 ? scoreSum / scoredCount : 0;
 
         DashboardObjectiveSeries objectiveSeries = buildDashboardObjectiveSeries(
+                selectedPeriod,
                 scorecards,
                 reportingDates,
                 selectedReportingDate,
@@ -300,11 +317,12 @@ public class HomeController {
         int probationRejected = 0;
         for (ProbationAssessment assessment : assessments) {
             String status = safeText(assessment == null ? null : assessment.getStatus()).toUpperCase(Locale.ENGLISH);
-            if ("AUTHORIZED".equals(status)) {
+            int category = categorizeProbationStatus(status);
+            if (category == 2) {
                 probationAuthorized++;
-            } else if ("PENDING".equals(status)) {
+            } else if (category == 1) {
                 probationPending++;
-            } else if ("REJECTED".equals(status)) {
+            } else if (category == -1) {
                 probationRejected++;
             } else {
                 probationDraft++;
@@ -758,17 +776,16 @@ public class HomeController {
         return snapshotDate == null || !createdLocalDate.isAfter(snapshotDate);
     }
 
-    private DashboardObjectiveSeries buildDashboardObjectiveSeries(List<Scorecard> scorecards,
+    private DashboardObjectiveSeries buildDashboardObjectiveSeries(ReportingPeriod reportingPeriod,
+                                                                   List<Scorecard> scorecards,
                                                                    List<ReportingDate> reportingDates,
                                                                    ReportingDate selectedReportingDate,
                                                                    LocalDate snapshotDate) {
         Map<String, DashboardObjectiveAggregate> aggregates = new LinkedHashMap<>();
         Set<Long> reportingDateIds = resolveDashboardReportingDateIds(reportingDates, selectedReportingDate, snapshotDate);
-        if (scorecards == null || scorecards.isEmpty()) {
-            return new DashboardObjectiveSeries();
-        }
+        seedConfiguredDashboardObjectives(aggregates, reportingPeriod);
 
-        for (Scorecard scorecard : scorecards) {
+        for (Scorecard scorecard : Optional.ofNullable(scorecards).orElse(Collections.emptyList())) {
             if (scorecard == null || scorecard.getId() <= 0) {
                 continue;
             }
@@ -823,12 +840,27 @@ public class HomeController {
         for (Map.Entry<String, DashboardObjectiveAggregate> entry : aggregates.entrySet()) {
             String label = entry.getKey();
             DashboardObjectiveAggregate aggregate = entry.getValue();
-            if (aggregate == null || (!aggregate.hasWeight() && !aggregate.hasScore())) {
+            if (aggregate == null || (!aggregate.isTracked() && !aggregate.hasWeight() && !aggregate.hasScore())) {
                 continue;
             }
             series.add(label, roundTwoDecimals(aggregate.averageWeight()), roundTwoDecimals(aggregate.averageScore()));
         }
         return series;
+    }
+
+    private void seedConfiguredDashboardObjectives(Map<String, DashboardObjectiveAggregate> aggregates,
+                                                   ReportingPeriod reportingPeriod) {
+        if (reportingPeriod == null || isDashboardLegacyHierarchyModel(reportingPeriod.getModel())) {
+            return;
+        }
+        List<StrategicObjective> configuredObjectives = Optional.ofNullable(
+                strategicObjectiveService.listAllStrategicObjectives(reportingPeriod.getId())
+        ).orElse(Collections.emptyList());
+        for (StrategicObjective objective : configuredObjectives) {
+            if (objective != null && StringUtils.hasText(objective.getName())) {
+                getObjectiveAggregate(aggregates, objective.getName()).markTracked();
+            }
+        }
     }
 
     private Set<Long> resolveDashboardReportingDateIds(List<ReportingDate> reportingDates,
@@ -1031,6 +1063,26 @@ public class HomeController {
         return 0;
     }
 
+    private int categorizeProbationStatus(String status) {
+        String normalized = safeText(status).toUpperCase(Locale.ENGLISH);
+        if (PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED.equals(normalized)
+                || PMConstants.PROBATION_STATUS_AUTHORIZED.equals(normalized)
+                || "COMPLETED".equals(normalized)
+                || "CLOSED".equals(normalized)) {
+            return 2;
+        }
+        if (normalized.contains("REJECTED")) {
+            return -1;
+        }
+        if (PMConstants.PROBATION_STATUS_DRAFT.equals(normalized)
+                || PMConstants.PROBATION_STATUS_CONTRACT_CREATED.equals(normalized)
+                || PMConstants.PROBATION_STATUS_KPI_SET.equals(normalized)
+                || normalized.isEmpty()) {
+            return 0;
+        }
+        return 1;
+    }
+
     private boolean isCompletedApprovalStatus(String status) {
         String normalized = safeText(status).toUpperCase(Locale.ENGLISH);
         return "MODERATED_BY_HR".equals(normalized) || "CLOSED".equals(normalized);
@@ -1094,6 +1146,11 @@ public class HomeController {
         private int weightContexts;
         private double totalScore;
         private int scoreContexts;
+        private boolean tracked;
+
+        void markTracked() {
+            tracked = true;
+        }
 
         void addWeight(double weight) {
             totalWeight += weight;
@@ -1111,6 +1168,10 @@ public class HomeController {
 
         boolean hasScore() {
             return scoreContexts > 0;
+        }
+
+        boolean isTracked() {
+            return tracked;
         }
 
         double averageWeight() {

@@ -22,7 +22,7 @@
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom">
                 <div class="form-group row">
-                    <div class="col-lg-12 text-right">
+                    <div class="col-lg-12 text-right" th:if="${canManageProbation}">
                         <a th:href="@{/probation-assessments/config}" class="btn btn-primary">Configure</a>
                         <a th:href="@{/probation-assessments/add-contract}" class="btn btn-success">New Contract</a>
                     </div>
@@ -36,6 +36,7 @@
                             <th>Performance Period</th>
                             <th>Status</th>
                             <th>Current Step</th>
+                            <th>Result</th>
                             <th>Date</th>
                             <th></th>
                         </tr>
@@ -47,13 +48,17 @@
                             <td th:text="${#strings.isEmpty(assessment.performancePeriod) ? (assessment.startDate + ' - ' + assessment.endDate) : assessment.performancePeriod}"></td>
                             <td th:text="${assessment.status}"></td>
                             <td th:text="${assessment.currentStepName}"></td>
+                            <td th:with="result=${resultsByAssessmentId[assessment.id]}">
+                                <div th:text="${result.performanceBand}"></div>
+                                <small th:text="${#numbers.formatDecimal(result.resultMark, 1, 2) + ' / 5 (' + result.resultSource + ')'}"></small>
+                            </td>
                             <td th:text="${assessment.date}"></td>
                             <td>
                                 <a th:href="@{/probation-assessments/view-assessment/{id}(id=${assessment.id})}" class="btn btn-xs btn-primary">Open</a>
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(assessments)}">
-                            <td colspan="7">No probation assessments found.</td>
+                            <td colspan="8">No probation assessments found.</td>
                         </tr>
                         </tbody>
                     </table>

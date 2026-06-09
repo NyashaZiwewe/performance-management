@@ -9,6 +9,7 @@ import hr.performancemanagement.entities.ProbationKpi;
 import hr.performancemanagement.entities.ProbationKpiComment;
 import hr.performancemanagement.entities.ProbationWorkflowStep;
 import hr.performancemanagement.service.api.AccountService;
+import hr.performancemanagement.service.api.AccessControlService;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.PerformanceImprovementPlanService;
 import hr.performancemanagement.service.api.ProbationAssessmentService;
@@ -17,7 +18,9 @@ import hr.performancemanagement.service.api.ReportingPeriodService;
 import hr.performancemanagement.service.api.NotificationService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
 import hr.performancemanagement.utils.constants.Pages;
+import hr.performancemanagement.utils.dto.ProbationResultSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -45,11 +48,9 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -75,6 +76,8 @@ public class ProbationAssessmentController {
     private CommonService commonService;
     @Autowired
     private NotificationService notificationService;
+    @Autowired
+    private AccessControlService accessControlService;
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
         List<Account> accounts = accountService.listAllAccounts();
@@ -108,9 +111,16 @@ public class ProbationAssessmentController {
     @RequestMapping
     public ModelAndView viewAssessments(HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_PROBATION_ASSESSMENTS);
+        List<ProbationAssessment> assessments = probationAssessmentService.listVisibleAssessments();
+        Map<Long, ProbationResultSummary> resultsByAssessmentId = new HashMap<>();
+        for (ProbationAssessment assessment : assessments) {
+            resultsByAssessmentId.put(assessment.getId(), probationAssessmentService.getResultSummary(assessment.getId()));
+        }
         modelAndView.addObject("pageTitle", "View");
-        modelAndView.addObject("assessments", probationAssessmentService.listVisibleAssessments());
+        modelAndView.addObject("assessments", assessments);
+        modelAndView.addObject("resultsByAssessmentId", resultsByAssessmentId);
         modelAndView.addObject("loggedUser", commonService.getLoggedUser());
+        modelAndView.addObject("canManageProbation", canCreateProbationContract(null) || canConfigureProbation());
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -122,6 +132,10 @@ public class ProbationAssessmentController {
 
     @RequestMapping("/add-contract")
     public ModelAndView addProbationContract(HttpServletRequest request) {
+        if (!canCreateProbationContract(null)) {
+            PortletUtils.addErrorMsg("Only HR or an administrator can create probation contracts.", request);
+            return new ModelAndView("redirect:/probation-assessments");
+        }
         ModelAndView modelAndView = new ModelAndView("scorecard/probationContract");
         modelAndView.addObject("pageTitle", "Create Probation Contract");
         modelAndView.addObject("users", accountService.listAllAccounts());
@@ -135,10 +149,35 @@ public class ProbationAssessmentController {
                                         @RequestParam("startDate") String startDate,
                                         @RequestParam("endDate") String endDate) {
         try {
+            if (!canCreateProbationContract(null)) {
+                PortletUtils.addErrorMsg("Only HR or an administrator can create probation contracts.", request);
+                return "redirect:/probation-assessments";
+            }
             Account incumbent = accountService.getAccountById(incumbentId);
             if (incumbent == null) {
                 PortletUtils.addErrorMsg("Selected incumbent not found.", request);
                 return "redirect:/probation-assessments/add-contract";
+            }
+            if (!canCreateProbationContract(incumbent)) {
+                PortletUtils.addErrorMsg("You do not have permission to create a probation contract for this incumbent.", request);
+                return "redirect:/probation-assessments/add-contract";
+            }
+            if (!PMConstants.STATUS_ACTIVE.equalsIgnoreCase(incumbent.getStatus())) {
+                PortletUtils.addErrorMsg("A probation contract can only be created for an active incumbent.", request);
+                return "redirect:/probation-assessments/add-contract";
+            }
+            if (incumbent.getSupervisor() == null) {
+                PortletUtils.addErrorMsg("Assign a supervisor to the incumbent before creating the probation contract.", request);
+                return "redirect:/probation-assessments/add-contract";
+            }
+            if (!PMConstants.STATUS_ACTIVE.equalsIgnoreCase(incumbent.getSupervisor().getStatus())
+                    || incumbent.getSupervisor().getClientId() != incumbent.getClientId()) {
+                PortletUtils.addErrorMsg("Assign an active supervisor from the same client before creating the probation contract.", request);
+                return "redirect:/probation-assessments/add-contract";
+            }
+            if (probationConfigService.listActiveDimensionTemplates().isEmpty()) {
+                PortletUtils.addErrorMsg("Configure at least one active personal dimension before creating a probation contract.", request);
+                return "redirect:/probation-assessments/config";
             }
 
             LocalDate start = LocalDate.parse(startDate);
@@ -157,7 +196,7 @@ public class ProbationAssessmentController {
 
             ProbationAssessment savedAssessment = probationAssessmentService.createAssessment(assessment);
             if (savedAssessment == null) {
-                PortletUtils.addErrorMsg("Probation contract could not be created.", request);
+                PortletUtils.addErrorMsg("Probation contract could not be created. Check for an overlapping open contract.", request);
                 return "redirect:/probation-assessments/add-contract";
             }
 
@@ -182,7 +221,7 @@ public class ProbationAssessmentController {
         boolean canSupervisorApprove = probationAssessmentService.isLoggedUserSupervisor(assessment)
                 && (PMConstants.PROBATION_STATUS_KPI_PENDING_SUPERVISOR_APPROVAL.equalsIgnoreCase(assessment.getStatus())
                 || PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_HR.equalsIgnoreCase(assessment.getStatus()));
-        boolean canHrApprove = isHrUser()
+        boolean canHrApprove = canApproveProbationKpis(assessment)
                 && PMConstants.PROBATION_STATUS_KPI_PENDING_HR_APPROVAL.equalsIgnoreCase(assessment.getStatus());
         Map<Long, List<ProbationKpiComment>> kpiCommentsByKpiId = new HashMap<>();
         for (ProbationKpi kpi : kpis) {
@@ -192,10 +231,11 @@ public class ProbationAssessmentController {
         modelAndView.addObject("assessment", assessment);
         modelAndView.addObject("kpis", kpis);
         modelAndView.addObject("kpiCommentsByKpiId", kpiCommentsByKpiId);
+        modelAndView.addObject("approvalHistory", probationAssessmentService.listApprovalHistory(assessmentId));
         modelAndView.addObject("loggedUser", commonService.getLoggedUser());
         modelAndView.addObject("isOwner", probationAssessmentService.isLoggedUserOwner(assessment));
         modelAndView.addObject("isSupervisor", probationAssessmentService.isLoggedUserSupervisor(assessment));
-        modelAndView.addObject("isHr", isHrUser());
+        modelAndView.addObject("isHr", canApproveProbationKpis(assessment));
         modelAndView.addObject("canEditKpis", probationAssessmentService.isLoggedUserOwner(assessment) && isKpiEditableStatus(assessment.getStatus()));
         modelAndView.addObject("canSubmitKpis", probationAssessmentService.isLoggedUserOwner(assessment) && PMConstants.PROBATION_STATUS_KPI_SET.equalsIgnoreCase(assessment.getStatus()));
         modelAndView.addObject("canSupervisorApprove", canSupervisorApprove);
@@ -281,8 +321,11 @@ public class ProbationAssessmentController {
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
 
-        probationAssessmentService.deleteKpi(kpiId);
-        PortletUtils.addInfoMsg("KPI deleted.", request);
+        if (probationAssessmentService.deleteKpi(kpiId)) {
+            PortletUtils.addInfoMsg("KPI deleted.", request);
+        } else {
+            PortletUtils.addErrorMsg("KPI could not be deleted. Reviewed KPI items must be retained for audit history.", request);
+        }
         return "redirect:/probation-assessments/add-kpis/" + assessmentId;
     }
 
@@ -301,8 +344,18 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Cannot submit without KPI lines.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
+        if (!PMConstants.PROBATION_STATUS_KPI_SET.equalsIgnoreCase(assessment.getStatus())) {
+            PortletUtils.addErrorMsg("KPI contract can only be submitted after it has been saved.", request);
+            return "redirect:/probation-assessments/add-kpis/" + assessmentId;
+        }
+        String contractIssue = findKpiContractIssue(probationAssessmentService.listKpis(assessmentId));
+        if (contractIssue != null) {
+            PortletUtils.addErrorMsg(contractIssue, request);
+            return "redirect:/probation-assessments/add-kpis/" + assessmentId;
+        }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_PENDING_SUPERVISOR_APPROVAL);
+        probationAssessmentService.recordReviewAction(assessmentId, "KPI Contract", PMConstants.PROBATION_ACTION_SUBMITTED, null);
         notifySupervisorKpiSubmission(request, assessment);
         PortletUtils.addInfoMsg("KPI contract submitted to supervisor.", request);
         return "redirect:/probation-assessments/add-kpis/" + assessmentId;
@@ -326,6 +379,7 @@ public class ProbationAssessmentController {
         }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_PENDING_HR_APPROVAL);
+        probationAssessmentService.recordReviewAction(assessmentId, "Supervisor KPI Review", PMConstants.PROBATION_ACTION_APPROVED, null);
         notifyHrKpiSubmission(request, assessment);
         notifyIncumbentHrPendingInformative(request, assessment);
         PortletUtils.addInfoMsg("Supervisor approved KPI contract. Sent to HR.", request);
@@ -350,8 +404,13 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("This assessment is not pending supervisor action.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
+        if (!StringUtils.hasText(remarks)) {
+            PortletUtils.addErrorMsg("A rejection reason is required.", request);
+            return "redirect:/probation-assessments/add-kpis/" + assessmentId;
+        }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_SUPERVISOR);
+        probationAssessmentService.recordReviewAction(assessmentId, "Supervisor KPI Review", PMConstants.PROBATION_ACTION_REJECTED, remarks);
         notifyIncumbentAndSupervisorKpiDecision(request, assessment, "Rejected by Supervisor", remarks, false);
         String msg = StringUtils.hasText(remarks) ? "Supervisor rejected KPI contract: " + remarks : "Supervisor rejected KPI contract.";
         PortletUtils.addInfoMsg(msg, request);
@@ -365,7 +424,7 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Probation assessment not found.", request);
             return "redirect:/probation-assessments";
         }
-        if (!isHrUser()) {
+        if (!canApproveProbationKpis(assessment)) {
             PortletUtils.addErrorMsg("Only HR can approve this stage.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
@@ -373,8 +432,8 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("This assessment is not pending HR approval.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
-
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_APPROVED);
+        probationAssessmentService.recordReviewAction(assessmentId, "HR KPI Review", PMConstants.PROBATION_ACTION_APPROVED, null);
         notifyIncumbentAndSupervisorKpiDecision(request, assessment, "Approved by HR", null, false);
         PortletUtils.addInfoMsg("HR approved KPI contract. Incumbent can now submit evaluation.", request);
         return "redirect:/probation-assessments/evaluate/" + assessmentId;
@@ -389,7 +448,7 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Probation assessment not found.", request);
             return "redirect:/probation-assessments";
         }
-        if (!isHrUser()) {
+        if (!canApproveProbationKpis(assessment)) {
             PortletUtils.addErrorMsg("Only HR can reject this stage.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
@@ -397,8 +456,13 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("This assessment is not pending HR approval.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
+        if (!StringUtils.hasText(remarks)) {
+            PortletUtils.addErrorMsg("A rejection reason is required.", request);
+            return "redirect:/probation-assessments/add-kpis/" + assessmentId;
+        }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_HR);
+        probationAssessmentService.recordReviewAction(assessmentId, "HR KPI Review", PMConstants.PROBATION_ACTION_REJECTED, remarks);
         notifyIncumbentAndSupervisorKpiDecision(request, assessment, "Rejected by HR", remarks, true);
         String msg = StringUtils.hasText(remarks)
                 ? "HR rejected KPI contract and returned it to supervisor: " + remarks
@@ -468,6 +532,8 @@ public class ProbationAssessmentController {
                 || PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(assessment.getStatus())));
         modelAndView.addObject("canSupervisorReview", probationAssessmentService.isLoggedUserSupervisor(assessment)
                 && PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW.equalsIgnoreCase(assessment.getStatus()));
+        modelAndView.addObject("resultSummary", probationAssessmentService.getResultSummary(assessmentId));
+        modelAndView.addObject("approvalHistory", probationAssessmentService.listApprovalHistory(assessmentId));
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -492,14 +558,22 @@ public class ProbationAssessmentController {
             }
 
             List<ProbationKpi> kpis = probationAssessmentService.listKpis(assessmentId);
+            if (kpis.isEmpty()) {
+                throw new IllegalArgumentException("No KPI lines are available for evaluation.");
+            }
             for (ProbationKpi kpi : kpis) {
                 if (kpi.getIncumbentMark() == null) {
                     throw new IllegalArgumentException("Save incumbent mark for KPI " + defaultText(kpi.getName(), "ID " + kpi.getId()) + " before submitting.");
                 }
+                if (kpi.getProgressPercent() == null) {
+                    throw new IllegalArgumentException("Save progress for KPI " + defaultText(kpi.getName(), "ID " + kpi.getId()) + " before submitting.");
+                }
                 ensureMarkRange(kpi.getIncumbentMark(), kpi, "Incumbent mark");
+                ensureProgressRange(kpi.getProgressPercent(), kpi);
             }
 
             probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW);
+            probationAssessmentService.recordReviewAction(assessmentId, "Incumbent Evaluation", PMConstants.PROBATION_ACTION_SUBMITTED, null);
             PortletUtils.addInfoMsg("Evaluation submitted to supervisor.", request);
             return "redirect:/probation-assessments/evaluate/" + assessmentId;
         } catch (Exception exception) {
@@ -584,6 +658,9 @@ public class ProbationAssessmentController {
             }
 
             List<ProbationKpi> kpis = probationAssessmentService.listKpis(assessmentId);
+            if (kpis.isEmpty()) {
+                throw new IllegalArgumentException("No KPI lines are available for supervisor review.");
+            }
             for (ProbationKpi kpi : kpis) {
                 String supervisorMark = sanitizeValue(allRequestParams.get("supervisorMark_" + kpi.getId()));
                 String supervisorComment = sanitizeValue(allRequestParams.get("supervisorComment_" + kpi.getId()));
@@ -593,6 +670,7 @@ public class ProbationAssessmentController {
             }
 
             probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_PERSONAL_DIMENSIONS_IN_PROGRESS);
+            probationAssessmentService.recordReviewAction(assessmentId, "Supervisor Evaluation Review", PMConstants.PROBATION_ACTION_APPROVED, null);
             PortletUtils.addInfoMsg("Supervisor review saved. Continue with personal dimensions.", request);
             return "redirect:/probation-assessments/dimensions/" + assessmentId + "?step=0";
         } catch (Exception exception) {
@@ -614,8 +692,17 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Only the supervisor can reject this step.", request);
             return "redirect:/probation-assessments/evaluate/" + assessmentId;
         }
+        if (!PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW.equalsIgnoreCase(assessment.getStatus())) {
+            PortletUtils.addErrorMsg("Assessment is not awaiting supervisor review.", request);
+            return "redirect:/probation-assessments/evaluate/" + assessmentId;
+        }
+        if (!StringUtils.hasText(remarks)) {
+            PortletUtils.addErrorMsg("A reason for returning the evaluation is required.", request);
+            return "redirect:/probation-assessments/evaluate/" + assessmentId;
+        }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_SUPERVISOR);
+        probationAssessmentService.recordReviewAction(assessmentId, "Supervisor Evaluation Review", PMConstants.PROBATION_ACTION_REJECTED, remarks);
         String msg = StringUtils.hasText(remarks) ? "Evaluation sent back: " + remarks : "Evaluation sent back to incumbent.";
         PortletUtils.addInfoMsg(msg, request);
         return "redirect:/probation-assessments/evaluate/" + assessmentId;
@@ -646,7 +733,7 @@ public class ProbationAssessmentController {
         ProbationAssessmentDimension current = dimensions.get(stepIndex);
 
         boolean isSupervisor = probationAssessmentService.isLoggedUserSupervisor(assessment);
-        boolean isHr = isHrUser();
+        boolean isHr = canApproveFinalProbation(assessment);
         boolean dimensionEditStage = PMConstants.PROBATION_STATUS_PERSONAL_DIMENSIONS_IN_PROGRESS.equalsIgnoreCase(assessment.getStatus())
                 || PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_HR.equalsIgnoreCase(assessment.getStatus());
 
@@ -664,6 +751,8 @@ public class ProbationAssessmentController {
         modelAndView.addObject("canSubmitToHr", isSupervisor && dimensionEditStage && stepIndex == total - 1);
         modelAndView.addObject("showHrActions", isHr && PMConstants.PROBATION_STATUS_EVALUATION_PENDING_HR_APPROVAL.equalsIgnoreCase(assessment.getStatus()));
         modelAndView.addObject("isCompleted", PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED.equalsIgnoreCase(assessment.getStatus()));
+        modelAndView.addObject("resultSummary", probationAssessmentService.getResultSummary(assessmentId));
+        modelAndView.addObject("approvalHistory", probationAssessmentService.listApprovalHistory(assessmentId));
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -746,10 +835,20 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Only the supervisor can submit this stage.", request);
             return "redirect:/probation-assessments/dimensions/" + assessmentId;
         }
+        if (!StringUtils.hasText(generalObservations)) {
+            PortletUtils.addErrorMsg("General observations are required before submission to HR.", request);
+            return "redirect:/probation-assessments/dimensions/" + assessmentId;
+        }
+        String dimensionIssue = findDimensionIssue(probationAssessmentService.listAssessmentDimensions(assessmentId));
+        if (dimensionIssue != null) {
+            PortletUtils.addErrorMsg(dimensionIssue, request);
+            return "redirect:/probation-assessments/dimensions/" + assessmentId;
+        }
 
         assessment.setGeneralObservations(sanitizeValue(generalObservations));
         probationAssessmentService.updateAssessmentCore(assessment);
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_EVALUATION_PENDING_HR_APPROVAL);
+        probationAssessmentService.recordReviewAction(assessmentId, "Personal Dimensions", PMConstants.PROBATION_ACTION_SUBMITTED, generalObservations);
         PortletUtils.addInfoMsg("Personal dimensions and general observations submitted to HR.", request);
         int last = Math.max(probationAssessmentService.listAssessmentDimensions(assessmentId).size() - 1, 0);
         return "redirect:/probation-assessments/dimensions/" + assessmentId + "?step=" + last;
@@ -762,7 +861,7 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Probation assessment not found.", request);
             return "redirect:/probation-assessments";
         }
-        if (!isHrUser()) {
+        if (!canApproveFinalProbation(assessment)) {
             PortletUtils.addErrorMsg("Only HR can approve final probation evaluation.", request);
             return "redirect:/probation-assessments/dimensions/" + assessmentId;
         }
@@ -770,8 +869,21 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Assessment is not awaiting HR final approval.", request);
             return "redirect:/probation-assessments/dimensions/" + assessmentId;
         }
+        ProbationResultSummary resultSummary = probationAssessmentService.getResultSummary(assessmentId);
+        if (!resultSummary.isComplete()) {
+            PortletUtils.addErrorMsg("Final approval is blocked because KPI marks or progress are incomplete.", request);
+            return "redirect:/probation-assessments/dimensions/" + assessmentId;
+        }
+        String dimensionIssue = findDimensionIssue(probationAssessmentService.listAssessmentDimensions(assessmentId));
+        if (dimensionIssue != null || !StringUtils.hasText(assessment.getGeneralObservations())) {
+            PortletUtils.addErrorMsg(dimensionIssue == null
+                    ? "General observations are required before final approval."
+                    : dimensionIssue, request);
+            return "redirect:/probation-assessments/dimensions/" + assessmentId;
+        }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED);
+        probationAssessmentService.recordReviewAction(assessmentId, "HR Final Evaluation", PMConstants.PROBATION_ACTION_APPROVED, resultSummary.getRecommendation());
         PortletUtils.addInfoMsg("HR approved final probation evaluation.", request);
         return "redirect:/probation-assessments/dimensions/" + assessmentId;
     }
@@ -785,12 +897,21 @@ public class ProbationAssessmentController {
             PortletUtils.addErrorMsg("Probation assessment not found.", request);
             return "redirect:/probation-assessments";
         }
-        if (!isHrUser()) {
+        if (!canApproveFinalProbation(assessment)) {
             PortletUtils.addErrorMsg("Only HR can reject final probation evaluation.", request);
+            return "redirect:/probation-assessments/dimensions/" + assessmentId;
+        }
+        if (!PMConstants.PROBATION_STATUS_EVALUATION_PENDING_HR_APPROVAL.equalsIgnoreCase(assessment.getStatus())) {
+            PortletUtils.addErrorMsg("Assessment is not awaiting HR final approval.", request);
+            return "redirect:/probation-assessments/dimensions/" + assessmentId;
+        }
+        if (!StringUtils.hasText(remarks)) {
+            PortletUtils.addErrorMsg("A rejection reason is required.", request);
             return "redirect:/probation-assessments/dimensions/" + assessmentId;
         }
 
         probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_HR);
+        probationAssessmentService.recordReviewAction(assessmentId, "HR Final Evaluation", PMConstants.PROBATION_ACTION_REJECTED, remarks);
         String msg = StringUtils.hasText(remarks) ? "HR requested updates: " + remarks : "HR requested updates to supervisor submission.";
         PortletUtils.addInfoMsg(msg, request);
         return "redirect:/probation-assessments/dimensions/" + assessmentId;
@@ -862,6 +983,10 @@ public class ProbationAssessmentController {
 
     @RequestMapping("/config")
     public ModelAndView config(HttpServletRequest request) {
+        if (!canConfigureProbation()) {
+            PortletUtils.addErrorMsg("Only HR or an administrator can configure probation assessments.", request);
+            return new ModelAndView("redirect:/probation-assessments");
+        }
         ModelAndView modelAndView = new ModelAndView(Pages.CONFIG_PROBATION_ASSESSMENT);
         modelAndView.addObject("pageTitle", "Configuration");
         modelAndView.addObject("dimensionTemplates", probationConfigService.listAllDimensionTemplates());
@@ -874,6 +999,10 @@ public class ProbationAssessmentController {
 
     @RequestMapping(value = "/save-dimension-template", method = RequestMethod.POST)
     public String saveDimensionTemplate(HttpServletRequest request, ProbationDimensionTemplate template) {
+        if (!canConfigureProbation()) {
+            PortletUtils.addErrorMsg("Only HR or an administrator can configure probation assessments.", request);
+            return "redirect:/probation-assessments";
+        }
         boolean update = template != null && template.getId() > 0;
         ProbationDimensionTemplate savedTemplate = probationConfigService.saveDimensionTemplate(template);
         if (savedTemplate == null) {
@@ -886,6 +1015,10 @@ public class ProbationAssessmentController {
 
     @RequestMapping(value = "/delete-dimension-template", method = RequestMethod.POST)
     public String deleteDimensionTemplate(HttpServletRequest request, long id) {
+        if (!canConfigureProbation()) {
+            PortletUtils.addErrorMsg("Only HR or an administrator can configure probation assessments.", request);
+            return "redirect:/probation-assessments";
+        }
         boolean deleted = probationConfigService.deleteDimensionTemplate(id);
         if (deleted) {
             PortletUtils.addInfoMsg("Dimension template deleted.", request);
@@ -897,6 +1030,10 @@ public class ProbationAssessmentController {
 
     @RequestMapping(value = "/save-workflow-step", method = RequestMethod.POST)
     public String saveWorkflowStep(HttpServletRequest request, ProbationWorkflowStep step) {
+        if (!canConfigureProbation()) {
+            PortletUtils.addErrorMsg("Only HR or an administrator can configure probation assessments.", request);
+            return "redirect:/probation-assessments";
+        }
         normalizeWorkflowStep(step);
         probationConfigService.saveWorkflowStep(step);
         PortletUtils.addInfoMsg("Workflow step saved.", request);
@@ -905,6 +1042,10 @@ public class ProbationAssessmentController {
 
     @RequestMapping(value = "/delete-workflow-step", method = RequestMethod.POST)
     public String deleteWorkflowStep(HttpServletRequest request, long id) {
+        if (!canConfigureProbation()) {
+            PortletUtils.addErrorMsg("Only HR or an administrator can configure probation assessments.", request);
+            return "redirect:/probation-assessments";
+        }
         probationConfigService.deactivateWorkflowStep(id);
         PortletUtils.addInfoMsg("Workflow step deactivated.", request);
         return "redirect:/probation-assessments/config";
@@ -931,14 +1072,29 @@ public class ProbationAssessmentController {
                 || PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED.equalsIgnoreCase(status);
     }
 
-    private boolean isHrUser() {
-        Account loggedUser = commonService.getLoggedUser();
-        if (loggedUser == null) {
-            return false;
+    private boolean canCreateProbationContract(Account subject) {
+        if (subject == null) {
+            return accessControlService.hasPermissionForAnyScope(commonService.getLoggedUser(),
+                    AccessPermissions.PROBATION_CREATE_CONTRACT);
         }
-        return "HR".equalsIgnoreCase(loggedUser.getRole())
-                || PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin())
-                || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial());
+        return accessControlService.hasPermission(commonService.getLoggedUser(),
+                AccessPermissions.PROBATION_CREATE_CONTRACT, subject);
+    }
+
+    private boolean canApproveProbationKpis(ProbationAssessment assessment) {
+        return accessControlService.hasPermission(commonService.getLoggedUser(),
+                AccessPermissions.PROBATION_APPROVE_KPI_CONTRACT,
+                assessment == null ? null : assessment.getEmployee());
+    }
+
+    private boolean canApproveFinalProbation(ProbationAssessment assessment) {
+        return accessControlService.hasPermission(commonService.getLoggedUser(),
+                AccessPermissions.PROBATION_APPROVE_FINAL_ASSESSMENT,
+                assessment == null ? null : assessment.getEmployee());
+    }
+
+    private boolean canConfigureProbation() {
+        return accessControlService.hasPermission(AccessPermissions.PROBATION_CONFIGURE);
     }
 
     private PerformanceImprovementPlan createImprovementPlan(ProbationAssessment assessment,
@@ -1057,10 +1213,11 @@ public class ProbationAssessmentController {
                 + "Link: " + link + "\n"
                 + buildKpiReviewSummary(assessment);
 
-        for (Account hrRecipient : resolveHrRecipients(assessment.getClientId())) {
-            if (hasText(hrRecipient.getEmail())) {
-                notificationService.sendUserMessageAsync(hrRecipient.getEmail().trim(), hrRecipient.getFullName(), subject, message);
-            }
+        String hrEmail = commonService.getHREmail();
+        if (hasText(hrEmail)) {
+            notificationService.sendUserMessageAsync(hrEmail.trim(), "HR", subject, message);
+        } else {
+            PortletUtils.addErrorMsg("HR notification was not sent because email.hr is not configured in System Settings.", request);
         }
     }
 
@@ -1166,39 +1323,6 @@ public class ProbationAssessmentController {
         return summary.toString();
     }
 
-    private List<Account> resolveHrRecipients(long clientId) {
-        List<Account> allAccounts = accountService.listAllAccounts();
-        Set<String> emails = new LinkedHashSet<>();
-        List<Account> recipients = new java.util.ArrayList<>();
-        for (Account account : allAccounts) {
-            if (account == null || account.getClientId() != clientId) {
-                continue;
-            }
-            if (!"HR".equalsIgnoreCase(account.getRole())) {
-                continue;
-            }
-            if (!hasText(account.getEmail())) {
-                continue;
-            }
-            String normalized = account.getEmail().trim().toLowerCase(Locale.ENGLISH);
-            if (emails.add(normalized)) {
-                recipients.add(account);
-            }
-        }
-
-        String hrFallbackEmail = commonService.getHREmail();
-        if (hasText(hrFallbackEmail)) {
-            String normalized = hrFallbackEmail.trim().toLowerCase(Locale.ENGLISH);
-            if (emails.add(normalized)) {
-                Account fallback = new Account();
-                fallback.setEmail(hrFallbackEmail.trim());
-                fallback.setFullName("HR");
-                recipients.add(fallback);
-            }
-        }
-        return recipients;
-    }
-
     private String buildAssessmentLink(HttpServletRequest request, long assessmentId) {
         try {
             String host = commonService.getCurrentUrl(request);
@@ -1278,5 +1402,40 @@ public class ProbationAssessmentController {
             throw new IllegalArgumentException("Progress percent must be between 0 and 100 for KPI " + kpiLabel + ".");
         }
         return numericValue;
+    }
+
+    private void ensureProgressRange(double progress, ProbationKpi kpi) {
+        String kpiLabel = (kpi != null && hasText(kpi.getName())) ? kpi.getName().trim() : "ID " + (kpi == null ? "N/A" : kpi.getId());
+        if (progress < 0.0 || progress > 100.0) {
+            throw new IllegalArgumentException("Progress percent must be between 0 and 100 for KPI " + kpiLabel + ".");
+        }
+    }
+
+    private String findKpiContractIssue(List<ProbationKpi> kpis) {
+        if (kpis == null || kpis.isEmpty()) {
+            return "Add at least one KPI before submitting the contract.";
+        }
+        for (ProbationKpi kpi : kpis) {
+            String label = defaultText(kpi.getName(), "KPI ID " + kpi.getId());
+            if (!hasText(kpi.getName()) || !hasText(kpi.getMeasureOfSuccess()) || !hasText(kpi.getTarget())) {
+                return "Complete the KPI name, measure of success, and target for " + label + " before submission.";
+            }
+        }
+        return null;
+    }
+
+    private String findDimensionIssue(List<ProbationAssessmentDimension> dimensions) {
+        if (dimensions == null || dimensions.isEmpty()) {
+            return "At least one personal dimension must be configured and completed.";
+        }
+        for (ProbationAssessmentDimension dimension : dimensions) {
+            if (!hasText(dimension.getStrengths()) && !hasText(dimension.getAreasForImprovement())) {
+                String label = dimension.getDimensionTemplate() == null
+                        ? "a personal dimension"
+                        : defaultText(dimension.getDimensionTemplate().getTitle(), "a personal dimension");
+                return "Capture strengths or areas for improvement for " + label + " before submission.";
+            }
+        }
+        return null;
     }
 }

@@ -639,23 +639,23 @@
                     <div class="col-4">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Owner's Overall Comment</legend>
-                            <textarea th:if="${captureStage == 'EMPLOYEE'}" th:text="${scorecard.ownerComment}" id="ownerComment" class="form-control" oninput="saveComment('owner')"></textarea>
-                            <span th:unless="${captureStage == 'EMPLOYEE'}" th:text="${scorecard.ownerComment}"></span>
+                            <textarea th:if="${captureStage == 'EMPLOYEE'}" th:text="${overallComment.ownerComment}" id="ownerComment" class="form-control" maxlength="1000" oninput="saveComment('owner')"></textarea>
+                            <span th:unless="${captureStage == 'EMPLOYEE'}" th:text="${overallComment.ownerComment}"></span>
                         </fieldset>
                     </div>
 
                     <div class="col-4" th:if="${captureStage == 'MANAGER' || captureStage == 'AGREED' || captureStage == 'MODERATED'}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Supervisor's Overall Comment</legend>
-                            <textarea th:if="${captureStage == 'MANAGER' || captureStage == 'AGREED'}" th:text="${scorecard.supervisorComment}" id="supervisorComment" class="form-control" oninput="saveComment('supervisor')"></textarea>
-                            <span th:if="${captureStage == 'MODERATED'}" th:text="${scorecard.supervisorComment}"></span>
+                            <textarea th:if="${captureStage == 'MANAGER' || captureStage == 'AGREED'}" th:text="${overallComment.supervisorComment}" id="supervisorComment" class="form-control" maxlength="1000" oninput="saveComment('supervisor')"></textarea>
+                            <span th:if="${captureStage == 'MODERATED'}" th:text="${overallComment.supervisorComment}"></span>
                         </fieldset>
                     </div>
 
                     <div class="col-4" th:if="${captureStage == 'MODERATED'}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Moderator's Overall Comment</legend>
-                            <textarea th:text="${scorecard.moderatorComment}" id="moderatorComment" class="form-control" oninput="saveComment('moderator')"></textarea>
+                            <textarea th:text="${overallComment.moderatorComment}" id="moderatorComment" class="form-control" maxlength="1000" oninput="saveComment('moderator')"></textarea>
                         </fieldset>
                     </div>
                 </div>

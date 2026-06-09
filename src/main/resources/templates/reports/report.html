@@ -301,6 +301,310 @@
     .no-break {
         page-break-inside: avoid;
     }
+
+    /* PDF-only visual system. Uses Flying Saucer-compatible table and block layouts. */
+    @page {
+        margin: 12mm 11mm 16mm 11mm;
+        @bottom-left {
+            content: "CONFIDENTIAL | Performance Management";
+            color: #66798a;
+            font-size: 7.5pt;
+            letter-spacing: 0.4px;
+        }
+        @bottom-right {
+            content: "Page " counter(page) " of " counter(pages);
+            color: #66798a;
+            font-size: 7.5pt;
+        }
+    }
+
+    body {
+        color: #18364f;
+        font-size: 9pt;
+        line-height: 1.42;
+    }
+
+    .report-shell {
+        color: #18364f;
+    }
+
+    .hero-table {
+        background: #123f6c;
+        border: 0;
+        border-collapse: separate;
+        color: #ffffff;
+        margin-bottom: 9px;
+    }
+
+    .hero-table td {
+        background: #123f6c;
+        color: #ffffff;
+        padding: 15px 14px;
+    }
+
+    .hero-table .brand-cell {
+        background: #0e3459;
+        border-right: 1px solid #47749b;
+        color: #ffffff;
+        width: 105px;
+    }
+
+    .hero-table .logo {
+        background: #ffffff;
+        border: 4px solid #ffffff;
+        margin-bottom: 7px;
+        max-height: 58px;
+        max-width: 88px;
+        padding: 3px;
+        width: auto;
+    }
+
+    .hero-table .brand-label,
+    .hero-table .kicker,
+    .hero-table .report-subtitle,
+    .hero-table .score-label,
+    .hero-table .score-band {
+        color: #dbeaf6;
+    }
+
+    .hero-table .report-heading h1,
+    .hero-table .score-value {
+        color: #ffffff;
+    }
+
+    .hero-table .report-heading h1 {
+        font-size: 23pt;
+        margin-bottom: 7px;
+    }
+
+    .hero-table .risk-pill {
+        background: #ffffff;
+        border: 0;
+        padding: 5px 8px;
+    }
+
+    .meta-table {
+        border-collapse: separate;
+        border-spacing: 3px;
+        margin-bottom: 10px;
+    }
+
+    .meta-table th,
+    .meta-table td {
+        border: 0;
+        padding: 6px 8px;
+    }
+
+    .meta-table th {
+        background: #eaf3fb;
+        color: #34546d;
+        font-size: 7.3pt;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    .meta-table td {
+        background: #f8fbfe;
+        border-bottom: 1px solid #d9e8f4;
+        color: #18364f;
+        font-weight: bold;
+    }
+
+    .executive-metrics {
+        border-collapse: separate;
+        border-spacing: 5px;
+        margin: 0 0 10px 0;
+        width: 100%;
+    }
+
+    .executive-metrics td {
+        background: #f7fbff;
+        border: 1px solid #d9e8f4;
+        padding: 9px 10px;
+        vertical-align: top;
+        width: 25%;
+    }
+
+    .executive-metric-label {
+        color: #66798a;
+        font-size: 7pt;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+
+    .executive-metric-value {
+        color: #175ea8;
+        font-size: 16pt;
+        font-weight: bold;
+        line-height: 1.1;
+    }
+
+    .executive-metric-detail {
+        color: #516b81;
+        font-size: 7.4pt;
+        margin-top: 3px;
+    }
+
+    .metric-risk-high {
+        border-top: 3px solid #b42318 !important;
+    }
+
+    .metric-risk-medium {
+        border-top: 3px solid #b7791f !important;
+    }
+
+    .metric-risk-low {
+        border-top: 3px solid #1f7a4d !important;
+    }
+
+    .metric-score {
+        border-top: 3px solid #175ea8 !important;
+    }
+
+    .section-title {
+        background: #eaf3fb;
+        border: 0;
+        border-left: 4px solid #175ea8;
+        color: #18364f;
+        font-size: 10pt;
+        letter-spacing: 0.55px;
+        margin: 14px 0 7px 0;
+        padding: 7px 9px;
+        text-transform: uppercase;
+    }
+
+    .section-title::after {
+        color: #7d98ae;
+        content: "  /  Performance Management";
+        font-size: 6.5pt;
+        font-weight: normal;
+        letter-spacing: 0.25px;
+    }
+
+    .section-note {
+        color: #b42318;
+        font-size: 7.2pt;
+        margin: -4px 0 7px 9px;
+    }
+
+    .data-table {
+        border: 1px solid #d9e8f4;
+        margin-bottom: 9px;
+    }
+
+    .data-table th,
+    .data-table td {
+        border-color: #dce8f1;
+        padding: 6px 7px;
+    }
+
+    .data-table th {
+        background: #edf5fb;
+        color: #34546d;
+        font-size: 7.5pt;
+        letter-spacing: 0.15px;
+    }
+
+    .data-table td {
+        color: #18364f;
+    }
+
+    .data-table tr:nth-child(even) td {
+        background: #fbfdff;
+    }
+
+    .decision-callout {
+        background: #f1f8fe;
+        border: 1px solid #b8d4eb;
+        border-left: 4px solid #175ea8;
+        color: #18364f;
+        font-size: 9pt;
+        padding: 10px 11px;
+    }
+
+    .decision-callout strong {
+        color: #175ea8;
+    }
+
+    .driver-table {
+        border: 0;
+        border-collapse: separate;
+        border-spacing: 5px;
+    }
+
+    .driver-table th {
+        border: 0;
+        color: #ffffff;
+        font-size: 8pt;
+        padding: 7px 9px;
+    }
+
+    .driver-table td {
+        border: 1px solid #d9e8f4;
+        padding: 9px 10px;
+    }
+
+    .driver-risk-heading {
+        background: #a93e3e !important;
+    }
+
+    .driver-strength-heading {
+        background: #237852 !important;
+    }
+
+    .driver-risk-cell {
+        background: #fff8f7 !important;
+    }
+
+    .driver-strength-cell {
+        background: #f4fbf7 !important;
+    }
+
+    .exception-table th {
+        background: #fff4d9;
+        color: #7a5518;
+    }
+
+    .exception-table td {
+        background: #fffdf7;
+    }
+
+    .trend-table th {
+        background: #175ea8;
+        color: #ffffff;
+        text-align: center;
+    }
+
+    .trend-table td {
+        color: #175ea8;
+        font-size: 10pt;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    .pip-intro {
+        background: #f1f8fe;
+        border: 1px solid #c6ddec;
+        border-left: 4px solid #175ea8;
+        color: #34546d;
+        padding: 10px 11px;
+    }
+
+    .final-review td:last-child {
+        background: #f7fbff;
+        text-align: center;
+        width: 50px;
+    }
+
+    .footer-note {
+        border-top: 2px solid #175ea8;
+        color: #66798a;
+        font-size: 7.5pt;
+        margin-top: 14px;
+        padding-top: 8px;
+    }
 </style>
 </head>
 
@@ -348,9 +652,38 @@
                             </tr>
                         </table>
 
+                        <table class="executive-metrics no-break">
+                            <tr>
+                                <td class="metric-score">
+                                    <div class="executive-metric-label">Latest Final Score</div>
+                                    <div class="executive-metric-value"
+                                         th:text="${#numbers.formatDecimal(latestWeightedScore, 0, 2) + '%'}">0%</div>
+                                    <div class="executive-metric-detail" th:text="${performanceBand}">Performance band</div>
+                                </td>
+                                <td class="metric-score">
+                                    <div class="executive-metric-label">Score Movement</div>
+                                    <div class="executive-metric-value"
+                                         th:text="${scoreMovement >= 0 ? '+' + #numbers.formatDecimal(scoreMovement, 0, 2) + '%' : #numbers.formatDecimal(scoreMovement, 0, 2) + '%'}">0%</div>
+                                    <div class="executive-metric-detail" th:text="${scoreMovementLabel}">Movement</div>
+                                </td>
+                                <td th:class="${decisionRiskLevel == 'High' ? 'metric-risk-high' : (decisionRiskLevel == 'Medium' ? 'metric-risk-medium' : 'metric-risk-low')}">
+                                    <div class="executive-metric-label">Decision Risk</div>
+                                    <div class="executive-metric-value"
+                                         th:attr="style = ${decisionRiskLevel == 'High' ? 'color:#b42318;' : (decisionRiskLevel == 'Medium' ? 'color:#b7791f;' : 'color:#1f7a4d;')}"
+                                         th:text="${decisionRiskLevel}">Low</div>
+                                    <div class="executive-metric-detail">Management attention level</div>
+                                </td>
+                                <td class="metric-score">
+                                    <div class="executive-metric-label">Open Interventions</div>
+                                    <div class="executive-metric-value" th:text="${outstandingInterventionCount}">0</div>
+                                    <div class="executive-metric-detail">PIPs and action plans requiring follow-up</div>
+                                </td>
+                            </tr>
+                        </table>
+
                         <h4 class="section-title">Executive Decision Summary</h4>
                         <div class="table-responsive">
-                            <table class="data-table">
+                            <table class="data-table trend-table">
                                 <tbody>
                                 <tr>
                                     <th>Latest Final Score</th>
@@ -393,7 +726,7 @@
 
                         <h4 class="section-title">Score Trend</h4>
                         <div class="table-responsive">
-                            <table class="data-table">
+                            <table class="data-table driver-table">
                                 <thead>
                                 <tr>
                                     <th th:each="label : ${scoreTrendLabels}" th:text="${label}"></th>
@@ -412,18 +745,18 @@
                             <table class="data-table">
                                 <thead>
                                 <tr>
-                                    <th>Top Risks</th>
-                                    <th>Top Strengths</th>
+                                    <th class="driver-risk-heading">Top Risks</th>
+                                    <th class="driver-strength-heading">Top Strengths</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <tr>
-                                    <td>
+                                    <td class="driver-risk-cell">
                                         <ul>
                                             <li th:each="item : ${topRiskItems}" th:text="${item}"></li>
                                         </ul>
                                     </td>
-                                    <td>
+                                    <td class="driver-strength-cell">
                                         <ul>
                                             <li th:each="item : ${topStrengthItems}" th:text="${item}"></li>
                                         </ul>
@@ -435,7 +768,7 @@
 
                         <h4 class="section-title">Decision Exceptions</h4>
                         <div class="table-responsive">
-                            <table class="data-table">
+                            <table class="data-table exception-table">
                                 <thead>
                                 <tr>
                                     <th>Low Performing Targets</th>
@@ -750,9 +1083,7 @@
 <!--                            <h5>Incumbent's comment:</h5>-->
 <!--                            <p style="text-align: justify" th:text="${comment.ownerComment}"></p>-->
 <!--                            <h5>Supervisor's comment:</h5>-->
-<!--                            <p style="text-align: justify" th:text="${scorecard.supervisorComment}"></p>-->
 <!--                            <h5>Moderator's comment:</h5>-->
-<!--                            <p style="text-align: justify" th:text="${scorecard.moderatorComment}"></p>-->
 <!--                        </div>-->
                         <h4 class="section-title">Overall Comments</h4>
                         <table class="data-table">

@@ -8,6 +8,7 @@ import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.repository.ReportingPeriodRepository;
+import hr.performancemanagement.repository.ScorecardReportingDateStageRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +29,13 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
     @Autowired
     ReportingPeriodRepository reportingPeriodRepository;
     @Autowired
+    ScorecardReportingDateStageRepository scorecardReportingDateStageRepository;
+    @Autowired
     CommonService cs;
+    @Autowired
+    ScorecardLifecycleService scorecardLifecycleService;
+    @Autowired
+    ReportingDateActivityPeriodService reportingDateActivityPeriodService;
 
     @Override
     public ReportingDate getReportingDateById(long id){
@@ -108,7 +115,25 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
             }
             reportingDate.setStatus(PMConstants.REPORTING_DATE_STATUS_CLOSED);
             reportingDateRepository.save(reportingDate);
+            scorecardLifecycleService.closeScorecardReportingDateStages(reportingDate);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteReportingDate(ReportingDate reportingDate) {
+        if (reportingDate == null || reportingDate.getId() <= 0) {
+            throw new IllegalArgumentException("Reporting date is required.");
+        }
+        ReportingDate resolvedReportingDate = reportingDateRepository.findReportingDateById(reportingDate.getId());
+        if (resolvedReportingDate == null) {
+            throw new IllegalArgumentException("Reporting date could not be found.");
+        }
+
+        scorecardLifecycleService.closeScorecardReportingDateStages(resolvedReportingDate);
+        scorecardReportingDateStageRepository.deleteScorecardReportingDateStagesByReportingDate(resolvedReportingDate);
+        reportingDateActivityPeriodService.deleteActivityPeriods(resolvedReportingDate);
+        reportingDateRepository.delete(resolvedReportingDate);
     }
 
     @Override
@@ -126,7 +151,10 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
             validateOpenReportingDatePeriod(reportingPeriod);
             closeOpenReportingDates(reportingPeriod, reportingDate.getId());
         }
-        reportingDateRepository.save(reportingDate);
+        ReportingDate savedReportingDate = reportingDateRepository.save(reportingDate);
+        if (!PMConstants.REPORTING_DATE_STATUS_OPEN.equalsIgnoreCase(status)) {
+            scorecardLifecycleService.closeScorecardReportingDateStages(savedReportingDate);
+        }
     }
 
     private String normalizeStatus(String status) {
@@ -179,6 +207,7 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
             }
             reportingDate.setStatus(PMConstants.REPORTING_DATE_STATUS_CLOSED);
             reportingDateRepository.save(reportingDate);
+            scorecardLifecycleService.closeScorecardReportingDateStages(reportingDate);
         }
     }
 

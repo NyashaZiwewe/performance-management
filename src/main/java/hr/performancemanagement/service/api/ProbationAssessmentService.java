@@ -3,6 +3,7 @@ package hr.performancemanagement.service.api;
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.*;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.dto.ProbationResultSummary;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -24,8 +25,9 @@ public interface ProbationAssessmentService {
     ProbationKpi saveKpiFlag(long kpiId, String flagReason);
     List<ProbationKpiComment> listKpiComments(long kpiId);
     ProbationKpiComment saveKpiComment(long kpiId, String message);
-    void deleteKpi(long kpiId);
+    boolean deleteKpi(long kpiId);
     List<ProbationAssessmentApproval> listApprovalHistory(long assessmentId);
+    ProbationAssessmentApproval recordReviewAction(long assessmentId, String stepName, String action, String remarks);
     boolean submitAssessment(long assessmentId, String remarks);
     boolean approveAssessment(long assessmentId, String remarks);
     boolean rejectAssessment(long assessmentId, String remarks);
@@ -33,4 +35,5 @@ public interface ProbationAssessmentService {
     boolean canLoggedUserApprove(ProbationAssessment assessment);
     boolean isLoggedUserOwner(ProbationAssessment assessment);
     boolean isLoggedUserSupervisor(ProbationAssessment assessment);
+    ProbationResultSummary getResultSummary(long assessmentId);
 }

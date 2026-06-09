@@ -826,6 +826,166 @@ html.theme-dark body .sidebar-divider hr {
     justify-content: flex-end;
 }
 
+.filter-results-prompt {
+    align-items: center;
+    background: rgba(23, 94, 168, 0.08);
+    border: 1px dashed rgba(23, 94, 168, 0.35);
+    border-radius: 8px;
+    color: #25445f;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    min-height: 150px;
+    padding: 24px;
+    text-align: center;
+}
+
+.filter-results-prompt .fa {
+    color: #175ea8;
+    font-size: 20px;
+}
+
+.filter-loading-overlay {
+    align-items: center;
+    backdrop-filter: blur(4px);
+    background: rgba(10, 25, 40, 0.68);
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    left: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: fixed;
+    right: 0;
+    top: 0;
+    padding: 24px;
+    transition: opacity 0.2s ease;
+    visibility: hidden;
+    z-index: 10000;
+}
+
+.filter-loading-overlay[hidden] {
+    display: none !important;
+}
+
+.filter-loading-overlay.is-visible {
+    opacity: 1;
+    pointer-events: all;
+    visibility: visible;
+}
+
+.filter-loading-card {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(7, 25, 43, 0.38);
+    color: #20384b;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    max-width: 440px;
+    padding: 34px 38px 30px;
+    text-align: center;
+    width: 100%;
+}
+
+.filter-loading-card strong {
+    color: #16324a;
+    font-size: 20px;
+    line-height: 1.3;
+}
+
+.filter-loading-card span {
+    color: #667085;
+    font-size: 13px;
+}
+
+.filter-loading-visual {
+    align-items: center;
+    background: linear-gradient(145deg, #175ea8, #2f80d0);
+    border-radius: 50%;
+    box-shadow: 0 9px 24px rgba(23, 94, 168, 0.3);
+    display: flex;
+    height: 66px;
+    justify-content: center;
+    margin-bottom: 4px;
+    position: relative;
+    width: 66px;
+}
+
+.filter-loading-visual::after {
+    animation: filter-loading-pulse 1.5s ease-out infinite;
+    border: 2px solid rgba(47, 128, 208, 0.42);
+    border-radius: 50%;
+    content: "";
+    inset: -8px;
+    position: absolute;
+}
+
+.filter-loading-icon {
+    color: #ffffff;
+    font-size: 26px;
+}
+
+.filter-loading-card .filter-loading-eyebrow {
+    color: #175ea8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-top: 5px;
+    text-transform: uppercase;
+}
+
+.filter-loading-progress {
+    background: #e9f0f7;
+    border-radius: 999px;
+    height: 5px;
+    margin-top: 10px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.filter-loading-progress span {
+    animation: filter-loading-progress 1.35s ease-in-out infinite;
+    background: linear-gradient(90deg, #175ea8, #55a5e8);
+    border-radius: inherit;
+    display: block;
+    height: 100%;
+    width: 45%;
+}
+
+.pm-form-submitting button[type="submit"],
+.pm-form-submitting button:not([type]),
+.pm-form-submitting input[type="submit"] {
+    cursor: wait !important;
+    pointer-events: none;
+}
+
+.pm-submit-loading {
+    opacity: 0.88;
+}
+
+@keyframes filter-loading-pulse {
+    0% {
+        opacity: 0.75;
+        transform: scale(0.86);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.22);
+    }
+}
+
+@keyframes filter-loading-progress {
+    0% {
+        transform: translateX(-110%);
+    }
+    100% {
+        transform: translateX(245%);
+    }
+}
+
 .dashboard-scope-summary {
     margin-top: 12px;
     padding-top: 10px;
@@ -946,6 +1106,34 @@ html.theme-dark body .dashboard-metric-card {
     background: linear-gradient(180deg, rgba(29, 43, 61, 0.98), rgba(24, 36, 51, 0.98));
     border-color: var(--dark-line);
     color: var(--dark-ink) !important;
+}
+
+html.theme-dark body .filter-results-prompt {
+    background: rgba(82, 145, 207, 0.12);
+    border-color: rgba(124, 174, 224, 0.38);
+    color: var(--dark-ink);
+}
+
+html.theme-dark body .filter-loading-card {
+    border-color: rgba(124, 174, 224, 0.18);
+    background: var(--dark-surface-2);
+    color: var(--dark-ink);
+}
+
+html.theme-dark body .filter-loading-card strong {
+    color: var(--dark-ink);
+}
+
+html.theme-dark body .filter-loading-card span {
+    color: var(--dark-muted);
+}
+
+html.theme-dark body .filter-loading-card .filter-loading-eyebrow {
+    color: #8fc7f4;
+}
+
+html.theme-dark body .filter-loading-progress {
+    background: rgba(143, 199, 244, 0.15);
 }
 
 html.theme-dark body .dashboard-metric-title,

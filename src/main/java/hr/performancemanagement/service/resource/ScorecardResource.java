@@ -38,6 +38,7 @@ public class ScorecardResource {
     private final ValueBasedScoreService valueBasedScoreService;
     private final EvidenceService evidenceService;
     private final ScorecardWorkflowService scorecardWorkflowService;
+    private final ScorecardLifecycleService scorecardLifecycleService;
 
     @GetMapping("/client/{clientId}")
     public ResponseEntity<CommonResponse<List<Scorecard>>> listByClientId(@PathVariable long clientId) {
@@ -123,6 +124,7 @@ public class ScorecardResource {
 
     @PutMapping("/{id}")
     public ResponseEntity<CommonResponse<Scorecard>> update(@PathVariable long id, @RequestBody Scorecard payload) {
+        ensureAdministrativeStatusAccess();
         Scorecard scorecard = scorecardService.getScorecardById(id);
         if (scorecard == null) {
             throw new ResourceNotFoundException("Scorecard not found with id " + id);
@@ -161,10 +163,6 @@ public class ScorecardResource {
         if (hasText(payload.getLockStatus())) {
             scorecard.setLockStatus(payload.getLockStatus());
         }
-
-        scorecard.setOwnerComment(payload.getOwnerComment());
-        scorecard.setSupervisorComment(payload.getSupervisorComment());
-        scorecard.setModeratorComment(payload.getModeratorComment());
 
         Scorecard updatedScorecard = scorecardService.saveScorecard(scorecard);
         return ResponseEntity.ok(CommonResponse.<Scorecard>builder()
@@ -431,6 +429,10 @@ public class ScorecardResource {
     @PostMapping("/scores/value-based/moderated")
     public ResponseEntity<CommonResponse<Score>> saveValueBasedModeratedScore(@RequestBody Score score) {
         normalizeScoreReferences(score);
+        Scorecard scorecard = resolveScorecard(score.getTarget());
+        if (scorecard == null || !commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
+            throw new BadRequestException("You are not allowed to capture moderated scores for this scorecard");
+        }
         Score savedScore = valueBasedScoreService.saveModeratedScore(score);
         return ResponseEntity.status(HttpStatus.CREATED).body(CommonResponse.<Score>builder()
                 .isSuccess(true)
@@ -542,6 +544,7 @@ public class ScorecardResource {
             long id,
             StatusUpdateWrapper wrapper,
             String field) {
+        ensureAdministrativeStatusAccess();
         Scorecard scorecard = scorecardService.getScorecardById(id);
         if (scorecard == null) {
             throw new ResourceNotFoundException("Scorecard not found with id " + id);
@@ -550,13 +553,10 @@ public class ScorecardResource {
             throw new BadRequestException("Status value is required");
         }
 
-        if ("status".equals(field)) {
-            scorecard.setStatus(wrapper.getStatus().trim());
-        } else if ("approvalStatus".equals(field)) {
-            scorecard.setApprovalStatus(wrapper.getStatus().trim());
-        } else if ("lockStatus".equals(field)) {
-            scorecard.setLockStatus(wrapper.getStatus().trim());
-        }
+        String recordStatus = "status".equals(field) ? wrapper.getStatus().trim() : null;
+        String approvalStatus = "approvalStatus".equals(field) ? wrapper.getStatus().trim() : null;
+        String lockStatus = "lockStatus".equals(field) ? wrapper.getStatus().trim() : null;
+        scorecardLifecycleService.applyStatusTransition(scorecard, recordStatus, approvalStatus, lockStatus);
 
         Scorecard updatedScorecard = scorecardService.saveScorecard(scorecard);
         return ResponseEntity.ok(CommonResponse.<Scorecard>builder()
@@ -569,5 +569,24 @@ public class ScorecardResource {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private Scorecard resolveScorecard(Target target) {
+        if (target == null) {
+            return null;
+        }
+        if (target.getOutput() != null && target.getOutput().getScorecard() != null) {
+            return target.getOutput().getScorecard();
+        }
+        if (target.getGoal() != null && target.getGoal().getScorecardId() > 0) {
+            return scorecardService.getScorecardById(target.getGoal().getScorecardId());
+        }
+        return null;
+    }
+
+    private void ensureAdministrativeStatusAccess() {
+        if (!commonService.isAdmin() && !commonService.hasSpecialRights()) {
+            throw new BadRequestException("Only an administrator can use generic scorecard status update endpoints");
+        }
     }
 }

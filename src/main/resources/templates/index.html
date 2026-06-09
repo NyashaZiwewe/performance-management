@@ -12,9 +12,169 @@
     <link href="../static/css/animate.css" rel="stylesheet" th:href="@{/css/animate.css}">
     <link href="../static/css/style.css" rel="stylesheet" th:href="@{/css/style.css}">
     <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
+    <style>
+        /* Kept page-local so the generation overlay is styled before external CSS finishes loading. */
+        #dashboardGenerationOverlay {
+            align-items: center !important;
+            backdrop-filter: blur(5px);
+            background: rgba(8, 24, 40, 0.72) !important;
+            bottom: 0 !important;
+            display: none;
+            justify-content: center !important;
+            left: 0 !important;
+            padding: 24px !important;
+            position: fixed !important;
+            right: 0 !important;
+            top: 0 !important;
+            z-index: 2147483647 !important;
+        }
+
+        #dashboardGenerationOverlay.is-visible {
+            display: flex !important;
+        }
+
+        .dashboard-generation-panel {
+            align-items: center;
+            animation: dashboard-generation-enter 0.22s ease-out;
+            background: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            border-radius: 20px;
+            box-shadow: 0 28px 80px rgba(3, 18, 31, 0.42);
+            color: #18364f;
+            display: flex;
+            flex-direction: column;
+            max-width: 460px;
+            padding: 38px 42px 34px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .dashboard-generation-icon {
+            align-items: center;
+            background: linear-gradient(145deg, #175ea8, #3b91dc);
+            border-radius: 50%;
+            box-shadow: 0 12px 30px rgba(23, 94, 168, 0.32);
+            color: #ffffff;
+            display: flex;
+            font-size: 29px;
+            height: 72px;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            width: 72px;
+        }
+
+        .dashboard-generation-icon::after {
+            animation: dashboard-generation-pulse 1.45s ease-out infinite;
+            border: 2px solid rgba(59, 145, 220, 0.5);
+            border-radius: 50%;
+            content: "";
+            inset: -9px;
+            position: absolute;
+        }
+
+        .dashboard-generation-kicker {
+            color: #175ea8;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.11em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .dashboard-generation-panel h2 {
+            color: #18364f;
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.3;
+            margin: 0 0 10px;
+        }
+
+        .dashboard-generation-panel p {
+            color: #66798a;
+            font-size: 14px;
+            line-height: 1.55;
+            margin: 0;
+        }
+
+        .dashboard-generation-progress {
+            background: #e7eff7;
+            border-radius: 999px;
+            height: 6px;
+            margin-top: 24px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .dashboard-generation-progress span {
+            animation: dashboard-generation-progress 1.25s ease-in-out infinite;
+            background: linear-gradient(90deg, #175ea8, #65b5f3);
+            border-radius: inherit;
+            display: block;
+            height: 100%;
+            width: 42%;
+        }
+
+        @keyframes dashboard-generation-enter {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes dashboard-generation-pulse {
+            from {
+                opacity: 0.8;
+                transform: scale(0.86);
+            }
+            to {
+                opacity: 0;
+                transform: scale(1.24);
+            }
+        }
+
+        @keyframes dashboard-generation-progress {
+            from {
+                transform: translateX(-110%);
+            }
+            to {
+                transform: translateX(250%);
+            }
+        }
+
+        html.theme-dark .dashboard-generation-panel {
+            background: #172331;
+            border-color: rgba(124, 174, 224, 0.2);
+            color: #edf4fa;
+        }
+
+        html.theme-dark .dashboard-generation-panel h2 {
+            color: #edf4fa;
+        }
+
+        html.theme-dark .dashboard-generation-panel p {
+            color: #aebdca;
+        }
+    </style>
 </head>
 
 <body class="fixed-nav">
+
+<div id="dashboardGenerationOverlay" role="status" aria-hidden="true" aria-live="polite" style="display: none;">
+    <div class="dashboard-generation-panel">
+        <div class="dashboard-generation-icon" aria-hidden="true">
+            <i class="fa fa-line-chart"></i>
+        </div>
+        <div class="dashboard-generation-kicker">Dashboard update in progress</div>
+        <h2>Generating filtered dashboard</h2>
+        <p>Please wait while the filtered dashboard data and insights are prepared.</p>
+        <div class="dashboard-generation-progress" aria-hidden="true"><span></span></div>
+    </div>
+</div>
 
 <div id="wrapper">
     <div th:replace="fragments/template :: side-menu"></div>
@@ -27,7 +187,9 @@
 
             <div class="ibox dashboard-filter-panel">
                 <div class="ibox-content">
-                    <form th:action="@{/}" method="get" class="dashboard-filter-form">
+                    <form th:action="@{/}" method="get" class="dashboard-filter-form js-apply-filters-form"
+                          data-submit-guard="off">
+                        <input type="hidden" name="applyFilters" value="true">
                         <div class="form-group">
                             <label for="dashboardPeriod">Reporting Period</label>
                             <select id="dashboardPeriod" name="reportingPeriodId" class="form-control">
@@ -63,6 +225,12 @@
                 </div>
             </div>
 
+            <div class="filter-results-prompt" th:unless="${dashboardFiltersApplied}">
+                <i class="fa fa-filter" aria-hidden="true"></i>
+                <strong>Select the required filters and click Apply Filters to generate the dashboard.</strong>
+            </div>
+
+            <div th:if="${dashboardFiltersApplied}">
             <div class="dashboard-metric-grid">
                 <a class="dashboard-metric-card" th:href="@{/scorecards(reportingPeriodId=${dashboardSelectedPeriodId})}">
                     <span class="dashboard-metric-icon"><i class="fa fa-balance-scale"></i></span>
@@ -131,6 +299,9 @@
                         </div>
                         <div class="ibox-content">
                             <canvas id="objectiveChart" height="120" role="img" aria-describedby="objectiveChartSummary"></canvas>
+                            <div id="objectiveChartEmpty" class="alert alert-info m-t-sm" style="display: none">
+                                No strategic objective data is available for the selected reporting period and date.
+                            </div>
                             <p id="objectiveChartSummary" class="chart-sr-summary"
                                th:text="${'Objectives tracked: ' + dashboardStrategicObjectiveCount + '. Average final score: ' + #numbers.formatDecimal(dashboardAverageWeightedScore, 1, 2) + '%'}">
                                 Objectives tracked: 0. Average final score: 0%.
@@ -256,6 +427,7 @@
                     </div>
                 </div>
             </div>
+            </div>
 
         </div>
 
@@ -290,6 +462,30 @@
             $('#dashboardDate').val('');
         });
 
+        $('.js-apply-filters-form').on('submit', function (event) {
+            if (this.dataset.submitting === 'true') {
+                event.preventDefault();
+                return;
+            }
+            if (!this.checkValidity()) {
+                return;
+            }
+            this.dataset.submitting = 'true';
+            $('#dashboardGenerationOverlay').addClass('is-visible').css('display', 'flex').attr('aria-hidden', 'false');
+            $(this).find('button[type="submit"]')
+                .prop('disabled', true)
+                .html('<i class="fa fa-spinner fa-spin"></i> Generating...');
+            if (window.Pace) {
+                window.Pace.restart();
+            }
+        });
+
+        window.addEventListener('pageshow', function () {
+            $('#dashboardGenerationOverlay').removeClass('is-visible').css('display', 'none').attr('aria-hidden', 'true');
+            $('.js-apply-filters-form').removeAttr('data-submitting');
+            $('.js-apply-filters-form button[type="submit"]').prop('disabled', false).text('Apply Filters');
+        });
+
         const objectiveLabels = [[${dashboardStrategicObjectives}]];
         const objectiveWeights = [[${dashboardWeightList}]];
         const objectiveScores = [[${dashboardScoreList}]];
@@ -308,7 +504,11 @@
         const workstreamCompleted = [[${dashboardWorkstreamCompleted}]];
 
         const objectiveCtx = document.getElementById("objectiveChart");
-        if (objectiveCtx) {
+        const objectiveEmpty = !Array.isArray(objectiveLabels) || objectiveLabels.length === 0;
+        if (objectiveEmpty) {
+            $('#objectiveChart').hide();
+            $('#objectiveChartEmpty').show();
+        } else if (objectiveCtx) {
             new Chart(objectiveCtx.getContext("2d"), {
                 type: 'bar',
                 data: {

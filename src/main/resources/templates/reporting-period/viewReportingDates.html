@@ -58,12 +58,19 @@
             </div>
 
             <div class="ibox-content">
+                <div class="alert alert-info">
+                  Activity periods control which scorecard actions are available. Periods cannot overlap, and each activity period's last date is its cutoff date.
+                  Reporting dates without configured activity periods continue using the existing workflow until periods are added.
+                </div>
                 <div class="table-responsive" th:fragement="administration">
                   <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap">
                     <thead>
                     <tr>
                       <th>Reporting Date</th>
                       <th>Status</th>
+                      <th>Current Activity</th>
+                      <th>Progress</th>
+                      <th>Activity Periods / Cutoffs</th>
                       <th></th>
                     </tr>
                     </thead>
@@ -79,10 +86,95 @@
                               th:text="${reportingDate.status != null ? reportingDate.status : 'CLOSED'}">CLOSED</span>
                       </td>
                       <td>
-                        <button class="btn btn-danger btn-sm" type="button" data-toggle="modal" data-target="#exampleModal">Delete</button>
+                        <strong th:text="${currentActivityByReportingDateId.get(reportingDate.id)}">Not configured</strong>
+                      </td>
+                      <td th:with="progress=${activityProgressByReportingDateId.get(reportingDate.id)}">
+                        <span th:text="${progress != null ? progress.message : 'No progress available.'}">Progress</span>
+                        <div th:if="${progress != null and progress.configured and progress.cutoffDate != null}">
+                          <small class="text-muted" th:text="${'Current/next cutoff: ' + progress.cutoffDate}">Cutoff</small>
+                        </div>
+                      </td>
+                      <td style="min-width: 520px;">
+                        <div th:each="period : ${activityPeriodsByReportingDateId.get(reportingDate.id)}"
+                             class="well well-sm m-b-sm">
+                          <form method="post" th:action="@{/reporting-periods/save-activity-period}" th:if="${canManageActivityPeriods}">
+                            <input type="hidden" name="id" th:value="${period.id}">
+                            <input type="hidden" name="reportingDate.id" th:value="${reportingDate.id}">
+                            <div class="row">
+                              <div class="col-md-4">
+                                <label>Activity</label>
+                                <select name="activityType" class="form-control input-sm">
+                                  <option value="TARGET_CAPTURE" th:selected="${period.activityType == 'TARGET_CAPTURE'}">Target Capture &amp; Approval</option>
+                                  <option value="SCORE_CAPTURE" th:selected="${period.activityType == 'SCORE_CAPTURE'}">Score Capture &amp; Agreement</option>
+                                  <option value="MODERATION" th:selected="${period.activityType == 'MODERATION'}">Moderation</option>
+                                </select>
+                              </div>
+                              <div class="col-md-3">
+                                <label>Start Date</label>
+                                <input type="date" name="startDate" class="form-control input-sm" th:value="${period.startDate}" required>
+                              </div>
+                              <div class="col-md-3">
+                                <label>Last Date / Cutoff</label>
+                                <input type="date" name="endDate" class="form-control input-sm" th:value="${period.endDate}" required>
+                              </div>
+                              <div class="col-md-2">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-primary btn-sm btn-block">Save</button>
+                              </div>
+                            </div>
+                          </form>
+                          <div th:if="${!canManageActivityPeriods}">
+                            <strong th:text="${period.activityType == 'TARGET_CAPTURE' ? 'Target Capture & Approval' : (period.activityType == 'SCORE_CAPTURE' ? 'Score Capture & Agreement' : 'Moderation')}">Activity</strong>
+                            <span th:text="${period.startDate + ' to ' + period.endDate + ' (cutoff)'}">Period</span>
+                          </div>
+                          <form method="post"
+                                th:if="${canManageActivityPeriods}"
+                                th:action="@{/reporting-periods/delete-activity-period/{id}(id=${period.id})}"
+                                class="m-t-xs"
+                                onsubmit="return confirm('Delete this activity period? Actions for this stage may become unrestricted if no periods remain.');">
+                            <input type="hidden" name="reportingPeriodId" th:value="${reportingPeriod.id}">
+                            <button type="submit" class="btn btn-danger btn-xs">Delete Period</button>
+                          </form>
+                        </div>
+
+                        <form method="post"
+                              th:if="${canManageActivityPeriods}"
+                              th:action="@{/reporting-periods/save-activity-period}"
+                              class="well well-sm">
+                          <input type="hidden" name="reportingDate.id" th:value="${reportingDate.id}">
+                          <strong>Add Activity Period</strong>
+                          <div class="row m-t-xs">
+                            <div class="col-md-4">
+                              <select name="activityType" class="form-control input-sm" required>
+                                <option value="">Select activity</option>
+                                <option value="TARGET_CAPTURE">Target Capture &amp; Approval</option>
+                                <option value="SCORE_CAPTURE">Score Capture &amp; Agreement</option>
+                                <option value="MODERATION">Moderation</option>
+                              </select>
+                            </div>
+                            <div class="col-md-3">
+                              <input type="date" name="startDate" class="form-control input-sm" title="Start date" required>
+                            </div>
+                            <div class="col-md-3">
+                              <input type="date" name="endDate" class="form-control input-sm" title="Last date / cutoff" required>
+                            </div>
+                            <div class="col-md-2">
+                              <button type="submit" class="btn btn-success btn-sm btn-block">Add</button>
+                            </div>
+                          </div>
+                        </form>
+                      </td>
+                      <td>
                         <button class="btn btn-success btn-sm" data-toggle="modal" th:data-target="'#modal'+ ${stat.index}">
                           Edit
                         </button>
+                        <form method="post"
+                              th:action="@{/reporting-periods/delete-reporting-date/{id}(id=${reportingDate.id})}"
+                              style="display:inline"
+                              onsubmit="return confirm('Delete this reporting date? This cannot be undone if the record is not linked elsewhere.');">
+                          <input type="hidden" name="reportingPeriodId" th:value="${reportingPeriod.id}">
+                          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
 
                         <div class="modal fade" th:id="'modal'+ ${stat.index}" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                           <div class="modal-dialog" role="document">
@@ -259,25 +351,25 @@
       buttons: [
         { extend: 'copy'},
         {extend: 'csv',
-          title: 'System Users',
+          title: 'Reporting Dates',
           exportOptions: {
-            columns: [0,1,2,3,4,5]
+            columns: [0,1]
           }},
         {extend: 'excel',
-          title: 'System Users',
+          title: 'Reporting Dates',
           exportOptions: {
-            columns: [0,1,2,3,4,5]
+            columns: [0,1]
           }},
         {extend: 'pdf',
-          title: 'System Users',
+          title: 'Reporting Dates',
           exportOptions: {
-            columns: [0,1,2,3,4,5]
+            columns: [0,1]
           }},
 
         {extend: 'print',
-          title: 'System Users',
+          title: 'Reporting Dates',
           exportOptions: {
-            columns: [0,1,2,3,4,5]
+            columns: [0,1]
           },
           customize: function (win){
             $(win.document.body).addClass('white-bg');

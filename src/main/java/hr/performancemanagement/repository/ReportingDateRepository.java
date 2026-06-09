@@ -13,6 +13,7 @@ public interface ReportingDateRepository extends JpaRepository<ReportingDate, Lo
     List<ReportingDate> findReportingDatesByReportingPeriod(ReportingPeriod period);
     List<ReportingDate> findReportingDatesByReportingPeriodAndStatus(ReportingPeriod period, String status);
     List<ReportingDate> findReportingDatesByReportingPeriodAndStatusIn(ReportingPeriod period, List<String> statuses);
+    List<ReportingDate> findReportingDatesByStatusIn(List<String> statuses);
     ReportingDate findReportingDateById(long id);
     ReportingDate findTopByReportingPeriodOrderByEndDateDesc(ReportingPeriod reportingPeriod);
     List<ReportingDate> findReportingDatesByReportingPeriod_ClientIdAndStatusInOrderByDateDescIdDesc(long clientId, List<String> statuses);

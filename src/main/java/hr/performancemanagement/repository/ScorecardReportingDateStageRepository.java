@@ -14,5 +14,13 @@ public interface ScorecardReportingDateStageRepository extends JpaRepository<Sco
     ScorecardReportingDateStage findScorecardReportingDateStageByScorecardAndReportingDate(Scorecard scorecard, ReportingDate reportingDate);
 
     List<ScorecardReportingDateStage> findScorecardReportingDateStagesByScorecardOrderByReportingDate_IdAsc(Scorecard scorecard);
-}
 
+    List<ScorecardReportingDateStage> findScorecardReportingDateStagesByReportingDate(ReportingDate reportingDate);
+
+    List<ScorecardReportingDateStage> findScorecardReportingDateStagesByReportingDateInAndStatusIn(
+            List<ReportingDate> reportingDates,
+            List<String> statuses
+    );
+
+    void deleteScorecardReportingDateStagesByReportingDate(ReportingDate reportingDate);
+}

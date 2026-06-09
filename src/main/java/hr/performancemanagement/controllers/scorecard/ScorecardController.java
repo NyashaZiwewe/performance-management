@@ -15,6 +15,7 @@ import hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreS
 import hr.performancemanagement.service.api.ScoreService.ValueBasedScoreService;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
 import hr.performancemanagement.utils.constants.Pages;
 import hr.performancemanagement.utils.dto.ScorecardWorkflowDefinition;
 import hr.performancemanagement.utils.wrappers.EvidenceWrapper;
@@ -136,6 +137,8 @@ public class ScorecardController {
     private final ScorecardModelService scorecardModelService;
     @Autowired
     private final CommonService commonService;
+    @Autowired
+    private AccessControlService accessControlService;
     @Autowired
     private final ScorecardWorkflowService scorecardWorkflowService;
     @Autowired
@@ -290,6 +293,7 @@ public class ScorecardController {
         scorecards = filterViewableScorecards(scorecards);
 
         modelAndView.addObject("scorecards", scorecards);
+        modelAndView.addObject("unmappedWorkflowScorecardCount", countUnmappedWorkflowScorecards(scorecards));
         modelAndView.addObject("scorecardCaptureScoresAllowed", buildCaptureScoresAllowedMap(scorecards));
         modelAndView.addObject("scorecardEditTargetsAllowed", buildEditTargetsAllowedMap(scorecards));
         modelAndView.addObject("scorecardViewReportAllowed", buildViewReportAllowedMap(scorecards));
@@ -432,11 +436,25 @@ public class ScorecardController {
         List<Scorecard> scorecards = scorecardService.getScorecardsByOwner(owner);
 
         modelAndView.addObject("scorecards", scorecards);
+        modelAndView.addObject("unmappedWorkflowScorecardCount", countUnmappedWorkflowScorecards(scorecards));
         modelAndView.addObject("scorecardCaptureScoresAllowed", buildCaptureScoresAllowedMap(scorecards));
         modelAndView.addObject("scorecardEditTargetsAllowed", buildEditTargetsAllowedMap(scorecards));
         modelAndView.addObject("scorecardViewReportAllowed", buildViewReportAllowedMap(scorecards));
         preparePage(modelAndView, request, session);
         return modelAndView;
+    }
+
+    private int countUnmappedWorkflowScorecards(List<Scorecard> scorecards) {
+        if (scorecards == null || scorecards.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard != null && scorecard.getApprovalStage() == null) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @RequestMapping("/add-scorecard")
@@ -475,6 +493,25 @@ public class ScorecardController {
             return "redirect:/scorecards/add-scorecard";
         }
 
+        Account owner = accountService.getAccountById(newScorecard.getOwner().getId());
+        if (owner == null) {
+            PortletUtils.addErrorMsg("Validation failed: Selected owner could not be found.", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
+        ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(newScorecard.getReportingPeriod().getId());
+        if (reportingPeriod == null) {
+            PortletUtils.addErrorMsg("Validation failed: Selected reporting period could not be found.", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
+        ScorecardModel scorecardModel = scorecardModelService.getScorecardModelById(newScorecard.getScorecardModel().getId());
+        if (scorecardModel == null) {
+            PortletUtils.addErrorMsg("Validation failed: Selected scorecard model could not be found.", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
+        newScorecard.setOwner(owner);
+        newScorecard.setReportingPeriod(reportingPeriod);
+        newScorecard.setScorecardModel(scorecardModel);
+
         if(scorecardService.countActiveScorecards(newScorecard.getOwner(), newScorecard.getReportingPeriod()) >= 1){
             PortletUtils.addErrorMsg(newScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + newScorecard.getReportingPeriod().getStartDate() +" - "+ newScorecard.getReportingPeriod().getEndDate() +")", request);
             return "redirect:/scorecards/add-scorecard";
@@ -484,7 +521,12 @@ public class ScorecardController {
             newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
             newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
             newScorecard.setApprovalStatus(workflow.getNewStatus());
-            scorecardService.addScorecard(newScorecard);
+            try {
+                scorecardService.addScorecard(newScorecard);
+            } catch (IllegalArgumentException | hr.performancemanagement.exception.custom.InvalidWorkflowStateException exception) {
+                PortletUtils.addErrorMsg(exception.getMessage(), request);
+                return "redirect:/scorecards/add-scorecard";
+            }
 
             String recipient = newScorecard.getOwner().getEmail();
             String subject = "Scorecard Approval,";
@@ -1450,6 +1492,10 @@ public class ScorecardController {
             modelAndView.addObject("scorecardModel", scorecardModel);
             modelAndView.addObject("reportingPeriod", reportingPeriod);
             modelAndView.addObject("overallScore", overallScoreService.getOverallScoreByScorecardAndReportingDate(scorecard, reportingDate));
+            modelAndView.addObject(
+                    "overallComment",
+                    overallCommentService.getOverallCommentByScorecardAndReportingDate(scorecard, reportingDate)
+            );
             modelAndView.addObject("scoreCaptureAllowed", scoreCaptureAllowed);
             modelAndView.addObject("scoreCaptureBlockedMessage", scoreCaptureBlockedMessage);
             modelAndView.addObject("activeReportingDateId", resolveDefaultReportingDateId(reportingDates));
@@ -1669,6 +1715,12 @@ public class ScorecardController {
             return false;
         }
         if (commonService.isAdmin() || commonService.hasSpecialRights()) {
+            return true;
+        }
+        if (accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_TARGETS_HR, scorecard.getOwner())
+                || accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_AGREED_SCORES_HR, scorecard.getOwner())
+                || accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_MODERATE, scorecard.getOwner())
+                || accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_CLOSE, scorecard.getOwner())) {
             return true;
         }
 
@@ -2015,10 +2067,22 @@ public class ScorecardController {
             return;
         }
 
-        applyScorecardOverallComment(scorecard, userType, comment);
-        scorecardService.saveScorecard(scorecard);
-        saveReportingDateOverallComment(scorecard, userType, comment);
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        String captureBlockedMessage = resolveScoreCaptureBlockedMessage(scorecard, reportingDate);
+        if (captureBlockedMessage != null) {
+            writeScoreSaveResponse(response, true, captureBlockedMessage);
+            return;
+        }
+        if (!isOverallCommentAllowed(scorecard, userType)) {
+            writeScoreSaveResponse(response, true, "You are not allowed to save this overall comment at the current stage");
+            return;
+        }
+        if (comment != null && comment.length() > 1000) {
+            writeScoreSaveResponse(response, true, "Overall comment cannot exceed 1000 characters");
+            return;
+        }
 
+        saveReportingDateOverallComment(scorecard, reportingDate, userType, comment);
         if(!PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
             URL link = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecardId));
 
@@ -2039,24 +2103,27 @@ public class ScorecardController {
         writeScoreSaveResponse(response);
     }
 
-    private void applyScorecardOverallComment(Scorecard scorecard, String userType, String comment) {
-        if (scorecard == null) {
-            return;
+    private boolean isOverallCommentAllowed(Scorecard scorecard, String userType) {
+        if (scorecard == null || !StringUtils.hasText(userType)) {
+            return false;
         }
-        if(PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)){
-            scorecard.setOwnerComment(comment);
-        } else if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
-            scorecard.setSupervisorComment(comment);
-        } else if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
-            scorecard.setModeratorComment(comment);
+        if (PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
         }
+        if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)
+                    || commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
+        }
+        if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
+        }
+        return false;
     }
 
-    private void saveReportingDateOverallComment(Scorecard scorecard, String userType, String comment) {
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-        if (scorecard == null || reportingDate == null || !isReportingDateForScorecard(scorecard, reportingDate)) {
-            return;
-        }
+    private void saveReportingDateOverallComment(Scorecard scorecard,
+                                                 ReportingDate reportingDate,
+                                                 String userType,
+                                                 String comment) {
         OverallComment overallComment = new OverallComment();
         overallComment.setScorecard(scorecard);
         overallComment.setReportingDate(reportingDate);
@@ -2267,8 +2334,6 @@ public class ScorecardController {
                     + "You can now log in and view results.\n"
                     + "Link: "+ currentURL +"\n\n";
 
-            String recipient2 = commonService.getHREmail();
-
             String subject2 = "Scorecard Moderation,";
             String template2 = "Good day, \n\n"
                     + "Please note that " + supervisor.getFullName() + " has submitted agreed scores with " + owner.getFullName() + ". "
@@ -2282,9 +2347,9 @@ public class ScorecardController {
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
             try {
-                sendScorecardEmail(request, recipient2, subject2, template2);
+                sendToHrGroup(request, subject2, template2);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient2 + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg("Notification to scorecard moderation approvers failed to send.", request);
             }
 
             PortletUtils.addInfoMsg("Agreed scores submitted successfully. An email was sent to " + owner.getFullName() + " and HR for moderation approval.", request);
@@ -2358,6 +2423,10 @@ public class ScorecardController {
  public String submitModeratedScorecard(HttpServletRequest request, Scorecard updatedScorecard) {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        if (scorecard == null || !commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
+            PortletUtils.addErrorMsg("You are not allowed to submit moderated scores for this scorecard.", request);
+            return "redirect:/scorecards";
+        }
         Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
@@ -2447,16 +2516,15 @@ public class ScorecardController {
             }
 
 
-            String recipient2 = commonService.getHREmail();
             String subject2 = "Scorecard Approval,";
             String template2 = "Good day HR, \n\n"
                             + "Please note that "+ supervisor +" has approved "+owner+"'s scorecard. "
                             + "You are now eligible to review and approve so that they can proceed with capturing scores. \n"
                             + "Link: "+ currentURL +"\n\n";
             try {
-                sendScorecardEmail(request, recipient2, subject2, template2);
+                sendToHrGroup(request, subject2, template2);
             }catch (Exception e){
-                PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+                PortletUtils.addErrorMsg("Notification to scorecard HR approvers failed to send.", request);
             }
 
 
@@ -2545,6 +2613,10 @@ public class ScorecardController {
     public String hrApproveScorecard(HttpServletRequest request, Long id) throws UnsupportedEncodingException {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
+        if (scorecard == null || !commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard)) {
+            PortletUtils.addErrorMsg("You are not allowed to approve this scorecard at the HR stage.", request);
+            return "redirect:/scorecards";
+        }
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
         String recipient = scorecard.getOwner().getSupervisor().getEmail();
@@ -2614,6 +2686,10 @@ public class ScorecardController {
     public String hrRejectScorecard(HttpServletRequest request, Long id, String message) throws UnsupportedEncodingException {
 
         Scorecard scorecard = scorecardService.getScorecardById(id);
+        if (scorecard == null || !commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard)) {
+            PortletUtils.addErrorMsg("You are not allowed to reject this scorecard at the HR stage.", request);
+            return "redirect:/scorecards";
+        }
         String supervisor = scorecard.getOwner().getSupervisor().getFullName();
         String owner = scorecard.getOwner().getFullName();
         String recipient = scorecard.getOwner().getSupervisor().getEmail();
@@ -3324,6 +3400,16 @@ public class ScorecardController {
         return Math.round(value * 100.0) / 100.0;
     }
 
+    private void sendToHrGroup(HttpServletRequest request,
+                               String subject,
+                               String body) throws UnsupportedEncodingException, MalformedURLException {
+        String hrEmail = commonService.getHREmail();
+        if (!StringUtils.hasText(hrEmail)) {
+            throw new IllegalStateException("email.hr is not configured in System Settings.");
+        }
+        sendScorecardEmail(request, hrEmail.trim(), subject, body);
+    }
+
     private void sendScorecardEmail(HttpServletRequest request, String recipient, String subject, String body) throws UnsupportedEncodingException, MalformedURLException {
         if (!shouldSendScorecardEmail(recipient)) {
             log.info("Skipping scorecard notification email to acting user: {}", recipient);
@@ -3451,12 +3537,40 @@ public class ScorecardController {
     @RequestMapping(value = "/copy-scorecard", method = RequestMethod.POST)
     public String copyScorecard(HttpServletRequest request,Scorecard imaginaryScorecard) {
 
-        if (scorecardService.countActiveScorecards(imaginaryScorecard.getOwner(), imaginaryScorecard.getReportingPeriod()) >= 1) {
-            PortletUtils.addErrorMsg(imaginaryScorecard.getOwner().getFullName() + " already has an active scorecard for the selected reporting period (" + imaginaryScorecard.getReportingPeriod().getStartDate() + " - " + imaginaryScorecard.getReportingPeriod().getEndDate() + ")", request);
+        if (imaginaryScorecard == null || imaginaryScorecard.getId() <= 0) {
+            PortletUtils.addErrorMsg("Validation failed: Source scorecard is required.", request);
+            return "redirect:/scorecards/clone-scorecard-select-owner";
+        }
+        if (imaginaryScorecard.getOwner() == null || imaginaryScorecard.getOwner().getId() <= 0) {
+            PortletUtils.addErrorMsg("Validation failed: New scorecard owner is required.", request);
+            return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
+        }
+        if (imaginaryScorecard.getReportingPeriod() == null || imaginaryScorecard.getReportingPeriod().getId() <= 0) {
+            PortletUtils.addErrorMsg("Validation failed: Reporting period is required.", request);
+            return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
+        }
+
+        Account owner = accountService.getAccountById(imaginaryScorecard.getOwner().getId());
+        ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(imaginaryScorecard.getReportingPeriod().getId());
+        if (owner == null) {
+            PortletUtils.addErrorMsg("Validation failed: Selected owner could not be found.", request);
+            return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
+        }
+        if (reportingPeriod == null) {
+            PortletUtils.addErrorMsg("Validation failed: Selected reporting period could not be found.", request);
+            return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
+        }
+
+        if (scorecardService.countActiveScorecards(owner, reportingPeriod) >= 1) {
+            PortletUtils.addErrorMsg(owner.getFullName() + " already has an active scorecard for the selected reporting period (" + reportingPeriod.getStartDate() + " - " + reportingPeriod.getEndDate() + ")", request);
             return "redirect:/scorecards/clone-scorecard/"+ imaginaryScorecard.getId();
         } else {
 
             Scorecard scorecard = scorecardService.getScorecardById(imaginaryScorecard.getId());
+            if (scorecard == null) {
+                PortletUtils.addErrorMsg("Validation failed: Source scorecard could not be found.", request);
+                return "redirect:/scorecards/clone-scorecard-select-owner";
+            }
             Scorecard newScorecard = new Scorecard();
 
             if (scorecard.getClient() != null) {
@@ -3464,15 +3578,20 @@ public class ScorecardController {
             } else {
                 newScorecard.setClient(commonService.getConfiguredClient());
             }
-            newScorecard.setOwner(imaginaryScorecard.getOwner());
-            newScorecard.setReportingPeriod(imaginaryScorecard.getReportingPeriod());
+            newScorecard.setOwner(owner);
+            newScorecard.setReportingPeriod(reportingPeriod);
             newScorecard.setScorecardModel(scorecardModelService.getActiveScorecardModel());
             newScorecard.setStatus(PMConstants.STATUS_ACTIVE);
             ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
             newScorecard.setApprovalStatus(workflow.getNewStatus());
             newScorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
-            scorecardService.saveScorecard(newScorecard);
+            try {
+                scorecardService.saveScorecard(newScorecard);
+            } catch (IllegalArgumentException | hr.performancemanagement.exception.custom.InvalidWorkflowStateException exception) {
+                PortletUtils.addErrorMsg(exception.getMessage(), request);
+                return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
+            }
             long id = newScorecard.getId();
             List<Goal> goalList = goalService.listAllGoals(scorecard.getId());
 

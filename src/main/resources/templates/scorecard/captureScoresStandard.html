@@ -367,21 +367,21 @@
                     <div class="col-4" th:if="${isOwner == true}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Owner's Overall Comment</legend>
-                            <textarea th:text="${scorecard.ownerComment}" id="ownerComment" class="form-control" oninput="saveComment('owner')"></textarea>
+                            <textarea th:text="${overallComment.ownerComment}" id="ownerComment" class="form-control" maxlength="1000" oninput="saveComment('owner')"></textarea>
                         </fieldset>
                     </div>
 
                     <div class="col-4" th:if="${isSupervisor == true}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Supervisor's Overall Comment</legend>
-                            <textarea th:text="${scorecard.supervisorComment}" id="supervisorComment" class="form-control" oninput="saveComment('supervisor')"></textarea>
+                            <textarea th:text="${overallComment.supervisorComment}" id="supervisorComment" class="form-control" maxlength="1000" oninput="saveComment('supervisor')"></textarea>
                         </fieldset>
                     </div>
 
                     <div class="col-4" th:if="${isModerator == true}">
                         <fieldset class="border p-2">
                             <legend class="w-auto">Moderator's Overall Comment</legend>
-                            <textarea th:text="${scorecard.moderatorComment}" id="moderatorComment"  class="form-control" oninput="saveComment('moderator')"></textarea>
+                            <textarea th:text="${overallComment.moderatorComment}" id="moderatorComment"  class="form-control" maxlength="1000" oninput="saveComment('moderator')"></textarea>
                         </fieldset>
                     </div>
                 </div>

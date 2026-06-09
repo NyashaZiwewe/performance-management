@@ -1,5 +1,4 @@
 package hr.performancemanagement.entities;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,26 +46,6 @@ public class Scorecard {
     @Pattern(regexp = "ACTIVE|IN_ACTIVE|INACTIVE|ARCHIVED|DELETED", message = "Invalid status")
     private String status;
 
-    @DecimalMin(value = "0.0", message = "Employee score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Employee score cannot exceed 5.0")
-    private double employeeScore;
-
-    @DecimalMin(value = "0.0", message = "Manager score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Manager score cannot exceed 5.0")
-    private double managerScore;
-
-    @DecimalMin(value = "0.0", message = "Agreed score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Agreed score cannot exceed 5.0")
-    private double agreedScore;
-
-    @DecimalMin(value = "0.0", message = "Moderated score must be non-negative")
-    @DecimalMax(value = "5.0", message = "Moderated score cannot exceed 5.0")
-    private double moderatedScore;
-
-    @DecimalMin(value = "0.0", message = "Weighted score must be non-negative")
-    @DecimalMax(value = "100.0", message = "Weighted score cannot exceed 100")
-    private double weightedScore;
-
     @ManyToOne
     @JoinColumn(name = "approval_stage_id")
     private ScorecardWorkflowStage approvalStage;
@@ -74,18 +53,6 @@ public class Scorecard {
     @Transient
     private String approvalStatus;
 
-    @Column(name = "approval_status", insertable = false, updatable = false)
-    @JsonIgnore
-    private String legacyApprovalStatus;
-
-    @Size(max = 1000, message = "Owner comment cannot exceed 1000 characters")
-    private String ownerComment;
-
-    @Size(max = 1000, message = "Supervisor comment cannot exceed 1000 characters")
-    private String supervisorComment;
-
-    @Size(max = 1000, message = "Moderator comment cannot exceed 1000 characters")
-    private String moderatorComment;
     @UpdateTimestamp
     private Date lastUpdate;
 
@@ -103,7 +70,7 @@ public class Scorecard {
         if (hasText(approvalStatus)) {
             return approvalStatus;
         }
-        return legacyApprovalStatus;
+        return null;
     }
 
     public void setApprovalStatus(String approvalStatus) {
@@ -121,10 +88,6 @@ public class Scorecard {
     private void syncApprovalStatus() {
         if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
             approvalStatus = normalizeApprovalStatus(approvalStage.getStatusCode());
-            return;
-        }
-        if (!hasText(approvalStatus) && hasText(legacyApprovalStatus)) {
-            approvalStatus = normalizeApprovalStatus(legacyApprovalStatus);
         }
     }
 

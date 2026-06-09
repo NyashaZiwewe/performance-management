@@ -12,6 +12,8 @@ import hr.performancemanagement.service.OverallScoreService;
 import hr.performancemanagement.service.PdfGeneratorService;
 import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
+import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
 import hr.performancemanagement.utils.constants.Pages;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -95,6 +97,8 @@ public class AssessmentController {
     ProbationKpiRepository probationKpiRepository;
     @Autowired
     SystemSettingService systemSettingService;
+    @Autowired
+    AccessControlService accessControlService;
     private List<Double> scores;
 
     public AssessmentController(TargetService targetService, GoalService goalService, OutcomeService outcomeService, AccountService accountService) {
@@ -105,9 +109,15 @@ public class AssessmentController {
     }
 
     private void preparePage(ModelAndView modelAndView, HttpServletRequest request) {
-        List<Account> ACCOUNTS_LIST = accountService.listAllAccounts();
-        ReportingDate activeReportingDate = reportingDateService.getActiveReportingDate();
-        boolean captureWindowOpen = reportingDateService.isReportingDateOpen(activeReportingDate);
+        preparePage(modelAndView, request, true);
+    }
+
+    private void preparePage(ModelAndView modelAndView, HttpServletRequest request, boolean loadSupportingData) {
+        List<Account> ACCOUNTS_LIST = loadSupportingData
+                ? accountService.listAllAccounts()
+                : Collections.emptyList();
+        ReportingDate activeReportingDate = loadSupportingData ? reportingDateService.getActiveReportingDate() : null;
+        boolean captureWindowOpen = loadSupportingData && reportingDateService.isReportingDateOpen(activeReportingDate);
         modelAndView.addObject("pageDomain", "Performance Review");
         modelAndView.addObject("pageName", "Assessments");
         modelAndView.addObject("profile", "moderator");
@@ -190,17 +200,26 @@ public class AssessmentController {
 
     @RequestMapping(value = "/view-scores-select-year", method = RequestMethod.POST)
     public String goToViewScores(HttpServletRequest request,
-                                 long reportingPeriodId,
+                                 @RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
                                  @RequestParam(value = "reportingDateId", required = false) Long reportingDateId) {
-        String redirectUrl = "redirect:/performance-review/view-scores/" + reportingPeriodId;
+        if (reportingPeriodId == null || reportingPeriodId <= 0) {
+            PortletUtils.addValidationErrorMsg("Select a reporting period before applying filters.", request);
+            return "redirect:/performance-review/view-scores-select-year";
+        }
+        String redirectUrl = "redirect:/performance-review/view-scores/" + reportingPeriodId + "?applyFilters=true";
         if (reportingDateId != null && reportingDateId > 0) {
-            redirectUrl += "?reportingDateId=" + reportingDateId;
+            redirectUrl += "&reportingDateId=" + reportingDateId;
         }
         return redirectUrl;
     }
 
     @RequestMapping(value = "/view-performance-levels-select-year", method = RequestMethod.POST)
-    public String goToSelectScorecards(HttpServletRequest request, long reportingPeriodId) {
+    public String goToSelectScorecards(HttpServletRequest request,
+                                       @RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId) {
+        if (reportingPeriodId == null || reportingPeriodId <= 0) {
+            PortletUtils.addValidationErrorMsg("Select a reporting period before continuing.", request);
+            return "redirect:/performance-review/view-performance-levels-select-year";
+        }
 
         return "redirect:/performance-review/select-scorecards/"+ reportingPeriodId;
     }
@@ -210,19 +229,38 @@ public class AssessmentController {
     public ModelAndView viewScores(@PathVariable("id") long id,
                                    @RequestParam(value = "reportingDateId", required = false) Long reportingDateId,
                                    @RequestParam(value = "scoreFilter", required = false) String scoreFilter,
+                                   @RequestParam(value = "applyFilters", defaultValue = "false") boolean applyFilters,
                                    HttpServletRequest request) {
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_SCORES);
         modelAndView.addObject("pageTitle", "View Scores");
+        modelAndView.addObject("scoreFiltersApplied", applyFilters);
 
         ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(id);
+        List<ReportingPeriod> reviewReportingPeriods = reportingPeriodService.listAllReportingPeriods();
         String startDate = reportingPeriod.getStartDate();
         String endDate = reportingPeriod.getEndDate();
+        List<ReportingDate> reportingDates = sortReportingDates(reportingDateService.listAllReportingDates(reportingPeriod));
+        ReportingDate selectedReportingDate = resolveSelectedReviewReportingDate(reportingDates, reportingDateId);
+        modelAndView.addObject("reviewReportingPeriods", reviewReportingPeriods);
+        modelAndView.addObject("reviewReportingDateOptions", buildReviewReportingDateOptions(reviewReportingPeriods));
+        modelAndView.addObject("selectedReportingPeriod", reportingPeriod);
+        modelAndView.addObject("selectedReportingPeriodId", reportingPeriod.getId());
+        modelAndView.addObject("selectedReportingDate", selectedReportingDate);
+        modelAndView.addObject("selectedReportingDateId", selectedReportingDate == null ? null : selectedReportingDate.getId());
+        modelAndView.addObject("selectedReportingPeriodLabel", startDate + " to " + endDate);
+        modelAndView.addObject("selectedReportingDateLabel", selectedReportingDate == null ? "No reporting date selected" : selectedReportingDate.getEndDate());
+        modelAndView.addObject("startDate", startDate);
+        modelAndView.addObject("endDate", endDate);
+
+        if (!applyFilters) {
+            preparePage(modelAndView, request, false);
+            return modelAndView;
+        }
+
         List<Scorecard> scorecards = scorecardService.getScorecardsByReportingPeriodId(reportingPeriod);
         if (scorecards == null) {
             scorecards = new ArrayList<Scorecard>();
         }
-        List<ReportingDate> reportingDates = sortReportingDates(reportingDateService.listAllReportingDates(reportingPeriod));
-        ReportingDate selectedReportingDate = resolveSelectedReviewReportingDate(reportingDates, reportingDateId);
         Map<Long, Map<Long, OverallScore>> overallScoresByDate =
                 overallScoreService.getOverallScoresByScorecardsAndReportingDates(scorecards, reportingDates);
         ReportingDate insightReportingDate = selectedReportingDate;
@@ -244,7 +282,7 @@ public class AssessmentController {
 
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
-        String role = loggedUser.getRole();
+        String role = effectiveReviewRole(loggedUser);
 
         for (Scorecard scorecard : scorecards) {
             if (scorecard == null || scorecard.getOwner() == null) {
@@ -264,22 +302,25 @@ public class AssessmentController {
             riskProfilesByScorecardId.put(scorecard.getId(), riskProfile);
             latestOverallScoresByScorecardId.put(scorecard.getId(), resolveOverallScore(selectedOverallScores, scorecard, insightReportingDate));
 
-            if (riskProfile.latestWeightedScore > 0.0) {
-                totalLatestWeightedScore += riskProfile.latestWeightedScore;
-                scorecardsWithWeightedScore++;
-            }
-            if (riskProfile.latestWeightedScore > 0.0 && riskProfile.latestWeightedScore < 50.0) {
-                belowThresholdCount++;
-            }
-            if (insight.scoreMovement > 0.0) {
-                improvingCount++;
-            } else if (insight.scoreMovement < 0.0) {
-                decliningCount++;
-            }
-            activePipCount += insight.pipOpenCount + insight.pipInProgressCount;
-            openActionPlanCount += insight.actionOpenCount + insight.actionInProgressCount;
-            if (insight.probationDecisionRequired) {
-                probationDecisionCount++;
+            OverallScore selectedScore = selectedOverallScores == null ? null : selectedOverallScores.get(scorecard.getId());
+            if (hasAnyOverallScore(selectedScore)) {
+                if (riskProfile.latestWeightedScore > 0.0) {
+                    totalLatestWeightedScore += riskProfile.latestWeightedScore;
+                    scorecardsWithWeightedScore++;
+                }
+                if (riskProfile.latestWeightedScore > 0.0 && riskProfile.latestWeightedScore < 50.0) {
+                    belowThresholdCount++;
+                }
+                if (insight.scoreMovement > 0.0) {
+                    improvingCount++;
+                } else if (insight.scoreMovement < 0.0) {
+                    decliningCount++;
+                }
+                activePipCount += insight.pipOpenCount + insight.pipInProgressCount;
+                openActionPlanCount += insight.actionOpenCount + insight.actionInProgressCount;
+                if (insight.probationDecisionRequired) {
+                    probationDecisionCount++;
+                }
             }
         }
 
@@ -288,16 +329,26 @@ public class AssessmentController {
             Map<Long, OverallScore> scoreByScorecard = reportingDate == null ? null : overallScoresByDate.get(reportingDate.getId());
 
             for(Scorecard scorecard : scorecards) {
-                OverallScore overallScore = resolveOverallScore(scoreByScorecard, scorecard, reportingDate);
-                overallScores.add(overallScore);
+                OverallScore overallScore = scoreByScorecard == null ? null : scoreByScorecard.get(scorecard.getId());
+                if (hasAnyOverallScore(overallScore)) {
+                    overallScores.add(overallScore);
+                }
             }
             reportingDate.setOverallScores(overallScores);
 
         }
 
-        List<ReportingPeriod> reviewReportingPeriods = reportingPeriodService.listAllReportingPeriods();
         String activeScoreFilter = normalizeScoreFilter(scoreFilter);
-        List<Scorecard> filteredScorecards = filterScorecardsForView(scorecards, riskProfilesByScorecardId, activeScoreFilter);
+        List<Scorecard> scorecardsWithSelectedScores = scorecardsWithActualScores(scorecards, selectedOverallScores);
+        List<Scorecard> filteredScorecards = filterScorecardsForView(scorecardsWithSelectedScores, riskProfilesByScorecardId, activeScoreFilter);
+        boolean showScoreResults = !filteredScorecards.isEmpty();
+        String scoreResultsMessage = resolveScoreResultsMessage(
+                scorecards,
+                reportingDates,
+                selectedReportingDate,
+                scorecardsWithSelectedScores,
+                filteredScorecards
+        );
         List<Long> scorecardIdsForView = new ArrayList<Long>();
         for (Scorecard scorecard : filteredScorecards) {
             if (scorecard != null) {
@@ -316,6 +367,8 @@ public class AssessmentController {
         modelAndView.addObject("scoresList", filteredScorecards);
         modelAndView.addObject("scorecardIdsForView", scorecardIdsForView);
         modelAndView.addObject("filteredScorecardCount", filteredScorecards.size());
+        modelAndView.addObject("showScoreResults", showScoreResults);
+        modelAndView.addObject("scoreResultsMessage", scoreResultsMessage);
         modelAndView.addObject("activeScoreFilter", activeScoreFilter);
         modelAndView.addObject("activeScoreFilterLabel", resolveScoreFilterLabel(activeScoreFilter));
         modelAndView.addObject("allScorecardsFilterUrl", buildViewScoresFilterUrl(reportingPeriod.getId(), selectedReportingDate, "all"));
@@ -492,10 +545,19 @@ public class AssessmentController {
     }
 
     @RequestMapping(value = "/view-individual-trends", method = RequestMethod.POST)
-    public ModelAndView viewIndividualTrends(@RequestParam("employeeId") Long employeeId, HttpServletRequest request) {
+    public ModelAndView viewIndividualTrends(@RequestParam(value = "employeeId", required = false) Long employeeId,
+                                             HttpServletRequest request) {
+        if (employeeId == null || employeeId <= 0) {
+            PortletUtils.addValidationErrorMsg("Select an employee before viewing individual trends.", request);
+            return new ModelAndView("redirect:/performance-review/view-individual-trends-select-year");
+        }
+        Account employee = accountService.getAccountById(employeeId);
+        if (employee == null) {
+            PortletUtils.addValidationErrorMsg("The selected employee could not be found.", request);
+            return new ModelAndView("redirect:/performance-review/view-individual-trends-select-year");
+        }
         ModelAndView modelAndView = new ModelAndView(Pages.VIEW_INDIVIDUAL_TRENDS);
         modelAndView.addObject("pageTitle", "View Individual Trends");
-        Account employee = accountService.getAccountById(employeeId);
         ScorecardTrend trend = buildAccountTrend(employee);
 
         modelAndView.addObject("monthNames", trend.labels);
@@ -523,7 +585,7 @@ public class AssessmentController {
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
         List<ActionPlan> actionPlans = actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
-        String role = loggedUser.getRole();
+        String role = effectiveReviewRole(loggedUser);
 
         double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         double weightedScore;
@@ -584,7 +646,7 @@ public class AssessmentController {
         List<PerformanceImprovementPlan> pips = performanceImprovementPlanService.listPerformanceImprovementPlansByEmployee(owner, reportingPeriod);
         List<ActionPlan> actionPlans = actionPlanService.listActionPlansByManagerAndReportingPeriod(owner, reportingPeriod);
         long loggedUserId = loggedUser.getId();
-        String role = loggedUser.getRole();
+        String role = effectiveReviewRole(loggedUser);
 
         double averageModeratedScore = outcomeService.getAverageModeratorScore(id);
         List<Target> targetsList = targetService.getAllTargetsByScorecard(scoreCard.getId());
@@ -678,7 +740,7 @@ public class AssessmentController {
             List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard.getId());
             List<OverallComment> overallComments = overallCommentService.getOverallCommentsByScorecard(scorecard);
             long loggedUserId = loggedUser.getId();
-            String role = loggedUser.getRole();
+            String role = effectiveReviewRole(loggedUser);
             List<ReportingDate> reportingDates = reportingPeriod == null || reportingPeriod.getReportingDates() == null
                     ? Collections.emptyList()
                     : reportingPeriod.getReportingDates();
@@ -751,7 +813,7 @@ public class AssessmentController {
             context.setVariable("probationAverageProgress", reportInsight.probationAverageProgress);
             context.setVariable("probationDecisionRequired", reportInsight.probationDecisionRequired);
 
-            String fileName = owner.getFullName().toUpperCase();
+            String fileName = "Performance Report - " + owner.getFullName().trim() + ".pdf";
             String page = Pages.DOWNLOADABLE_REPORT;
             try {
                 byte[] pdfBytes = pdfGeneratorService.generatePdfFromTemplate(page, context, false);
@@ -759,7 +821,7 @@ public class AssessmentController {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_PDF);
                 headers.setContentDisposition(ContentDisposition.builder("inline")
-                        .filename(fileName.concat(fileName + "Report.pdf"))
+                        .filename(fileName)
                         .build());
                 headers.setContentLength(pdfBytes.length);
 
@@ -1050,6 +1112,40 @@ public class AssessmentController {
         return filteredScorecards;
     }
 
+    private List<Scorecard> scorecardsWithActualScores(List<Scorecard> scorecards,
+                                                       Map<Long, OverallScore> selectedOverallScores) {
+        List<Scorecard> scoredScorecards = new ArrayList<Scorecard>();
+        if (scorecards == null || selectedOverallScores == null || selectedOverallScores.isEmpty()) {
+            return scoredScorecards;
+        }
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard != null && hasAnyOverallScore(selectedOverallScores.get(scorecard.getId()))) {
+                scoredScorecards.add(scorecard);
+            }
+        }
+        return scoredScorecards;
+    }
+
+    private String resolveScoreResultsMessage(List<Scorecard> scorecards,
+                                              List<ReportingDate> reportingDates,
+                                              ReportingDate selectedReportingDate,
+                                              List<Scorecard> scorecardsWithSelectedScores,
+                                              List<Scorecard> filteredScorecards) {
+        if (scorecards == null || scorecards.isEmpty()) {
+            return "No scorecards exist for this reporting period.";
+        }
+        if (reportingDates == null || reportingDates.isEmpty() || selectedReportingDate == null) {
+            return "No reporting dates are configured for this reporting period.";
+        }
+        if (scorecardsWithSelectedScores == null || scorecardsWithSelectedScores.isEmpty()) {
+            return "Scorecards are yet to be scored for the selected reporting date.";
+        }
+        if (filteredScorecards == null || filteredScorecards.isEmpty()) {
+            return "No scored scorecards match the selected filter.";
+        }
+        return "";
+    }
+
     private boolean matchesScoreFilter(ScorecardRiskProfile profile, String scoreFilter) {
         String normalizedFilter = normalizeScoreFilter(scoreFilter);
         if ("all".equals(normalizedFilter)) {
@@ -1128,7 +1224,8 @@ public class AssessmentController {
     private String buildViewScoresFilterUrl(long reportingPeriodId, ReportingDate reportingDate, String scoreFilter) {
         StringBuilder url = new StringBuilder("/performance-review/view-scores/");
         url.append(reportingPeriodId);
-        String separator = "?";
+        url.append("?applyFilters=true");
+        String separator = "&";
         if (reportingDate != null && reportingDate.getId() > 0) {
             url.append(separator).append("reportingDateId=").append(reportingDate.getId());
             separator = "&";
@@ -1210,9 +1307,6 @@ public class AssessmentController {
 
         if (selectedDateRequested && selectedDateFound) {
             return trend;
-        }
-        if (latestNonZeroScore == null && scorecard.getWeightedScore() > 0.0) {
-            latestNonZeroScore = roundTwoDecimals(scorecard.getWeightedScore());
         }
         trend.latestScore = latestNonZeroScore == null ? 0.0 : latestNonZeroScore;
         trend.previousScore = previousNonZeroScore == null ? 0.0 : previousNonZeroScore;
@@ -1487,6 +1581,8 @@ public class AssessmentController {
         insight.probationKpiCount = kpis == null ? 0 : kpis.size();
         double progressTotal = 0.0;
         int progressCount = 0;
+        double supervisorMarkTotal = 0.0;
+        int supervisorMarkCount = 0;
         if (kpis != null) {
             for (ProbationKpi kpi : kpis) {
                 if (kpi == null) {
@@ -1499,17 +1595,30 @@ public class AssessmentController {
                     progressTotal += kpi.getProgressPercent();
                     progressCount++;
                 }
+                if (kpi.getSupervisorMark() != null) {
+                    supervisorMarkTotal += kpi.getSupervisorMark();
+                    supervisorMarkCount++;
+                }
             }
         }
         insight.probationAverageProgress = progressCount == 0 ? 0.0 : roundTwoDecimals(progressTotal / progressCount);
+        double averageSupervisorMark = supervisorMarkCount == 0 ? 0.0 : roundTwoDecimals(supervisorMarkTotal / supervisorMarkCount);
         boolean probationClosed = isClosedStatus(insight.probationStatus);
         boolean probationDue = isPastDate(latest.getEndDate());
+        boolean weakProgress = progressCount > 0 && insight.probationAverageProgress < 50.0;
+        boolean weakSupervisorResult = supervisorMarkCount > 0 && averageSupervisorMark < 2.5;
         insight.probationDecisionRequired = !probationClosed
-                && (probationDue || insight.probationFlaggedKpiCount > 0 || insight.probationAverageProgress < 50.0);
+                && (probationDue || insight.probationFlaggedKpiCount > 0 || weakProgress || weakSupervisorResult);
         if (insight.probationDecisionRequired) {
-            insight.probationRecommendation = "Review probation before confirmation; unresolved KPI flags or weak progress exist.";
+            insight.probationRecommendation = "Review probation before confirmation; the contract is due or KPI progress, flags, or supervisor marks require attention.";
         } else if (probationClosed) {
-            insight.probationRecommendation = "Probation workflow is closed from available records.";
+            insight.probationRecommendation = supervisorMarkCount == 0
+                    ? "Probation evaluation is completed; no supervisor marks are available in the latest record."
+                    : "Probation evaluation is completed. Supervisor result: " + averageSupervisorMark + "/5 - "
+                    + resolveProbationPerformanceBand(averageSupervisorMark) + ".";
+        } else if (supervisorMarkCount > 0) {
+            insight.probationRecommendation = "Current supervisor result: " + averageSupervisorMark + "/5 - "
+                    + resolveProbationPerformanceBand(averageSupervisorMark) + ". Continue the probation workflow.";
         } else {
             insight.probationRecommendation = "Continue monitoring probation contract progress.";
         }
@@ -1602,9 +1711,27 @@ public class AssessmentController {
         String normalized = status == null ? "" : status.trim().toUpperCase();
         return "CLOSED".equals(normalized)
                 || "COMPLETED".equals(normalized)
+                || PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED.equals(normalized)
+                || PMConstants.PROBATION_STATUS_AUTHORIZED.equals(normalized)
                 || "APPROVED".equals(normalized)
                 || "CONFIRMED".equals(normalized)
                 || "ARCHIVED".equals(normalized);
+    }
+
+    private String resolveProbationPerformanceBand(double mark) {
+        if (mark >= 4.5) {
+            return "Outstanding";
+        }
+        if (mark >= 3.5) {
+            return "Exceeds expectations";
+        }
+        if (mark >= 2.5) {
+            return "Meets expectations";
+        }
+        if (mark >= 1.5) {
+            return "Needs improvement";
+        }
+        return mark > 0.0 ? "Unsatisfactory" : "Not assessed";
     }
 
     private boolean isPastDate(String value) {
@@ -2639,6 +2766,13 @@ public class AssessmentController {
             this.toReportingDateId = toReportingDateId;
             this.valid = valid;
         }
+    }
+
+    private String effectiveReviewRole(Account account) {
+        if (accessControlService.hasPermissionForAnyScope(account, AccessPermissions.SCORECARD_MODERATE)) {
+            return PMConstants.MODERATOR;
+        }
+        return account == null ? "" : account.getRole();
     }
 
     public static class PerformanceLevelReportingDateOption {

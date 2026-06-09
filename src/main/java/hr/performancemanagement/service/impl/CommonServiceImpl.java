@@ -14,6 +14,7 @@ import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.utils.dto.ScorecardWorkflowDefinition;
 import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -46,19 +47,25 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
     private final ScorecardReportingDateStageService scorecardReportingDateStageService;
     private final ClientRepository clientRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final AccessControlService accessControlService;
+    private final ReportingDateActivityPeriodService reportingDateActivityPeriodService;
 
     public CommonServiceImpl(Environment environment,
                              SystemSettingService systemSettingService,
                              ScorecardWorkflowService scorecardWorkflowService,
                              ScorecardReportingDateStageService scorecardReportingDateStageService,
                              ClientRepository clientRepository,
-                             BCryptPasswordEncoder passwordEncoder) {
+                             BCryptPasswordEncoder passwordEncoder,
+                             AccessControlService accessControlService,
+                             ReportingDateActivityPeriodService reportingDateActivityPeriodService) {
         this.environment = environment;
         this.systemSettingService = systemSettingService;
         this.scorecardWorkflowService = scorecardWorkflowService;
         this.scorecardReportingDateStageService = scorecardReportingDateStageService;
         this.clientRepository = clientRepository;
         this.passwordEncoder = passwordEncoder;
+        this.accessControlService = accessControlService;
+        this.reportingDateActivityPeriodService = reportingDateActivityPeriodService;
     }
 
     @Override
@@ -168,8 +175,11 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
         if (loggedUser == null) {
             return false;
         }
-        if (isScoreCaptureActivity(activity) && hasMultipleOpenOrActiveReportingDates(getConfiguredClientId())) {
-            return false;
+        if (isReportingActivityControlled(activity)) {
+            if (hasMultipleOpenOrActiveReportingDates(getConfiguredClientId())
+                    || !isActiveReportingActivityAllowed(activity, scorecard)) {
+                return false;
+            }
         }
         String approval_status = scorecard.getApprovalStatus();
         String contractRole = resolveContractStageRole(scorecard);
@@ -190,7 +200,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
                     isUserAllowed = true;
                 }
             } else if (matchesRole(contractRole, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR)) {
-                if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
+                if(accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_TARGETS_HR, owner)){
                     isUserAllowed = true;
                 }
             } else if (matchesStatus(approval_status, workflow.getPendingApprovalStatus())
@@ -199,7 +209,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
                     isUserAllowed = true;
                 }
             } else if (matchesStatus(approval_status, workflow.getApprovedBySupervisorStatus())) {
-                if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
+                if(accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_TARGETS_HR, owner)){
                     isUserAllowed = true;
                 }
             }
@@ -257,7 +267,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
                 return false;
             }
             if(matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)){
-                if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
+                if(accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_MODERATE, owner)){
                     isUserAllowed = true;
                 }
             }
@@ -277,7 +287,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
                 return false;
             }
             if(matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL)){
-                if(PMConstants.MODERATOR.equalsIgnoreCase(loggedUser.getRole())){
+                if(accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_AGREED_SCORES_HR, owner)){
                     isUserAllowed = true;
                 }
             }
@@ -285,7 +295,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
 
         else if(activity.equalsIgnoreCase(PMConstants.ACTIVITY_CLOSE_SCORECARD)){
             if(matchesStatus(approval_status, workflow.getModeratedByHrStatus())){
-                if(PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin())){
+                if(accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_CLOSE, owner)){
                     isUserAllowed = true;
                 }
             }
@@ -297,6 +307,13 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
     private boolean isActiveScoreCaptureWindow(Scorecard scorecard) {
         ReportingDate reportingDate = getActiveReportingDate();
         return isReportingDateOpen(reportingDate) && reportingDateBelongsToScorecard(scorecard, reportingDate);
+    }
+
+    private boolean isActiveReportingActivityAllowed(String activity, Scorecard scorecard) {
+        ReportingDate reportingDate = getActiveReportingDate();
+        return isReportingDateOpen(reportingDate)
+                && reportingDateBelongsToScorecard(scorecard, reportingDate)
+                && reportingDateActivityPeriodService.isActivityAllowed(reportingDate, activity);
     }
 
     private boolean isReportingDateOpen(ReportingDate reportingDate) {
@@ -325,6 +342,18 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
                 || PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES.equalsIgnoreCase(activity)
                 || PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES.equalsIgnoreCase(activity)
                 || PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES.equalsIgnoreCase(activity);
+    }
+
+    private boolean isReportingActivityControlled(String activity) {
+        return PMConstants.ACTIVITY_CAPTURE_TARGETS.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_APPROVE_SCORECARD.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_APPROVE_OWNER_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_APPROVE_AGREED_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES.equalsIgnoreCase(activity)
+                || PMConstants.ACTIVITY_CLOSE_SCORECARD.equalsIgnoreCase(activity);
     }
 
     private String resolveActiveReportingDateRole(String activity, Scorecard scorecard) {
@@ -489,11 +518,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
 
     @Override
     public boolean isModerator(){
-        if(PMConstants.MODERATOR.equalsIgnoreCase(getLoggedUser().getRole())){
-            return true;
-        }else{
-            return false;
-        }
+        return accessControlService.hasPermission(AccessPermissions.SCORECARD_MODERATE);
     }
 
     @Override

@@ -6,12 +6,15 @@ import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.entities.*;
 import hr.performancemanagement.repository.*;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
+import hr.performancemanagement.utils.dto.ProbationResultSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.time.LocalDate;
 
 
 @Service
@@ -35,6 +38,8 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
     private AccountService accountService;
     @Autowired
     private PerformanceImprovementPlanRepository performanceImprovementPlanRepository;
+    @Autowired
+    private AccessControlService accessControlService;
 
     @Override
     public List<ProbationAssessment> listVisibleAssessments() {
@@ -46,7 +51,8 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
 
         List<ProbationAssessment> visibleAssessments = new ArrayList<>();
         for (ProbationAssessment assessment : allAssessments) {
-            if (isOwner(assessment, loggedUser) || isSupervisor(assessment, loggedUser) || canUserApprove(assessment, loggedUser)) {
+            if (isOwner(assessment, loggedUser) || isSupervisor(assessment, loggedUser)
+                    || canViewAsHr(assessment, loggedUser) || canUserApprove(assessment, loggedUser)) {
                 visibleAssessments.add(assessment);
             }
         }
@@ -56,35 +62,53 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
     @Override
     public ProbationAssessment getAssessmentById(long id) {
         Account loggedUser = commonService.getLoggedUser();
-        return assessmentRepository.findProbationAssessmentByIdAndClientId(id, loggedUser.getClientId());
+        if (loggedUser == null) {
+            return null;
+        }
+        ProbationAssessment assessment = assessmentRepository.findProbationAssessmentByIdAndClientId(id, loggedUser.getClientId());
+        if (assessment == null) {
+            return null;
+        }
+        if (isOwner(assessment, loggedUser) || isSupervisor(assessment, loggedUser)
+                || canViewAsHr(assessment, loggedUser) || canUserApprove(assessment, loggedUser)) {
+            return assessment;
+        }
+        return null;
     }
 
     @Override
     public ProbationAssessment createAssessment(ProbationAssessment assessment) {
         Account loggedUser = commonService.getLoggedUser();
-        if (assessment.getEmployee() == null) {
+        if (assessment == null || assessment.getEmployee() == null) {
             return null;
         }
         Account selectedEmployee = accountService.getAccountById(assessment.getEmployee().getId());
-        if (!isSameClientAccount(selectedEmployee, loggedUser.getClientId())) {
+        if (!hasPermission(loggedUser, AccessPermissions.PROBATION_CREATE_CONTRACT, selectedEmployee)) {
+            return null;
+        }
+        if (!isSameClientAccount(selectedEmployee, loggedUser.getClientId())
+                || selectedEmployee.getSupervisor() == null
+                || !isSameClientAccount(selectedEmployee.getSupervisor(), loggedUser.getClientId())
+                || !PMConstants.STATUS_ACTIVE.equalsIgnoreCase(selectedEmployee.getStatus())
+                || !PMConstants.STATUS_ACTIVE.equalsIgnoreCase(selectedEmployee.getSupervisor().getStatus())
+                || !isValidDateRange(assessment.getStartDate(), assessment.getEndDate())) {
+            return null;
+        }
+        List<ProbationDimensionTemplate> dimensionTemplates = probationConfigService.listActiveDimensionTemplates();
+        if (dimensionTemplates.isEmpty()
+                || hasOverlappingOpenAssessment(selectedEmployee, assessment.getStartDate(), assessment.getEndDate())) {
             return null;
         }
         assessment.setEmployee(selectedEmployee);
         assessment.setClientId(loggedUser.getClientId());
-        if (assessment.getPerformancePeriod() == null || assessment.getPerformancePeriod().trim().isEmpty()) {
-            String startDate = assessment.getStartDate() == null ? "" : assessment.getStartDate().trim();
-            String endDate = assessment.getEndDate() == null ? "" : assessment.getEndDate().trim();
-            if (!startDate.isEmpty() && !endDate.isEmpty()) {
-                assessment.setPerformancePeriod(startDate + " - " + endDate);
-            }
-        }
-        if (assessment.getStatus() == null || assessment.getStatus().trim().isEmpty()) {
-            assessment.setStatus(PMConstants.PROBATION_STATUS_DRAFT);
-        }
+        assessment.setStartDate(assessment.getStartDate().trim());
+        assessment.setEndDate(assessment.getEndDate().trim());
+        assessment.setPerformancePeriod(assessment.getStartDate() + " - " + assessment.getEndDate());
+        assessment.setStatus(PMConstants.PROBATION_STATUS_CONTRACT_CREATED);
         assessment.setCurrentStepOrder(null);
         assessment.setCurrentStepName(null);
         ProbationAssessment savedAssessment = assessmentRepository.save(assessment);
-        initializeDimensions(savedAssessment);
+        initializeDimensions(savedAssessment, dimensionTemplates);
         return savedAssessment;
     }
 
@@ -96,18 +120,22 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             return null;
         }
 
-        if (isOwner(existingAssessment, loggedUser)) {
-            existingAssessment.setPerformancePeriod(updatedAssessment.getPerformancePeriod());
-            existingAssessment.setStartDate(updatedAssessment.getStartDate());
-            existingAssessment.setEndDate(updatedAssessment.getEndDate());
+        if (isOwner(existingAssessment, loggedUser) && isKpiContractEditable(existingAssessment)) {
+            if (!isValidDateRange(updatedAssessment.getStartDate(), updatedAssessment.getEndDate())) {
+                return null;
+            }
+            existingAssessment.setStartDate(updatedAssessment.getStartDate().trim());
+            existingAssessment.setEndDate(updatedAssessment.getEndDate().trim());
+            existingAssessment.setPerformancePeriod(existingAssessment.getStartDate() + " - " + existingAssessment.getEndDate());
             existingAssessment.setGeneralObservations(updatedAssessment.getGeneralObservations());
             existingAssessment.setEmployeeComment(updatedAssessment.getEmployeeComment());
         }
-        if (isSupervisor(existingAssessment, loggedUser)) {
+        if (isSupervisor(existingAssessment, loggedUser) && canUserEditDimensions(existingAssessment, loggedUser)) {
             existingAssessment.setGeneralObservations(updatedAssessment.getGeneralObservations());
             existingAssessment.setSupervisorComment(updatedAssessment.getSupervisorComment());
         }
-        if (!isOwner(existingAssessment, loggedUser) && !isSupervisor(existingAssessment, loggedUser)) {
+        if (!(isOwner(existingAssessment, loggedUser) && isKpiContractEditable(existingAssessment))
+                && !(isSupervisor(existingAssessment, loggedUser) && canUserEditDimensions(existingAssessment, loggedUser))) {
             return null;
         }
         return assessmentRepository.save(existingAssessment);
@@ -120,7 +148,7 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             return null;
         }
         Account loggedUser = commonService.getLoggedUser();
-        if (!isOwner(assessment, loggedUser) && !isSupervisor(assessment, loggedUser) && !isHrOrAdmin(loggedUser)) {
+        if (!isAllowedStatusTransition(assessment, status, loggedUser)) {
             return null;
         }
         assessment.setStatus(status);
@@ -145,7 +173,7 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
         ProbationAssessment assessment = getAssessmentById(assessmentId);
         ProbationDimensionTemplate template = probationConfigService.getDimensionTemplateById(dimensionTemplateId);
         Account loggedUser = commonService.getLoggedUser();
-        if (assessment == null || template == null || !canUserEditAssessmentContent(assessment, loggedUser)) {
+        if (assessment == null || template == null || !canUserEditDimensions(assessment, loggedUser)) {
             return null;
         }
         ProbationAssessmentDimension dimension = assessmentDimensionRepository.findProbationAssessmentDimensionByAssessmentAndDimensionTemplate(assessment, template);
@@ -161,13 +189,19 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             if (plan != null && plan.getClientId() == loggedUser.getClientId()) {
                 dimension.setPerformanceImprovementPlan(plan);
             }
+        } else {
+            dimension.setPerformanceImprovementPlan(null);
         }
         return assessmentDimensionRepository.save(dimension);
     }
 
     @Override
     public ProbationAssessmentDimension getAssessmentDimensionById(long dimensionId) {
-        return assessmentDimensionRepository.findProbationAssessmentDimensionById(dimensionId);
+        Account loggedUser = commonService.getLoggedUser();
+        if (loggedUser == null) {
+            return null;
+        }
+        return assessmentDimensionRepository.findProbationAssessmentDimensionByIdAndAssessment_ClientId(dimensionId, loggedUser.getClientId());
     }
 
     @Override
@@ -181,39 +215,79 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
 
     @Override
     public ProbationKpi getKpiById(long kpiId) {
-        return probationKpiRepository.findProbationKpiById(kpiId);
+        Account loggedUser = commonService.getLoggedUser();
+        if (loggedUser == null) {
+            return null;
+        }
+        return probationKpiRepository.findProbationKpiByIdAndAssessment_ClientId(kpiId, loggedUser.getClientId());
     }
 
     @Override
     public ProbationKpi addKpi(long assessmentId, ProbationKpi kpi) {
         ProbationAssessment assessment = getAssessmentById(assessmentId);
-        if (assessment == null || !canUserEditAssessmentContent(assessment, commonService.getLoggedUser())) {
+        Account loggedUser = commonService.getLoggedUser();
+        if (assessment == null || kpi == null || !isOwner(assessment, loggedUser) || !isKpiContractEditable(assessment)) {
             return null;
         }
-        kpi.setAssessment(assessment);
-        if (kpi.getStatus() == null || kpi.getStatus().isEmpty()) {
-            kpi.setStatus(PMConstants.STATUS_ACTIVE);
+
+        ProbationKpi targetKpi = kpi;
+        if (kpi.getId() > 0) {
+            targetKpi = getKpiById(kpi.getId());
+            if (targetKpi == null || targetKpi.getAssessment() == null || targetKpi.getAssessment().getId() != assessmentId) {
+                return null;
+            }
+            targetKpi.setName(kpi.getName());
+            targetKpi.setMeasureOfSuccess(kpi.getMeasureOfSuccess());
+            targetKpi.setTarget(kpi.getTarget());
+        } else {
+            targetKpi.setAssessment(assessment);
+            targetKpi.setIncumbentMark(null);
+            targetKpi.setSupervisorMark(null);
+            targetKpi.setProgressPercent(null);
+            targetKpi.setProgressComment(null);
+            targetKpi.setIncumbentComment(null);
+            targetKpi.setSupervisorComment(null);
+            targetKpi.setAttachmentPath(null);
+            targetKpi.setFlag(null);
         }
-        return probationKpiRepository.save(kpi);
+        targetKpi.setStatus(PMConstants.STATUS_ACTIVE);
+        return probationKpiRepository.save(targetKpi);
     }
 
     @Override
     public ProbationKpi updateKpi(ProbationKpi newKpi) {
-        ProbationKpi existingKpi = probationKpiRepository.findProbationKpiById(newKpi.getId());
-        if (existingKpi == null || !isAssessmentAccessible(existingKpi.getAssessment()) || !canUserEditAssessmentContent(existingKpi.getAssessment(), commonService.getLoggedUser())) {
+        if (newKpi == null) {
             return null;
         }
-        existingKpi.setName(newKpi.getName());
-        existingKpi.setMeasureOfSuccess(newKpi.getMeasureOfSuccess());
-        existingKpi.setTarget(newKpi.getTarget());
-        existingKpi.setIncumbentMark(newKpi.getIncumbentMark());
-        existingKpi.setSupervisorMark(newKpi.getSupervisorMark());
-        existingKpi.setProgressPercent(newKpi.getProgressPercent());
-        existingKpi.setProgressComment(newKpi.getProgressComment());
-        existingKpi.setIncumbentComment(newKpi.getIncumbentComment());
-        existingKpi.setSupervisorComment(newKpi.getSupervisorComment());
-        existingKpi.setAttachmentPath(newKpi.getAttachmentPath());
-        existingKpi.setFlag(newKpi.getFlag());
+        ProbationKpi existingKpi = getKpiById(newKpi.getId());
+        if (existingKpi == null || existingKpi.getAssessment() == null) {
+            return null;
+        }
+
+        ProbationAssessment assessment = existingKpi.getAssessment();
+        Account loggedUser = commonService.getLoggedUser();
+        if (isOwner(assessment, loggedUser) && isKpiContractEditable(assessment)) {
+            existingKpi.setName(newKpi.getName());
+            existingKpi.setMeasureOfSuccess(newKpi.getMeasureOfSuccess());
+            existingKpi.setTarget(newKpi.getTarget());
+        } else if (isOwner(assessment, loggedUser) && isIncumbentEvaluationEditable(assessment)) {
+            if (!isValidMark(newKpi.getIncumbentMark()) || !isValidProgress(newKpi.getProgressPercent())) {
+                return null;
+            }
+            existingKpi.setIncumbentMark(newKpi.getIncumbentMark());
+            existingKpi.setProgressPercent(newKpi.getProgressPercent());
+            existingKpi.setProgressComment(newKpi.getProgressComment());
+            existingKpi.setIncumbentComment(newKpi.getIncumbentComment());
+            existingKpi.setAttachmentPath(newKpi.getAttachmentPath());
+        } else if (isSupervisor(assessment, loggedUser) && isSupervisorEvaluationEditable(assessment)) {
+            if (!isValidMark(newKpi.getSupervisorMark())) {
+                return null;
+            }
+            existingKpi.setSupervisorMark(newKpi.getSupervisorMark());
+            existingKpi.setSupervisorComment(newKpi.getSupervisorComment());
+        } else {
+            return null;
+        }
         return probationKpiRepository.save(existingKpi);
     }
 
@@ -262,11 +336,16 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
     }
 
     @Override
-    public void deleteKpi(long kpiId) {
-        ProbationKpi kpi = probationKpiRepository.findProbationKpiById(kpiId);
-        if (kpi != null && isAssessmentAccessible(kpi.getAssessment()) && canUserEditAssessmentContent(kpi.getAssessment(), commonService.getLoggedUser())) {
-            probationKpiRepository.delete(kpi);
+    public boolean deleteKpi(long kpiId) {
+        ProbationKpi kpi = getKpiById(kpiId);
+        if (kpi == null || !isOwner(kpi.getAssessment(), commonService.getLoggedUser()) || !isKpiContractEditable(kpi.getAssessment())) {
+            return false;
         }
+        if (!probationKpiCommentRepository.findProbationKpiCommentsByProbationKpiOrderByDateAsc(kpi).isEmpty()) {
+            return false;
+        }
+        probationKpiRepository.delete(kpi);
+        return true;
     }
 
     @Override
@@ -276,6 +355,23 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             return Collections.emptyList();
         }
         return approvalRepository.findProbationAssessmentApprovalsByAssessmentOrderByDateDesc(assessment);
+    }
+
+    @Override
+    public ProbationAssessmentApproval recordReviewAction(long assessmentId, String stepName, String action, String remarks) {
+        ProbationAssessment assessment = getAssessmentById(assessmentId);
+        Account loggedUser = commonService.getLoggedUser();
+        if (assessment == null || loggedUser == null
+                || (!isOwner(assessment, loggedUser) && !isSupervisor(assessment, loggedUser) && !canViewAsHr(assessment, loggedUser))) {
+            return null;
+        }
+        ProbationAssessmentApproval approval = new ProbationAssessmentApproval();
+        approval.setAssessment(assessment);
+        approval.setWorkflowStepName(stepName);
+        approval.setAction(action);
+        approval.setActor(loggedUser);
+        approval.setRemarks(remarks == null ? null : remarks.trim());
+        return approvalRepository.save(approval);
     }
 
     @Override
@@ -378,6 +474,62 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
         return isSupervisor(assessment, commonService.getLoggedUser());
     }
 
+    @Override
+    public ProbationResultSummary getResultSummary(long assessmentId) {
+        List<ProbationKpi> kpis = listKpis(assessmentId);
+        int incumbentCount = 0;
+        int supervisorCount = 0;
+        int progressCount = 0;
+        int flaggedCount = 0;
+        double incumbentTotal = 0.0;
+        double supervisorTotal = 0.0;
+        double progressTotal = 0.0;
+
+        for (ProbationKpi kpi : kpis) {
+            if (kpi.getIncumbentMark() != null) {
+                incumbentCount++;
+                incumbentTotal += kpi.getIncumbentMark();
+            }
+            if (kpi.getSupervisorMark() != null) {
+                supervisorCount++;
+                supervisorTotal += kpi.getSupervisorMark();
+            }
+            if (kpi.getProgressPercent() != null) {
+                progressCount++;
+                progressTotal += kpi.getProgressPercent();
+            }
+            if (hasText(kpi.getFlag())) {
+                flaggedCount++;
+            }
+        }
+
+        int totalKpis = kpis.size();
+        double averageIncumbentMark = average(incumbentTotal, incumbentCount);
+        double averageSupervisorMark = average(supervisorTotal, supervisorCount);
+        double averageProgress = average(progressTotal, progressCount);
+        boolean complete = totalKpis > 0 && incumbentCount == totalKpis
+                && supervisorCount == totalKpis && progressCount == totalKpis;
+        double resultMark = supervisorCount > 0 ? averageSupervisorMark : averageIncumbentMark;
+        String resultSource = supervisorCount > 0 ? "Supervisor marks" : "Incumbent marks";
+
+        return new ProbationResultSummary(
+                totalKpis,
+                incumbentCount,
+                supervisorCount,
+                progressCount,
+                flaggedCount,
+                averageIncumbentMark,
+                averageSupervisorMark,
+                averageProgress,
+                resultMark,
+                resultSource,
+                complete,
+                resolvePerformanceBand(resultMark),
+                resolveRecommendation(totalKpis, incumbentCount, supervisorCount, progressCount,
+                        flaggedCount, resultMark, averageProgress)
+        );
+    }
+
     private boolean canUserApprove(ProbationAssessment assessment, Account user) {
         if (assessment == null || user == null) {
             return false;
@@ -443,8 +595,7 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
         return false;
     }
 
-    private void initializeDimensions(ProbationAssessment assessment) {
-        List<ProbationDimensionTemplate> templates = probationConfigService.listActiveDimensionTemplates();
+    private void initializeDimensions(ProbationAssessment assessment, List<ProbationDimensionTemplate> templates) {
         for (ProbationDimensionTemplate template : templates) {
             ProbationAssessmentDimension dimension = new ProbationAssessmentDimension();
             dimension.setAssessment(assessment);
@@ -478,8 +629,10 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
                 assessment.getEmployee().getSupervisor().getId() == user.getId();
     }
 
-    private boolean canUserEditAssessmentContent(ProbationAssessment assessment, Account user) {
-        return isOwner(assessment, user) || isSupervisor(assessment, user);
+    private boolean canUserEditDimensions(ProbationAssessment assessment, Account user) {
+        return isSupervisor(assessment, user)
+                && (statusMatches(assessment, PMConstants.PROBATION_STATUS_PERSONAL_DIMENSIONS_IN_PROGRESS)
+                || statusMatches(assessment, PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_HR));
     }
 
     private boolean isAssessmentAccessible(ProbationAssessment assessment) {
@@ -502,17 +655,199 @@ public class ProbationAssessmentServiceImpl implements hr.performancemanagement.
             return isSupervisor(assessment, user);
         }
         if (PMConstants.PROBATION_STATUS_KPI_PENDING_HR_APPROVAL.equalsIgnoreCase(assessment.getStatus())) {
-            return isHrOrAdmin(user);
+            return hasPermission(user, AccessPermissions.PROBATION_APPROVE_KPI_CONTRACT, assessment.getEmployee());
         }
         return false;
     }
 
-    private boolean isHrOrAdmin(Account user) {
-        if (user == null) {
+    private boolean canViewAsHr(ProbationAssessment assessment, Account user) {
+        Account subject = assessment == null ? null : assessment.getEmployee();
+        return hasPermission(user, AccessPermissions.PROBATION_CREATE_CONTRACT, subject)
+                || hasPermission(user, AccessPermissions.PROBATION_APPROVE_KPI_CONTRACT, subject)
+                || hasPermission(user, AccessPermissions.PROBATION_APPROVE_FINAL_ASSESSMENT, subject)
+                || hasPermission(user, AccessPermissions.PROBATION_CONFIGURE, subject);
+    }
+
+    private boolean isKpiContractEditable(ProbationAssessment assessment) {
+        return statusMatches(assessment, PMConstants.PROBATION_STATUS_CONTRACT_CREATED)
+                || statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_SET)
+                || statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_SUPERVISOR)
+                || statusMatches(assessment, PMConstants.PROBATION_STATUS_DRAFT)
+                || statusMatches(assessment, PMConstants.PROBATION_STATUS_REJECTED);
+    }
+
+    private boolean isIncumbentEvaluationEditable(ProbationAssessment assessment) {
+        return statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_APPROVED)
+                || statusMatches(assessment, PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_SUPERVISOR);
+    }
+
+    private boolean isSupervisorEvaluationEditable(ProbationAssessment assessment) {
+        return statusMatches(assessment, PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW);
+    }
+
+    private boolean statusMatches(ProbationAssessment assessment, String status) {
+        return assessment != null && assessment.getStatus() != null && status.equalsIgnoreCase(assessment.getStatus());
+    }
+
+    private boolean isAllowedStatusTransition(ProbationAssessment assessment, String nextStatus, Account user) {
+        if (assessment == null || user == null || nextStatus == null) {
             return false;
         }
-        return "HR".equalsIgnoreCase(user.getRole()) ||
-                PMConstants.IS_ADMIN.equalsIgnoreCase(user.getAdmin()) ||
-                PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(user.getSpecial());
+        if (statusMatches(assessment, nextStatus)) {
+            return true;
+        }
+
+        if (isOwner(assessment, user)) {
+            if (PMConstants.PROBATION_STATUS_KPI_SET.equalsIgnoreCase(nextStatus)) {
+                return isKpiContractEditable(assessment);
+            }
+            if (PMConstants.PROBATION_STATUS_KPI_PENDING_SUPERVISOR_APPROVAL.equalsIgnoreCase(nextStatus)) {
+                return statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_SET);
+            }
+            if (PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW.equalsIgnoreCase(nextStatus)) {
+                return isIncumbentEvaluationEditable(assessment);
+            }
+        }
+
+        if (isSupervisor(assessment, user)) {
+            boolean supervisorKpiReview = statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_PENDING_SUPERVISOR_APPROVAL)
+                    || statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_HR);
+            if (PMConstants.PROBATION_STATUS_KPI_PENDING_HR_APPROVAL.equalsIgnoreCase(nextStatus)
+                    || PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(nextStatus)) {
+                return supervisorKpiReview;
+            }
+            if (PMConstants.PROBATION_STATUS_PERSONAL_DIMENSIONS_IN_PROGRESS.equalsIgnoreCase(nextStatus)
+                    || PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(nextStatus)) {
+                return statusMatches(assessment, PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW);
+            }
+            if (PMConstants.PROBATION_STATUS_EVALUATION_PENDING_HR_APPROVAL.equalsIgnoreCase(nextStatus)) {
+                return canUserEditDimensions(assessment, user);
+            }
+        }
+
+        if (PMConstants.PROBATION_STATUS_KPI_APPROVED.equalsIgnoreCase(nextStatus)
+                || PMConstants.PROBATION_STATUS_KPI_REJECTED_BY_HR.equalsIgnoreCase(nextStatus)) {
+            if (hasPermission(user, AccessPermissions.PROBATION_APPROVE_KPI_CONTRACT, assessment.getEmployee())) {
+                return statusMatches(assessment, PMConstants.PROBATION_STATUS_KPI_PENDING_HR_APPROVAL);
+            }
+        }
+        if (PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED.equalsIgnoreCase(nextStatus)
+                || PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_HR.equalsIgnoreCase(nextStatus)) {
+            if (hasPermission(user, AccessPermissions.PROBATION_APPROVE_FINAL_ASSESSMENT, assessment.getEmployee())) {
+                return statusMatches(assessment, PMConstants.PROBATION_STATUS_EVALUATION_PENDING_HR_APPROVAL);
+            }
+        }
+        return false;
+    }
+
+    private boolean hasPermission(Account user, String permissionCode, Account subject) {
+        return accessControlService != null && accessControlService.hasPermission(user, permissionCode, subject);
+    }
+
+    private boolean isValidMark(Double mark) {
+        return mark == null || (!mark.isNaN() && !mark.isInfinite() && mark >= 1.0 && mark <= 5.0);
+    }
+
+    private boolean isValidProgress(Double progress) {
+        return progress == null || (!progress.isNaN() && !progress.isInfinite() && progress >= 0.0 && progress <= 100.0);
+    }
+
+    private double average(double total, int count) {
+        if (count == 0) {
+            return 0.0;
+        }
+        return Math.round((total / count) * 100.0) / 100.0;
+    }
+
+    private String resolvePerformanceBand(double mark) {
+        if (mark >= 4.5) {
+            return "Outstanding";
+        }
+        if (mark >= 3.5) {
+            return "Exceeds expectations";
+        }
+        if (mark >= 2.5) {
+            return "Meets expectations";
+        }
+        if (mark >= 1.5) {
+            return "Needs improvement";
+        }
+        if (mark > 0.0) {
+            return "Unsatisfactory";
+        }
+        return "Not assessed";
+    }
+
+    private String resolveRecommendation(int totalKpis,
+                                         int incumbentCount,
+                                         int supervisorCount,
+                                         int progressCount,
+                                         int flaggedCount,
+                                         double resultMark,
+                                         double averageProgress) {
+        if (totalKpis == 0) {
+            return "No result is available until KPI contract items are added.";
+        }
+        if (incumbentCount < totalKpis || progressCount < totalKpis) {
+            return "Incumbent evaluation is incomplete; capture a mark and progress for every KPI.";
+        }
+        if (supervisorCount < totalKpis) {
+            return "Supervisor evaluation is incomplete; capture a supervisor mark for every KPI.";
+        }
+        if (flaggedCount > 0) {
+            return "HR decision required: review flagged KPI items before confirming an outcome.";
+        }
+        if (resultMark >= 3.5 && averageProgress >= 70.0) {
+            return "Performance supports confirmation, subject to HR review of the full assessment.";
+        }
+        if (resultMark >= 2.5) {
+            return "Consider confirmation with targeted follow-up on weaker KPI areas.";
+        }
+        return "Consider extending probation or starting formal improvement action before confirmation.";
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean isValidDateRange(String startDate, String endDate) {
+        if (!hasText(startDate) || !hasText(endDate)) {
+            return false;
+        }
+        try {
+            LocalDate start = LocalDate.parse(startDate.trim());
+            LocalDate end = LocalDate.parse(endDate.trim());
+            return !end.isBefore(start);
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
+    private boolean hasOverlappingOpenAssessment(Account employee, String startDate, String endDate) {
+        List<ProbationAssessment> existingAssessments = assessmentRepository.findProbationAssessmentsByEmployeeOrderByDateDesc(employee);
+        if (existingAssessments == null || existingAssessments.isEmpty()) {
+            return false;
+        }
+        LocalDate requestedStart = LocalDate.parse(startDate.trim());
+        LocalDate requestedEnd = LocalDate.parse(endDate.trim());
+        for (ProbationAssessment existing : existingAssessments) {
+            if (existing == null || isCompletedProbationStatus(existing.getStatus())
+                    || !isValidDateRange(existing.getStartDate(), existing.getEndDate())) {
+                continue;
+            }
+            LocalDate existingStart = LocalDate.parse(existing.getStartDate().trim());
+            LocalDate existingEnd = LocalDate.parse(existing.getEndDate().trim());
+            if (!requestedEnd.isBefore(existingStart) && !requestedStart.isAfter(existingEnd)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isCompletedProbationStatus(String status) {
+        return PMConstants.PROBATION_STATUS_EVALUATION_COMPLETED.equalsIgnoreCase(status)
+                || PMConstants.PROBATION_STATUS_AUTHORIZED.equalsIgnoreCase(status)
+                || "COMPLETED".equalsIgnoreCase(status)
+                || "CLOSED".equalsIgnoreCase(status);
     }
 }

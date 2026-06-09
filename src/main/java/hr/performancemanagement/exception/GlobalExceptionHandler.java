@@ -24,8 +24,11 @@ import javax.servlet.http.HttpServletRequest;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<CommonResponse<Object>> handleNotFound(ResourceNotFoundException exception) {
+    @ExceptionHandler({
+            ResourceNotFoundException.class,
+            hr.performancemanagement.exception.custom.ResourceNotFoundException.class
+    })
+    public ResponseEntity<CommonResponse<Object>> handleNotFound(RuntimeException exception) {
         log.warn("Resource not found: {}", exception.getMessage());
         return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage());
     }
@@ -89,7 +92,7 @@ public class GlobalExceptionHandler {
             javax.validation.ConstraintViolationException.class
     })
     public ResponseEntity<CommonResponse<Object>> handleDataIntegrity(Exception exception) {
-        return buildResponse(HttpStatus.BAD_REQUEST, PortletUtils.sanitiseUserErrorMessage(exception.getMessage()));
+        return buildResponse(HttpStatus.BAD_REQUEST, userFriendlyDataMessage(exception));
     }
 
     @ExceptionHandler(Exception.class)
@@ -100,11 +103,12 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<CommonResponse<Object>> buildResponse(HttpStatus status, String message) {
+        String userMessage = PortletUtils.sanitiseUserErrorMessage(message);
         return ResponseEntity.status(status).body(
                 CommonResponse.builder()
                         .isSuccess(false)
                         .statusCode(status.value())
-                        .message(message)
+                        .message(userMessage)
                         .data(null)
                         .build()
         );
@@ -127,5 +131,14 @@ public class GlobalExceptionHandler {
         return message == null || message.trim().isEmpty()
                 ? "The request could not be validated."
                 : message.trim();
+    }
+
+    private String userFriendlyDataMessage(Exception exception) {
+        String message = exception == null ? null : exception.getMessage();
+        String friendlyMessage = PortletUtils.sanitiseUserErrorMessage(message);
+        if (friendlyMessage != null && !friendlyMessage.trim().isEmpty()) {
+            return friendlyMessage;
+        }
+        return "The record could not be saved because some information is missing or conflicts with existing records.";
     }
 }

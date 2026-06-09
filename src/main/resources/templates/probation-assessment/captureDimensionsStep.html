@@ -33,6 +33,26 @@
                     </div>
                 </div>
 
+                <div class="alert alert-info" th:if="${resultSummary != null}">
+                    <strong>Probation result:</strong>
+                    <span th:text="${resultSummary.performanceBand}"></span>
+                    <span class="m-l-md">Current average:
+                        <strong th:text="${#numbers.formatDecimal(resultSummary.resultMark, 1, 2) + ' / 5 (' + resultSummary.resultSource + ')'}"></strong>
+                    </span>
+                    <span class="m-l-md">Average progress:
+                        <strong th:text="${#numbers.formatDecimal(resultSummary.averageProgress, 1, 2) + '%'}"></strong>
+                    </span>
+                    <div th:text="${resultSummary.recommendation}"></div>
+                </div>
+
+                <div class="alert alert-warning" th:if="${approvalHistory != null and !#lists.isEmpty(approvalHistory)}"
+                     th:with="latest=${approvalHistory[0]}">
+                    <strong>Latest workflow action:</strong>
+                    <span th:text="${latest.workflowStepName + ' - ' + latest.action}"></span>
+                    <span th:if="${latest.actor != null}" th:text="${' by ' + latest.actor.fullName}"></span>
+                    <div th:if="${latest.remarks != null and latest.remarks != ''}" th:text="${latest.remarks}"></div>
+                </div>
+
                 <div class="progress m-b-sm">
                     <div class="progress-bar progress-bar-info"
                          th:style="'width:' + ${(stepIndex + 1) * 100 / totalSteps} + '%'"

@@ -10,6 +10,7 @@ import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.repository.ScoreCardRepository;
 import hr.performancemanagement.repository.ScorecardWorkflowStageRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.servlet.http.HttpSession;
@@ -34,6 +35,8 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     @Autowired
     CommonService cs;
     @Autowired
+    AccessControlService accessControlService;
+    @Autowired
     HttpSession session;
 
     @Autowired
@@ -48,11 +51,13 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     @Autowired
     OverallScoreRepository overallScoreRepository;
 
-    @Autowired
     private final ReportingPeriodService reportingPeriodService;
+    private final ScorecardLifecycleService scorecardLifecycleService;
 
-    public ScorecardServiceImpl(ReportingPeriodService reportingPeriodService) {
+    public ScorecardServiceImpl(ReportingPeriodService reportingPeriodService,
+                                ScorecardLifecycleService scorecardLifecycleService) {
         this.reportingPeriodService = reportingPeriodService;
+        this.scorecardLifecycleService = scorecardLifecycleService;
     }
 
     @Override
@@ -80,9 +85,7 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
         if (scorecardIds == null || scorecardIds.isEmpty()) {
             return new ArrayList<>();
         }
-        List<Scorecard> scorecards = scoreCardRepository.findAllById(scorecardIds);
-        applyScoreAverages(scorecards);
-        return scorecards;
+        return scoreCardRepository.findAllById(scorecardIds);
     }
 
 
@@ -172,12 +175,24 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             if (scorecardList.isEmpty()) {
                 scoreCardRepository.findScorecardsByReportingPeriod(reportingPeriod).forEach(scorecardList::add);
             }
+            return deduplicateScorecards(scorecardList);
         }
-        else if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){
+        if (hasAnyScorecardWorkflowPermission(loggedUser)) {
+            List<Scorecard> candidates = scoreCardRepository.findScorecardsByReportingPeriodAndClient_ClientId(reportingPeriod, configuredClientId);
+            if (candidates.isEmpty()) {
+                candidates = scoreCardRepository.findScorecardsByReportingPeriod(reportingPeriod);
+            }
+            for (Scorecard scorecard : candidates) {
+                if (canAccessScorecardAsWorkflowUser(loggedUser, scorecard)) {
+                    scorecardList.add(scorecard);
+                }
+            }
+        }
+        if(loggedUser.getAccountType().equalsIgnoreCase("Employee")){
 
             scoreCardRepository.findScorecardsByReportingPeriodAndOwner(reportingPeriod, loggedUser).forEach(scorecard -> scorecardList.add(scorecard));
 
-        }else if(loggedUser.getAccountType().equalsIgnoreCase("Supervisor")){
+        } else if(loggedUser.getAccountType().equalsIgnoreCase("Supervisor")){
 
             scoreCardRepository.findScorecardsByReportingPeriodAndOwner(reportingPeriod, loggedUser).forEach(scorecard -> scorecardList.add(scorecard));
             scoreCardRepository.findScorecardsByReportingPeriodAndOwner_Supervisor(reportingPeriod, loggedUser).forEach(scorecard -> scorecardList.add(scorecard));
@@ -195,6 +210,21 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
         }
         return deduplicateScorecards(scorecardList);
+    }
+
+    private boolean hasAnyScorecardWorkflowPermission(Account account) {
+        return accessControlService.hasPermissionForAnyScope(account, AccessPermissions.SCORECARD_APPROVE_TARGETS_HR)
+                || accessControlService.hasPermissionForAnyScope(account, AccessPermissions.SCORECARD_APPROVE_AGREED_SCORES_HR)
+                || accessControlService.hasPermissionForAnyScope(account, AccessPermissions.SCORECARD_MODERATE)
+                || accessControlService.hasPermissionForAnyScope(account, AccessPermissions.SCORECARD_CLOSE);
+    }
+
+    private boolean canAccessScorecardAsWorkflowUser(Account account, Scorecard scorecard) {
+        Account owner = scorecard == null ? null : scorecard.getOwner();
+        return accessControlService.hasPermission(account, AccessPermissions.SCORECARD_APPROVE_TARGETS_HR, owner)
+                || accessControlService.hasPermission(account, AccessPermissions.SCORECARD_APPROVE_AGREED_SCORES_HR, owner)
+                || accessControlService.hasPermission(account, AccessPermissions.SCORECARD_MODERATE, owner)
+                || accessControlService.hasPermission(account, AccessPermissions.SCORECARD_CLOSE, owner);
     }
 
     private List<Scorecard> filterScorecardSearchResults(List<Scorecard> scorecards, Long departmentId, Long employeeId, String approvalStatus) {
@@ -244,10 +274,7 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
     @Override
     public List<Scorecard> getScoresByPeriodId(ReportingPeriod reportingPeriod){
-
-        List<Scorecard> scorecardList = getScorecardsByReportingPeriodId(reportingPeriod);
-        applyScoreAverages(scorecardList);
-        return scorecardList;
+        return getScorecardsByReportingPeriodId(reportingPeriod);
     }
 
     @Override
@@ -396,13 +423,7 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
 
     @Override
     public Scorecard getScorecardById(long id){
-
-        Scorecard scorecard = scoreCardRepository.findScorecardById(id);
-        if (scorecard == null) {
-            return null;
-        }
-        applyScoreAverages(Collections.singletonList(scorecard));
-        return scorecard;
+        return scoreCardRepository.findScorecardById(id);
     }
     @Override
     public Scorecard getActiveEmployeeScorecardByOwner(Account account){
@@ -417,6 +438,7 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     @Override
     @Transactional
     public void addScorecard(Scorecard scorecard) {
+        scorecardLifecycleService.prepareScorecardForSave(scorecard);
         alignApprovalStage(scorecard);
         scoreCardRepository.save(scorecard);
     }
@@ -424,6 +446,7 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     @Override
     @Transactional
     public Scorecard saveScorecard(Scorecard scorecard){
+        scorecardLifecycleService.prepareScorecardForSave(scorecard);
         alignApprovalStage(scorecard);
         Scorecard savedScorecard = scoreCardRepository.save(scorecard);
         return savedScorecard;
@@ -433,46 +456,6 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
     public int countActiveScorecards(Account owner, ReportingPeriod reportingPeriod){
         int count = scoreCardRepository.countScorecardsByOwnerAndReportingPeriod(owner, reportingPeriod);
         return count;
-    }
-
-    private void applyScoreAverages(List<Scorecard> scorecards) {
-        if (scorecards == null || scorecards.isEmpty()) {
-            return;
-        }
-        List<Long> scorecardIds = collectScorecardIds(scorecards);
-        Map<Long, Object[]> averagesByScorecardId = loadAverageRowsByScorecardId(scorecardIds);
-        for (Scorecard scorecard : scorecards) {
-            if (scorecard == null || scorecard.getId() <= 0) {
-                continue;
-            }
-            Object[] averages = averagesByScorecardId.get(scorecard.getId());
-            if (averages == null) {
-                scorecard.setEmployeeScore(0.0);
-                scorecard.setManagerScore(0.0);
-                scorecard.setAgreedScore(0.0);
-                scorecard.setModeratedScore(0.0);
-                scorecard.setWeightedScore(0.0);
-                continue;
-            }
-            scorecard.setEmployeeScore(toDouble(averages[1]));
-            scorecard.setManagerScore(toDouble(averages[2]));
-            scorecard.setAgreedScore(toDouble(averages[3]));
-            scorecard.setModeratedScore(toDouble(averages[4]));
-            scorecard.setWeightedScore(toDouble(averages[5]));
-        }
-    }
-
-    private Map<Long, Object[]> loadAverageRowsByScorecardId(List<Long> scorecardIds) {
-        if (scorecardIds == null || scorecardIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        List<Object[]> rows = scoreCardRepository.findScoreAveragesByScorecardIds(scorecardIds);
-        Map<Long, Object[]> averagesByScorecardId = new HashMap<>();
-        for (Object[] row : rows) {
-            long scorecardId = toLong(row[0]);
-            averagesByScorecardId.put(scorecardId, row);
-        }
-        return averagesByScorecardId;
     }
 
     private List<Long> collectScorecardIds(List<Scorecard> scorecards) {

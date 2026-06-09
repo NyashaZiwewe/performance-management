@@ -10,6 +10,12 @@ import javax.persistence.*;
 import java.util.Date;
 
 @Entity
+@Table(
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_overall_score_scorecard_reporting_date",
+                columnNames = {"scorecard_id", "reporting_date_id"}
+        )
+)
 @Getter
 @Setter
 @AllArgsConstructor
@@ -19,11 +25,11 @@ public class OverallScore {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    @ManyToOne
-    @JoinColumn(name = "scorecard_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "scorecard_id", nullable = false)
     private Scorecard scorecard;
-    @ManyToOne
-    @JoinColumn(name = "reporting_date_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "reporting_date_id", nullable = false)
     private ReportingDate reportingDate;
     private Double employeeOverall;
     private Double managerOverall;

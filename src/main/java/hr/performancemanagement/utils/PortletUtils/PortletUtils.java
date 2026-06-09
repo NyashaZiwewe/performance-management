@@ -35,6 +35,18 @@ public class PortletUtils {
 
     public static void addErrorMsg(String msg, HttpServletRequest request, Throwable throwable) {
         logError(msg, request, throwable);
+        addErrorMessageToSession(msg, request);
+    }
+
+    public static void addValidationErrorMsg(String msg, HttpServletRequest request) {
+        log.warn("Validation rejected method={} uri={} message={}",
+                request == null ? null : request.getMethod(),
+                request == null ? null : request.getRequestURI(),
+                sanitiseUserErrorMessage(msg));
+        addErrorMessageToSession(msg, request);
+    }
+
+    private static void addErrorMessageToSession(String msg, HttpServletRequest request) {
         HttpSession session = request.getSession();
         List<String> errorMsgs = (List<String>) session.getAttribute(ERROR_MSGS);
         if (errorMsgs == null) {
@@ -75,11 +87,38 @@ public class PortletUtils {
         String message = rawMessage.trim();
         String lower = message.toLowerCase(Locale.ENGLISH);
 
+        if ((lower.contains("required request parameter") && lower.contains("not present"))
+                || lower.contains("required request part")
+                || lower.contains("missing request parameter")) {
+            return "Complete all required fields before continuing.";
+        }
+
         if (lower.contains("cannot delete or update a parent row")
                 || lower.contains("foreign key constraint fails")
                 || lower.contains("referential integrity constraint")
                 || lower.contains("violates foreign key constraint")) {
             return "This record cannot be changed because it is linked to other records.";
+        }
+
+        if (lower.contains("not-null property references a null or transient value")
+                || lower.contains("cannot be null")
+                || lower.contains("not null constraint")
+                || lower.contains("null value in column")) {
+            return "The action could not be completed because required information is missing.";
+        }
+
+        if (lower.contains("data too long")
+                || lower.contains("value too long")
+                || lower.contains("string or binary data would be truncated")) {
+            return "The action could not be completed because one of the values is too long.";
+        }
+
+        if (lower.contains("date must be")
+                || lower.contains("could not parse")
+                || lower.contains("failed to convert")
+                || lower.contains("for input string")
+                || lower.contains("type mismatch")) {
+            return "The action could not be completed because one or more values are in the wrong format.";
         }
 
         if (lower.contains("constraint [")
@@ -93,6 +132,18 @@ public class PortletUtils {
                 || lower.contains("constraintviolationexception")
                 || lower.contains("violates")) {
             return "This record could not be saved because it conflicts with existing data. Please check for duplicate values in fields that must be unique.";
+        }
+
+        if (lower.contains("nullpointerexception")
+                || lower.contains("indexoutofboundsexception")
+                || lower.contains("no value present")
+                || lower.contains("could not initialize proxy")
+                || lower.contains("lazyinitializationexception")
+                || lower.contains("nested exception is")
+                || lower.contains("java.lang.")
+                || lower.contains("org.hibernate")
+                || lower.contains("org.springframework")) {
+            return "The action could not be completed. Please check the details and try again.";
         }
 
         return message;

@@ -74,7 +74,7 @@
                             <span class="text-xs block"
                                   th:text="${session.loggedUser != null ? session.loggedUser.position : ''}">Position</span>
                             <span class="text-xs block"
-                                  th:text="${session.loggedUser != null ? session.loggedUser.role : ''}">Role</span>
+                                  th:text="${effectiveAccessSummary}">Role</span>
                         </a>
                     </div>
                 </li>
@@ -150,6 +150,9 @@
                         <li class="nav-item">
                             <a href="#" th:href="@{/accounts}"><i class="fa fa-users"></i> Accounts</a>
                         </li>
+                        <li class="nav-item" th:if="${canManageAccess}">
+                            <a href="#" th:href="@{/access-control}"><i class="fa fa-key"></i> Access Roles</a>
+                        </li>
                         <li class="nav-item">
                             <a href="#" th:href="@{/departments}"><i class="fa fa-sitemap"></i> Departments</a>
                         </li>
@@ -170,6 +173,9 @@
                         </li>
                         <li class="nav-item">
                             <a href="#" th:href="@{/scorecard-workflow-stages}"><i class="fa fa-random"></i> Scorecard Workflow</a>
+                        </li>
+                        <li class="nav-item" th:if="${canManageLegacyWorkflowMapping}">
+                            <a href="#" th:href="@{/legacy-workflow-mapping}"><i class="fa fa-link"></i> Legacy Workflow Mapping</a>
                         </li>
                         <li class="nav-item">
                             <a href="#" th:href="@{/system-settings}"><i class="fa fa-sliders"></i> System Settings</a>
@@ -602,6 +608,8 @@
                     }, 250);
                 })();
             </script>
+            <script src="../../static/js/submit-guard.js"
+                    th:src="@{/js/submit-guard.js}"></script>
         </div>
         <div class="row wrapper border-bottom white-bg page-heading app-page-heading" th:fragment="page-heading">
             <div class="col-lg-12">
@@ -621,6 +629,11 @@
             </div>
         </div>
         <div class="alerts" th:fragment="alerts" aria-live="polite" aria-atomic="true">
+            <div class="alert alert-info"
+                 th:if="${activeReportingActivitySummary != null and !activeReportingActivitySummary.isEmpty()}">
+                <strong>Current reporting activity:</strong>
+                <span th:text="${activeReportingActivitySummary}">Activity period and cutoff</span>
+            </div>
             <div th:if="${errorMsgs != null }">
                 <div th:each="message: ${errorMsgs}">
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">

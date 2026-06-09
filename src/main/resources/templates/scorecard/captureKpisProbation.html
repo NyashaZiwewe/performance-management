@@ -39,6 +39,14 @@
                     </div>
                 </div>
 
+                <div class="alert alert-warning" th:if="${approvalHistory != null and !#lists.isEmpty(approvalHistory)}"
+                     th:with="latest=${approvalHistory[0]}">
+                    <strong>Latest workflow action:</strong>
+                    <span th:text="${latest.workflowStepName + ' - ' + latest.action}"></span>
+                    <span th:if="${latest.actor != null}" th:text="${' by ' + latest.actor.fullName}"></span>
+                    <div th:if="${latest.remarks != null and latest.remarks != ''}" th:text="${latest.remarks}"></div>
+                </div>
+
                 <form th:action="@{/probation-assessments/save-kpis/{assessmentId}(assessmentId=${assessment.id})}" method="post" id="kpiForm">
                     <div class="table-responsive">
                         <table class="table table-striped table-bordered">
@@ -58,11 +66,11 @@
                                     <span th:unless="${canEditKpis}" th:text="${kpi.name}"></span>
                                 </td>
                                 <td>
-                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="measureOfSuccess" th:value="${kpi.measureOfSuccess}">
+                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="measureOfSuccess" th:value="${kpi.measureOfSuccess}" required>
                                     <span th:unless="${canEditKpis}" th:text="${kpi.measureOfSuccess}"></span>
                                 </td>
                                 <td>
-                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="target" th:value="${kpi.target}">
+                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="target" th:value="${kpi.target}" required>
                                     <span th:unless="${canEditKpis}" th:text="${kpi.target}"></span>
                                 </td>
                                 <td class="text-center">
@@ -93,10 +101,10 @@
                                     <input type="text" class="form-control" name="name" placeholder="KPI description">
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control" name="measureOfSuccess" placeholder="Measure of success">
+                                    <input type="text" class="form-control" name="measureOfSuccess" placeholder="Measure of success" required>
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control" name="target" placeholder="Target">
+                                    <input type="text" class="form-control" name="target" placeholder="Target" required>
                                 </td>
                                 <td class="text-center">
                                     <button type="submit" class="btn btn-xs btn-success m-r-xs" title="Save KPI Contract">

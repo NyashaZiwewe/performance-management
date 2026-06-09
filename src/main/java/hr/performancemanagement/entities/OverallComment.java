@@ -3,21 +3,34 @@ package hr.performancemanagement.entities;
 import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
+import javax.validation.constraints.Size;
 import java.util.Date;
 
 @Entity
+@Table(
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_overall_comment_scorecard_reporting_date",
+                columnNames = {"scorecard_id", "reporting_date_id"}
+        )
+)
 public class OverallComment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    @ManyToOne
-    @JoinColumn(name = "scorecard_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "scorecard_id", nullable = false)
     private Scorecard scorecard;
-    @ManyToOne
-    @JoinColumn(name = "reporting_date_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "reporting_date_id", nullable = false)
     private ReportingDate reportingDate;
+    @Size(max = 1000, message = "Owner comment cannot exceed 1000 characters")
+    @Column(length = 1000)
     private String ownerComment;
+    @Size(max = 1000, message = "Supervisor comment cannot exceed 1000 characters")
+    @Column(length = 1000)
     private String supervisorComment;
+    @Size(max = 1000, message = "Moderator comment cannot exceed 1000 characters")
+    @Column(length = 1000)
     private String moderatorComment;
     @CreationTimestamp
     private Date date;

@@ -29,6 +29,8 @@ public class ReportingPeriodServiceImpl implements hr.performancemanagement.serv
     ReportingDateRepository reportingDateRepository;
     @Autowired
     CommonService cs;
+    @Autowired
+    ScorecardLifecycleService scorecardLifecycleService;
 
     @Override
     public ReportingPeriod getReportingPeriodById(long id){
@@ -87,6 +89,7 @@ public class ReportingPeriodServiceImpl implements hr.performancemanagement.serv
         ReportingPeriod savedReportingPeriod = reportingPeriodRepository.save(reportingPeriod);
         if (!PMConstants.STATUS_ACTIVE.equalsIgnoreCase(savedReportingPeriod.getStatus())) {
             closeOpenOrActiveReportingDates(savedReportingPeriod);
+            scorecardLifecycleService.closeScorecardsForInactiveReportingPeriod(savedReportingPeriod);
         }
     }
 

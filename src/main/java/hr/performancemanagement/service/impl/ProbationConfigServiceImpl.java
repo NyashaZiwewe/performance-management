@@ -5,10 +5,12 @@ import hr.performancemanagement.service.api.*;
 
 import hr.performancemanagement.entities.ProbationDimensionTemplate;
 import hr.performancemanagement.entities.ProbationWorkflowStep;
+import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.repository.ProbationAssessmentDimensionRepository;
 import hr.performancemanagement.repository.ProbationDimensionTemplateRepository;
 import hr.performancemanagement.repository.ProbationWorkflowStepRepository;
 import hr.performancemanagement.utils.constants.PMConstants;
+import hr.performancemanagement.utils.constants.AccessPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
@@ -29,6 +31,8 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
     private CommonService commonService;
     @Autowired
     private AccountService accountService;
+    @Autowired
+    private AccessControlService accessControlService;
 
     @Override
     public List<ProbationDimensionTemplate> listAllDimensionTemplates() {
@@ -47,7 +51,7 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public ProbationDimensionTemplate saveDimensionTemplate(ProbationDimensionTemplate template) {
-        if (template == null) {
+        if (template == null || !canManageProbationConfiguration()) {
             return null;
         }
         if (template.getId() > 0) {
@@ -66,9 +70,7 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
             }
             return dimensionTemplateRepository.save(existingTemplate);
         }
-        if (template.getClientId() < 1) {
-            template.setClientId(commonService.getLoggedUser().getClientId());
-        }
+        template.setClientId(commonService.getLoggedUser().getClientId());
         if (template.getStatus() == null || template.getStatus().isEmpty()) {
             template.setStatus(PMConstants.STATUS_ACTIVE);
         }
@@ -80,6 +82,9 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public void deactivateDimensionTemplate(long id) {
+        if (!canManageProbationConfiguration()) {
+            return;
+        }
         ProbationDimensionTemplate template = getDimensionTemplateById(id);
         if (template != null) {
             template.setStatus(PMConstants.STATUS_IN_ACTIVE);
@@ -89,6 +94,9 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public boolean deleteDimensionTemplate(long id) {
+        if (!canManageProbationConfiguration()) {
+            return false;
+        }
         ProbationDimensionTemplate template = getDimensionTemplateById(id);
         if (template == null) {
             return false;
@@ -119,10 +127,26 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public ProbationWorkflowStep saveWorkflowStep(ProbationWorkflowStep step) {
-        long clientId = commonService.getLoggedUser().getClientId();
-        if (step.getClientId() < 1) {
-            step.setClientId(clientId);
+        if (step == null || !canManageProbationConfiguration()) {
+            return null;
         }
+        long clientId = commonService.getLoggedUser().getClientId();
+        if (step.getId() > 0) {
+            ProbationWorkflowStep existingStep = getWorkflowStepById(step.getId());
+            if (existingStep == null) {
+                return null;
+            }
+            existingStep.setName(step.getName());
+            existingStep.setStepOrder(step.getStepOrder());
+            existingStep.setApproverMode(step.getApproverMode());
+            existingStep.setApproverAccountType(step.getApproverAccountType());
+            existingStep.setApproverRole(step.getApproverRole());
+            existingStep.setSameDivisionOnly(step.getSameDivisionOnly());
+            existingStep.setStatus(step.getStatus());
+            existingStep.setApproverAccount(step.getApproverAccount());
+            step = existingStep;
+        }
+        step.setClientId(clientId);
         if (step.getStatus() == null || step.getStatus().isEmpty()) {
             step.setStatus(PMConstants.STATUS_ACTIVE);
         }
@@ -145,6 +169,9 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
 
     @Override
     public void deactivateWorkflowStep(long id) {
+        if (!canManageProbationConfiguration()) {
+            return;
+        }
         ProbationWorkflowStep step = getWorkflowStepById(id);
         if (step != null) {
             step.setStatus(PMConstants.STATUS_IN_ACTIVE);
@@ -160,5 +187,9 @@ public class ProbationConfigServiceImpl implements hr.performancemanagement.serv
                 PMConstants.PROBATION_APPROVER_MODE_ROLE,
                 PMConstants.PROBATION_APPROVER_MODE_USER
         );
+    }
+
+    private boolean canManageProbationConfiguration() {
+        return accessControlService.hasPermission(AccessPermissions.PROBATION_CONFIGURE);
     }
 }

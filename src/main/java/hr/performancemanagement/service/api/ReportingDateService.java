@@ -13,4 +13,5 @@ public interface ReportingDateService {
     List<ReportingDate> listAllReportingDates(ReportingPeriod reportingPeriod);
     long countReportingDates(long reportingPeriodId);
     void saveReportingDate(ReportingDate reportingDate);
+    void deleteReportingDate(ReportingDate reportingDate);
 }

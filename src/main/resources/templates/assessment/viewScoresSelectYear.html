@@ -47,7 +47,8 @@
                                 <label class="col-form-label col-lg-4">Reporting Period</label>
                                 <div class="col-lg-8">
                                     <div class="input-group m-b">
-                                        <select name="reportingPeriodId" class="form-control">
+                                        <select name="reportingPeriodId" class="form-control" required>
+                                            <option value="">Select reporting period</option>
                                             <option th:each="period :${reportingPeriodsList}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
                                                 1
                                             </option>
