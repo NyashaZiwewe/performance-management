@@ -46,7 +46,7 @@
                         <div class="ibox-title">
                             <h5>Search Results</h5>
                             <div class="ibox-tools">
-                                <a th:if="${session.loggedUser.admin == 'IS_ADMIN'}" th:href="@{/accounts/add-account}"><button class="btn btn-success btn-sm">Add New Account</button></a>
+                                <a th:if="${canManageAccounts}" th:href="@{/accounts/add-account}"><button class="btn btn-success btn-sm">Add New Account</button></a>
                             </div>
                         </div>
                         <div class="ibox-content">
@@ -65,8 +65,8 @@
                                         <th>Account Type</th>
                                         <th>Status</th>
                                         <th></th>
-                                        <th th:if="${session.loggedUser.admin == 'IS_ADMIN'}"></th>
-                                        <th th:if="${session.loggedUser.admin == 'IS_ADMIN'}"></th>
+                                        <th th:if="${canManageAccounts}"></th>
+                                        <th th:if="${canManageAccounts}"></th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -88,12 +88,12 @@
                                         <td>
                                            <a th:href="@{/accounts/view-account/} + ${account.id}">More Details</a>
                                         </td>
-                                        <td th:if="${session.loggedUser.admin == 'IS_ADMIN'}">
+                                        <td th:if="${canManageAccounts}">
                                             <a th:href="@{/accounts/edit-account/} + ${account.id}">
                                             <button class="btn btn-success btn-sm">Edit</button>
                                             </a>
                                         </td>
-                                        <td th:if="${session.loggedUser.admin == 'IS_ADMIN'}">
+                                        <td th:if="${canManageAccounts}">
                                             <a data-toggle="modal" th:data-target="'#deleteModal'+ ${stat.index}">
                                                 <button class="btn btn-danger btn-sm" type="button">Delete</button>
                                             </a>

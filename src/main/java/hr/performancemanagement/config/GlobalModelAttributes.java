@@ -53,6 +53,15 @@ public class GlobalModelAttributes {
         }
     }
 
+    @ModelAttribute("canManageAccounts")
+    public boolean canManageAccounts() {
+        try {
+            return commonService.isAdmin() || commonService.hasSpecialRights();
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     @ModelAttribute("canManageLegacyWorkflowMapping")
     public boolean canManageLegacyWorkflowMapping() {
         try {

@@ -61,21 +61,31 @@
                             <tbody id="kpiTableBody">
                             <tr th:each="kpi : ${kpis}">
                                 <td>
-                                    <input th:if="${canEditKpis}" type="hidden" name="kpiId" th:value="${kpi.id}">
-                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="name" th:value="${kpi.name}" required>
-                                    <span th:unless="${canEditKpis}" th:text="${kpi.name}"></span>
+                                    <span class="js-kpi-view" th:text="${kpi.name}"></span>
+                                    <input th:if="${canEditKpis}" type="hidden" class="js-kpi-edit-control"
+                                           name="kpiId" th:value="${kpi.id}" disabled>
+                                    <input th:if="${canEditKpis}" type="text" class="form-control js-kpi-edit-cell js-kpi-edit-control"
+                                           name="name" th:value="${kpi.name}" required disabled style="display:none;">
                                 </td>
                                 <td>
-                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="measureOfSuccess" th:value="${kpi.measureOfSuccess}" required>
-                                    <span th:unless="${canEditKpis}" th:text="${kpi.measureOfSuccess}"></span>
+                                    <span class="js-kpi-view" th:text="${kpi.measureOfSuccess}"></span>
+                                    <input th:if="${canEditKpis}" type="text" class="form-control js-kpi-edit-cell js-kpi-edit-control"
+                                           name="measureOfSuccess" th:value="${kpi.measureOfSuccess}" required disabled style="display:none;">
                                 </td>
                                 <td>
-                                    <input th:if="${canEditKpis}" type="text" class="form-control" name="target" th:value="${kpi.target}" required>
-                                    <span th:unless="${canEditKpis}" th:text="${kpi.target}"></span>
+                                    <span class="js-kpi-view" th:text="${kpi.target}"></span>
+                                    <input th:if="${canEditKpis}" type="text" class="form-control js-kpi-edit-cell js-kpi-edit-control"
+                                           name="target" th:value="${kpi.target}" required disabled style="display:none;">
                                 </td>
                                 <td class="text-center">
-                                    <button th:if="${canEditKpis}" type="submit" class="btn btn-xs btn-success m-r-xs" title="Save KPI Contract">
+                                    <button th:if="${canEditKpis}" type="submit"
+                                            class="btn btn-xs btn-success m-r-xs js-kpi-save js-kpi-edit-control"
+                                            title="Save KPI" disabled style="display:none;">
                                         <i class="fa fa-save"></i>
+                                    </button>
+                                    <button th:if="${canEditKpis}" type="button"
+                                            class="btn btn-xs btn-default m-r-xs js-edit-kpi" title="Edit KPI">
+                                        <i class="fa fa-pencil"></i>
                                     </button>
                                     <button th:if="${canEditKpis}" type="button" class="btn btn-xs btn-danger m-r-xs js-delete-kpi"
                                             th:attr="data-kpi-id=${kpi.id},data-kpi-name=${kpi.name}" title="Delete KPI">
@@ -97,20 +107,19 @@
                             </tr>
                             <tr id="kpiTemplateRow" style="display:none;">
                                 <td>
-                                    <input type="hidden" name="kpiId">
-                                    <input type="text" class="form-control" name="name" placeholder="KPI description">
+                                    <input type="text" class="form-control" name="name" placeholder="KPI description" required disabled>
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control" name="measureOfSuccess" placeholder="Measure of success" required>
+                                    <input type="text" class="form-control" name="measureOfSuccess" placeholder="Measure of success" required disabled>
                                 </td>
                                 <td>
-                                    <input type="text" class="form-control" name="target" placeholder="Target" required>
+                                    <input type="text" class="form-control" name="target" placeholder="Target" required disabled>
                                 </td>
                                 <td class="text-center">
-                                    <button type="submit" class="btn btn-xs btn-success m-r-xs" title="Save KPI Contract">
+                                    <button type="submit" class="btn btn-xs btn-success m-r-xs" title="Save KPI Contract" disabled>
                                         <i class="fa fa-save"></i>
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-danger m-r-xs js-delete-local-kpi" title="Delete KPI">
+                                    <button type="button" class="btn btn-xs btn-danger m-r-xs js-delete-local-kpi" title="Delete KPI" disabled>
                                         <i class="fa fa-trash"></i>
                                     </button>
                                 </td>
@@ -341,6 +350,10 @@
                 var row = template.cloneNode(true);
                 row.style.display = '';
                 row.removeAttribute('id');
+                var controls = row.querySelectorAll('input, button');
+                for (var i = 0; i < controls.length; i++) {
+                    controls[i].disabled = false;
+                }
                 var inputs = row.querySelectorAll('input');
                 for (var i = 0; i < inputs.length; i++) {
                     inputs[i].value = '';
@@ -348,6 +361,16 @@
                 tbody.appendChild(row);
             });
         }
+
+        $(document).on('click', '.js-edit-kpi', function () {
+            var row = $(this).closest('tr');
+            row.find('.js-kpi-view').hide();
+            row.find('.js-kpi-edit-cell').show();
+            row.find('.js-kpi-edit-control').prop('disabled', false);
+            row.find('.js-kpi-save').show();
+            $(this).hide();
+            row.find('.js-kpi-edit-cell').first().focus();
+        });
 
         $(document).on('click', '.js-delete-kpi', function () {
             selectedKpiId = $(this).data('kpi-id');

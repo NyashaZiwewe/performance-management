@@ -46,6 +46,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -295,16 +296,22 @@ public class ProbationAssessmentController {
             kpi.setMeasureOfSuccess(measure);
             kpi.setTarget(target);
             kpi.setStatus(PMConstants.STATUS_ACTIVE);
-            probationAssessmentService.addKpi(assessmentId, kpi);
-            savedCount++;
+            if (probationAssessmentService.addKpi(assessmentId, kpi) != null) {
+                savedCount++;
+            }
         }
 
-        if (savedCount == 0 && probationAssessmentService.listKpis(assessmentId).isEmpty()) {
-            PortletUtils.addErrorMsg("Add at least one KPI before saving.", request);
+        if (savedCount == 0) {
+            PortletUtils.addErrorMsg("No KPI was saved. Complete at least one KPI row and try again.", request);
             return "redirect:/probation-assessments/add-kpis/" + assessmentId;
         }
 
-        probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_SET);
+        ProbationAssessment updatedAssessment =
+                probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_KPI_SET);
+        if (updatedAssessment == null) {
+            PortletUtils.addErrorMsg("KPI rows were saved, but the KPI contract status could not be updated.", request);
+            return "redirect:/probation-assessments/add-kpis/" + assessmentId;
+        }
         PortletUtils.addInfoMsg("KPI contract saved.", request);
         return "redirect:/probation-assessments/add-kpis/" + assessmentId;
     }
@@ -582,6 +589,97 @@ public class ProbationAssessmentController {
         }
     }
 
+    @RequestMapping(value = "/save-incumbent-evaluation-draft/{assessmentId}", method = RequestMethod.POST)
+    public String saveIncumbentEvaluationDraft(@PathVariable("assessmentId") long assessmentId,
+                                               HttpServletRequest request,
+                                               @RequestParam Map<String, String> allRequestParams) {
+        try {
+            ProbationAssessment assessment = probationAssessmentService.getAssessmentById(assessmentId);
+            if (assessment == null) {
+                PortletUtils.addErrorMsg("Probation assessment not found.", request);
+                return "redirect:/probation-assessments";
+            }
+            if (!probationAssessmentService.isLoggedUserOwner(assessment)) {
+                PortletUtils.addErrorMsg("Only the incumbent can save this evaluation.", request);
+                return "redirect:/probation-assessments/evaluate/" + assessmentId;
+            }
+            if (!PMConstants.PROBATION_STATUS_KPI_APPROVED.equalsIgnoreCase(assessment.getStatus())
+                    && !PMConstants.PROBATION_STATUS_EVALUATION_REJECTED_BY_SUPERVISOR.equalsIgnoreCase(assessment.getStatus())) {
+                PortletUtils.addErrorMsg("Evaluation cannot be saved at this stage.", request);
+                return "redirect:/probation-assessments/evaluate/" + assessmentId;
+            }
+
+            MultipartHttpServletRequest multipartRequest = WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class);
+            List<ProbationKpi> submittedKpis = new ArrayList<>();
+            Map<Long, Double> progressByKpiId = new HashMap<>();
+            Map<Long, Double> markByKpiId = new HashMap<>();
+            Map<Long, String> commentByKpiId = new HashMap<>();
+            Map<Long, MultipartFile> attachmentByKpiId = new HashMap<>();
+
+            for (ProbationKpi kpi : probationAssessmentService.listKpis(assessmentId)) {
+                String progressKey = "progress_" + kpi.getId();
+                String markKey = "incumbentMark_" + kpi.getId();
+                String commentKey = "incumbentComment_" + kpi.getId();
+                String attachmentKey = "attachment_" + kpi.getId();
+                MultipartFile file = multipartRequest == null ? null : multipartRequest.getFile(attachmentKey);
+                boolean rowSubmitted = allRequestParams.containsKey(progressKey)
+                        || allRequestParams.containsKey(markKey)
+                        || allRequestParams.containsKey(commentKey)
+                        || (file != null && !file.isEmpty());
+                if (!rowSubmitted) {
+                    continue;
+                }
+
+                String progressPercent = sanitizeValue(allRequestParams.get(progressKey));
+                String incumbentMark = sanitizeValue(allRequestParams.get(markKey));
+                String incumbentComment = sanitizeValue(allRequestParams.get(commentKey));
+                boolean hasSubmittedValue = hasText(progressPercent) || hasText(incumbentMark)
+                        || hasText(incumbentComment) || (file != null && !file.isEmpty());
+                boolean hasSavedValue = kpi.getProgressPercent() != null || kpi.getIncumbentMark() != null
+                        || hasText(kpi.getIncumbentComment()) || hasText(kpi.getAttachmentPath());
+                if (!hasSubmittedValue && !hasSavedValue) {
+                    continue;
+                }
+
+                progressByKpiId.put(kpi.getId(), hasText(progressPercent)
+                        ? parseAndValidateProgressPercent(progressPercent, kpi) : null);
+                markByKpiId.put(kpi.getId(), hasText(incumbentMark)
+                        ? parseAndValidateMark(incumbentMark, kpi, "Incumbent mark") : null);
+                commentByKpiId.put(kpi.getId(), incumbentComment);
+                if (file != null && !file.isEmpty()) {
+                    attachmentByKpiId.put(kpi.getId(), file);
+                }
+                submittedKpis.add(kpi);
+            }
+
+            if (submittedKpis.isEmpty()) {
+                PortletUtils.addErrorMsg("Enter evaluation values before saving the draft.", request);
+                return "redirect:/probation-assessments/evaluate/" + assessmentId;
+            }
+
+            int savedCount = 0;
+            for (ProbationKpi kpi : submittedKpis) {
+                kpi.setProgressPercent(progressByKpiId.get(kpi.getId()));
+                kpi.setIncumbentMark(markByKpiId.get(kpi.getId()));
+                kpi.setIncumbentComment(commentByKpiId.get(kpi.getId()));
+                MultipartFile file = attachmentByKpiId.get(kpi.getId());
+                if (file != null) {
+                    kpi.setAttachmentPath(storeAttachmentFile(file));
+                }
+                if (probationAssessmentService.updateKpi(kpi) == null) {
+                    throw new IllegalStateException("KPI " + defaultText(kpi.getName(), "ID " + kpi.getId()) + " could not be saved.");
+                }
+                savedCount++;
+            }
+
+            PortletUtils.addInfoMsg(savedCount + " KPI evaluation row(s) saved.", request);
+            return "redirect:/probation-assessments/evaluate/" + assessmentId;
+        } catch (Exception exception) {
+            PortletUtils.addErrorMsg("Failed to save evaluation draft: " + exception.getMessage(), request);
+            return "redirect:/probation-assessments/evaluate/" + assessmentId;
+        }
+    }
+
     @RequestMapping(value = "/save-incumbent-evaluation-line/{assessmentId}", method = RequestMethod.POST)
     public String saveIncumbentEvaluationLine(@PathVariable("assessmentId") long assessmentId,
                                               HttpServletRequest request,
@@ -638,10 +736,76 @@ public class ProbationAssessmentController {
         }
     }
 
+    @RequestMapping(value = "/save-supervisor-evaluation-draft/{assessmentId}", method = RequestMethod.POST)
+    public String saveSupervisorEvaluationDraft(@PathVariable("assessmentId") long assessmentId,
+                                                HttpServletRequest request,
+                                                @RequestParam Map<String, String> allRequestParams) {
+        try {
+            ProbationAssessment assessment = probationAssessmentService.getAssessmentById(assessmentId);
+            if (assessment == null) {
+                PortletUtils.addErrorMsg("Probation assessment not found.", request);
+                return "redirect:/probation-assessments";
+            }
+            if (!probationAssessmentService.isLoggedUserSupervisor(assessment)) {
+                PortletUtils.addErrorMsg("Only the supervisor can save this review.", request);
+                return "redirect:/probation-assessments/evaluate/" + assessmentId;
+            }
+            if (!PMConstants.PROBATION_STATUS_EVALUATION_PENDING_SUPERVISOR_REVIEW.equalsIgnoreCase(assessment.getStatus())) {
+                PortletUtils.addErrorMsg("Assessment is not awaiting supervisor review.", request);
+                return "redirect:/probation-assessments/evaluate/" + assessmentId;
+            }
+
+            List<ProbationKpi> submittedKpis = new ArrayList<>();
+            Map<Long, Double> markByKpiId = new HashMap<>();
+            Map<Long, String> commentByKpiId = new HashMap<>();
+
+            for (ProbationKpi kpi : probationAssessmentService.listKpis(assessmentId)) {
+                String markKey = "supervisorMark_" + kpi.getId();
+                String commentKey = "supervisorComment_" + kpi.getId();
+                if (!allRequestParams.containsKey(markKey) && !allRequestParams.containsKey(commentKey)) {
+                    continue;
+                }
+
+                String supervisorMark = sanitizeValue(allRequestParams.get(markKey));
+                String supervisorComment = sanitizeValue(allRequestParams.get(commentKey));
+                boolean hasSubmittedValue = hasText(supervisorMark) || hasText(supervisorComment);
+                boolean hasSavedValue = kpi.getSupervisorMark() != null || hasText(kpi.getSupervisorComment());
+                if (!hasSubmittedValue && !hasSavedValue) {
+                    continue;
+                }
+
+                markByKpiId.put(kpi.getId(), hasText(supervisorMark)
+                        ? parseAndValidateMark(supervisorMark, kpi, "Supervisor mark") : null);
+                commentByKpiId.put(kpi.getId(), supervisorComment);
+                submittedKpis.add(kpi);
+            }
+
+            if (submittedKpis.isEmpty()) {
+                PortletUtils.addErrorMsg("Enter supervisor review values before saving the draft.", request);
+                return "redirect:/probation-assessments/evaluate/" + assessmentId;
+            }
+
+            int savedCount = 0;
+            for (ProbationKpi kpi : submittedKpis) {
+                kpi.setSupervisorMark(markByKpiId.get(kpi.getId()));
+                kpi.setSupervisorComment(commentByKpiId.get(kpi.getId()));
+                if (probationAssessmentService.updateKpi(kpi) == null) {
+                    throw new IllegalStateException("KPI " + defaultText(kpi.getName(), "ID " + kpi.getId()) + " could not be saved.");
+                }
+                savedCount++;
+            }
+
+            PortletUtils.addInfoMsg(savedCount + " supervisor review row(s) saved.", request);
+            return "redirect:/probation-assessments/evaluate/" + assessmentId;
+        } catch (Exception exception) {
+            PortletUtils.addErrorMsg("Failed to save supervisor review draft: " + exception.getMessage(), request);
+            return "redirect:/probation-assessments/evaluate/" + assessmentId;
+        }
+    }
+
     @RequestMapping(value = "/submit-supervisor-review/{assessmentId}", method = RequestMethod.POST)
     public String submitSupervisorReview(@PathVariable("assessmentId") long assessmentId,
-                                         HttpServletRequest request,
-                                         @RequestParam Map<String, String> allRequestParams) {
+                                         HttpServletRequest request) {
         try {
             ProbationAssessment assessment = probationAssessmentService.getAssessmentById(assessmentId);
             if (assessment == null) {
@@ -662,11 +826,11 @@ public class ProbationAssessmentController {
                 throw new IllegalArgumentException("No KPI lines are available for supervisor review.");
             }
             for (ProbationKpi kpi : kpis) {
-                String supervisorMark = sanitizeValue(allRequestParams.get("supervisorMark_" + kpi.getId()));
-                String supervisorComment = sanitizeValue(allRequestParams.get("supervisorComment_" + kpi.getId()));
-                kpi.setSupervisorMark(parseAndValidateMark(supervisorMark, kpi, "Supervisor mark"));
-                kpi.setSupervisorComment(supervisorComment);
-                probationAssessmentService.updateKpi(kpi);
+                if (kpi.getSupervisorMark() == null) {
+                    throw new IllegalArgumentException("Save supervisor mark for KPI "
+                            + defaultText(kpi.getName(), "ID " + kpi.getId()) + " before continuing.");
+                }
+                ensureMarkRange(kpi.getSupervisorMark(), kpi, "Supervisor mark");
             }
 
             probationAssessmentService.updateAssessmentStatus(assessmentId, PMConstants.PROBATION_STATUS_PERSONAL_DIMENSIONS_IN_PROGRESS);

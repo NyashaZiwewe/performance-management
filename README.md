@@ -9,3 +9,7 @@ Important:
 - this repo includes a starter copy at project root: [performance-management.properties](performance-management.properties)
 - run with `-Dspring.config.additional-location=file:/data/secrets/performance-management/performance-management.properties`
 - see `DEPLOYMENT.md` for required properties and startup steps
+
+
+Wanyengerai00
+scp -rv target/performance-management-0.0.1-SNAPSHOT.jar root@207.180.195.48:/data/apps/services/performance-management-0.0.1-SNAPSHOT.jar

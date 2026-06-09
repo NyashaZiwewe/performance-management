@@ -98,6 +98,10 @@ public class AccountsController {
 
     @RequestMapping("/add-account")
     public ModelAndView addAccount(HttpServletRequest request) {
+        if (!canManageAccounts()) {
+            PortletUtils.addErrorMsg("You are not allowed to add accounts.", request);
+            return new ModelAndView("redirect:/accounts");
+        }
 
         ModelAndView modelAndView = new ModelAndView(Pages.ADD_ACCOUNT);
         modelAndView.addObject("pageTitle", "New Account");
@@ -110,6 +114,11 @@ public class AccountsController {
 
     @RequestMapping(value = "/save-account", method = RequestMethod.POST)
     public String saveAccount(HttpServletRequest request, Account newAccount) {
+        if (!canManageAccounts()) {
+            PortletUtils.addErrorMsg("You are not allowed to add accounts.", request);
+            return "redirect:/accounts";
+        }
+
         List<String> errors = new ArrayList<String>();
         if (newAccount.getFullName() == null || newAccount.getFullName().trim().isEmpty()) {
             errors.add("Employee full name is required.");
@@ -197,6 +206,11 @@ public class AccountsController {
 
     @RequestMapping("/edit-account/{id}")
     public ModelAndView editAccount(@PathVariable("id") long id, HttpServletRequest request) {
+        if (!canManageAccounts()) {
+            PortletUtils.addErrorMsg("You are not allowed to edit accounts.", request);
+            return new ModelAndView("redirect:/accounts");
+        }
+
         ModelAndView modelAndView = new ModelAndView(Pages.EDIT_ACCOUNT);
         modelAndView.addObject("pageTitle", "Update Account");
         Account account = accountService.getAccountById(id);
@@ -207,6 +221,11 @@ public class AccountsController {
 
     @RequestMapping(value = "/update-account", method = RequestMethod.POST)
     public String updateAccount(HttpServletRequest request, Account account) {
+        if (!canManageAccounts()) {
+            PortletUtils.addErrorMsg("You are not allowed to edit accounts.", request);
+            return "redirect:/accounts";
+        }
+
         long accountId = account == null ? 0 : account.getId();
         if (accountId <= 0) {
             PortletUtils.addErrorMsg("Invalid employee record.", request);
@@ -289,6 +308,10 @@ public class AccountsController {
 
     @RequestMapping(value = "/delete-account", method = RequestMethod.POST)
     public String deleteAccount(HttpServletRequest request, Account account) {
+        if (!canManageAccounts()) {
+            PortletUtils.addErrorMsg("You are not allowed to delete accounts.", request);
+            return "redirect:/accounts/";
+        }
 
         try{
             accountService.deleteAccount(account);
@@ -324,6 +347,10 @@ public class AccountsController {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean canManageAccounts() {
+        return cs.isAdmin() || cs.hasSpecialRights();
     }
 
 

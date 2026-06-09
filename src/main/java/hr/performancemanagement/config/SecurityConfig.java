@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -75,6 +76,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
                         if (!name.equals(account.getEmail()) || !commonService.matchesPassword(password, account.getPassword())) {
                             throw new BadCredentialsException("Invalid username or password");
+                        }
+
+                        if (!isActiveAccount(account)) {
+                            throw new DisabledException("Account is inactive");
                         }
 
                         if (commonService.requiresPasswordUpgrade(account.getPassword())) {
@@ -177,5 +182,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean isActiveAccount(Account account) {
+        return account != null
+                && account.getStatus() != null
+                && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(account.getStatus().trim());
     }
 }
