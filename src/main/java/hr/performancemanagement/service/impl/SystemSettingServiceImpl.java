@@ -50,6 +50,7 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     private static final String SCORECARD_STATUS_MODERATED_BY_HR = "scorecard.status.moderatedByHr";
     private static final String SCORECARD_STATUS_CLOSED = "scorecard.status.closed";
     private static final String SCORECARD_WORKFLOW_SEQUENCE = "scorecard.workflow.sequence";
+    private static final String EMPLOYEE_SCORE_EVIDENCE_JUSTIFICATION_REQUIRED = "scorecard.employeeScore.evidenceJustificationRequired";
     private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
 
     @Autowired
@@ -221,6 +222,11 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
     }
 
     @Override
+    public boolean isEmployeeScoreEvidenceAndJustificationRequired() {
+        return Boolean.parseBoolean(getValue(EMPLOYEE_SCORE_EVIDENCE_JUSTIFICATION_REQUIRED));
+    }
+
+    @Override
     public boolean isMailConfigured() {
         return hasText(getMailHost())
                 && getMailPort() > 0
@@ -284,6 +290,7 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         wrapper.setScorecardStatusModeratedByHr(getScorecardStatusModeratedByHr());
         wrapper.setScorecardStatusClosed(getScorecardStatusClosed());
         wrapper.setScorecardWorkflowSequence(getScorecardWorkflowSequence());
+        wrapper.setEmployeeScoreEvidenceAndJustificationRequired(isEmployeeScoreEvidenceAndJustificationRequired());
         return wrapper;
     }
 
@@ -322,6 +329,8 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         saveValue(SCORECARD_STATUS_MODERATED_BY_HR, normalizeWorkflowStatus(wrapper.getScorecardStatusModeratedByHr()));
         saveValue(SCORECARD_STATUS_CLOSED, normalizeWorkflowStatus(wrapper.getScorecardStatusClosed()));
         saveValue(SCORECARD_WORKFLOW_SEQUENCE, normalizeWorkflowSequence(wrapper.getScorecardWorkflowSequence()));
+        saveValue(EMPLOYEE_SCORE_EVIDENCE_JUSTIFICATION_REQUIRED,
+                String.valueOf(Boolean.TRUE.equals(wrapper.getEmployeeScoreEvidenceAndJustificationRequired())));
         syncClientFromCompanyName(companyName);
     }
 
@@ -488,6 +497,10 @@ public class SystemSettingServiceImpl implements hr.performancemanagement.servic
         settings.put(SCORECARD_WORKFLOW_SEQUENCE, new SettingDefinition(
                 "NEW,PENDING_APPROVAL,APPROVED_BY_SUPERVISOR,REJECTED_BY_SUPERVISOR,APPROVED_BY_HR,REJECTED_BY_HR,SCORED_BY_EMPLOYEE,SCORED_BY_SUPERVISOR,AGREED_BY_TWO,MODERATED_BY_HR,CLOSED",
                 "Comma-separated scorecard status order used in scorecard filters and display"
+        ));
+        settings.put(EMPLOYEE_SCORE_EVIDENCE_JUSTIFICATION_REQUIRED, new SettingDefinition(
+                "false",
+                "Requires employee scores to have evidence and justification before submission to supervisor"
         ));
         return settings;
     }

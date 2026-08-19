@@ -89,4 +89,15 @@ public class GlobalModelAttributes {
             return "";
         }
     }
+
+    @ModelAttribute("activeReportingActivityAlertClass")
+    public String activeReportingActivityAlertClass() {
+        try {
+            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+            boolean activityOpen = reportingDateActivityPeriodService.getCurrentActivityPeriod(reportingDate) != null;
+            return activityOpen ? "alert alert-info" : "alert alert-warning";
+        } catch (Exception ignored) {
+            return "alert alert-info";
+        }
+    }
 }

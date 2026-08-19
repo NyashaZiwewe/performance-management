@@ -73,6 +73,18 @@
                         </div>
                         <div class="col-lg-6">
                             <div class="form-group">
+                                <label>Require Employee Score Evidence and Justification</label>
+                                <select class="form-control" th:field="*{employeeScoreEvidenceAndJustificationRequired}">
+                                    <option th:value="false">Disabled</option>
+                                    <option th:value="true">Enabled</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    When enabled, employee scores cannot be submitted to the supervisor until every target has evidence and justification.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group">
                                 <label>Mail Sender Name</label>
                                 <input type="text" class="form-control" th:field="*{mailFromName}">
                             </div>

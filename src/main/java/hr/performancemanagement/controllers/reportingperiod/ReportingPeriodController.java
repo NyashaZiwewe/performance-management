@@ -165,20 +165,42 @@ public class ReportingPeriodController {
         modelAndView.addObject("reportingPeriod", reportingPeriod);
         modelAndView.addObject("reportingPeriodsList", reportingPeriodService.listAllReportingPeriods());
         modelAndView.addObject("reportingDate", new ReportingDate());
-        modelAndView.addObject("activityPeriod", new ReportingDateActivityPeriod());
-        Map<Long, List<ReportingDateActivityPeriod>> activityPeriodsByReportingDateId = new HashMap<Long, List<ReportingDateActivityPeriod>>();
         Map<Long, ActivityPeriodProgress> activityProgressByReportingDateId = new HashMap<Long, ActivityPeriodProgress>();
         Map<Long, String> currentActivityByReportingDateId = new HashMap<Long, String>();
         for (ReportingDate reportingDate : reportingDateList) {
-            activityPeriodsByReportingDateId.put(reportingDate.getId(), reportingDateActivityPeriodService.listActivityPeriods(reportingDate));
             activityProgressByReportingDateId.put(reportingDate.getId(), reportingDateActivityPeriodService.getProgress(reportingDate));
             currentActivityByReportingDateId.put(reportingDate.getId(), reportingDateActivityPeriodService.getCurrentActivityLabel(reportingDate));
         }
-        modelAndView.addObject("activityPeriodsByReportingDateId", activityPeriodsByReportingDateId);
         modelAndView.addObject("activityProgressByReportingDateId", activityProgressByReportingDateId);
         modelAndView.addObject("currentActivityByReportingDateId", currentActivityByReportingDateId);
         modelAndView.addObject("canManageActivityPeriods", commonService.isAdmin());
 
+        preparePage(modelAndView, request);
+        return modelAndView;
+    }
+
+    @RequestMapping("/reporting-dates/{id}/activity-periods")
+    public ModelAndView manageActivityPeriods(@PathVariable("id") long id,
+                                              @RequestParam(value = "activityPeriodId", required = false) Long activityPeriodId,
+                                              HttpServletRequest request) {
+        ModelAndView modelAndView = new ModelAndView(Pages.MANAGE_REPORTING_DATE_ACTIVITY_PERIODS);
+        ReportingDate reportingDate = reportingDateService.getReportingDateById(id);
+        if (reportingDate == null) {
+            PortletUtils.addErrorMsg("Reporting date could not be found.", request);
+            modelAndView = new ModelAndView(Pages.BLANK_PAGE);
+            preparePage(modelAndView, request);
+            return modelAndView;
+        }
+
+        ReportingDateActivityPeriod activityPeriod = resolveActivityPeriodForm(activityPeriodId, reportingDate);
+        modelAndView.addObject("pageTitle", "Manage Activity Cutoffs");
+        modelAndView.addObject("reportingDate", reportingDate);
+        modelAndView.addObject("reportingPeriod", reportingDate.getReportingPeriod());
+        modelAndView.addObject("activityPeriod", activityPeriod);
+        modelAndView.addObject("activityPeriods", reportingDateActivityPeriodService.listActivityPeriods(reportingDate));
+        modelAndView.addObject("activityProgress", reportingDateActivityPeriodService.getProgress(reportingDate));
+        modelAndView.addObject("currentActivity", reportingDateActivityPeriodService.getCurrentActivityLabel(reportingDate));
+        modelAndView.addObject("canManageActivityPeriods", commonService.isAdmin());
         preparePage(modelAndView, request);
         return modelAndView;
     }
@@ -253,45 +275,54 @@ public class ReportingPeriodController {
     @RequestMapping(value = "/save-activity-period", method = RequestMethod.POST)
     public String saveActivityPeriod(HttpServletRequest request, ReportingDateActivityPeriod activityPeriod) {
         Long reportingPeriodId = resolveReportingPeriodId(activityPeriod);
+        Long reportingDateId = resolveReportingDateId(activityPeriod);
         if (!commonService.isAdmin()) {
-            PortletUtils.addErrorMsg("Only administrators can create or extend activity periods.", request);
-            return reportingDatesRedirect(reportingPeriodId);
+            PortletUtils.addErrorMsg("Only administrators can manage activity periods.", request);
+            return activityPeriodsRedirect(reportingDateId, reportingPeriodId);
         }
+        boolean updating = activityPeriod != null && activityPeriod.getId() > 0;
         try {
             reportingDateActivityPeriodService.saveActivityPeriod(activityPeriod);
             reportingPeriodId = resolveReportingPeriodId(activityPeriod);
-            sendActivityPeriodChangeNotice(activityPeriod, "saved");
-            PortletUtils.addInfoMsg("Activity period successfully saved. Its last date is the cutoff date.", request);
+            reportingDateId = resolveReportingDateId(activityPeriod);
+            sendActivityPeriodChangeNotice(request, activityPeriod, updating ? "updated" : "created");
+            PortletUtils.addInfoMsg("Activity period successfully "
+                    + (updating ? "updated" : "created")
+                    + ". Its last date is the cutoff date.", request);
         } catch (IllegalArgumentException exception) {
             PortletUtils.addErrorMsg(exception.getMessage(), request);
         }
-        return reportingDatesRedirect(reportingPeriodId);
+        return activityPeriodsRedirect(reportingDateId, reportingPeriodId);
     }
 
     @RequestMapping(value = "/delete-activity-period/{id}", method = RequestMethod.POST)
     public String deleteActivityPeriod(@PathVariable("id") long id,
                                        @RequestParam(value = "reportingPeriodId", required = false) Long reportingPeriodId,
+                                       @RequestParam(value = "reportingDateId", required = false) Long reportingDateId,
                                        HttpServletRequest request) {
         if (!commonService.isAdmin()) {
             PortletUtils.addErrorMsg("Only administrators can delete activity periods.", request);
-            return reportingDatesRedirect(reportingPeriodId);
+            return activityPeriodsRedirect(reportingDateId, reportingPeriodId);
         }
         ReportingDateActivityPeriod activityPeriod = reportingDateActivityPeriodService.getActivityPeriodById(id);
         if (activityPeriod == null) {
             PortletUtils.addErrorMsg("Activity period could not be found.", request);
-            return reportingDatesRedirect(reportingPeriodId);
+            return activityPeriodsRedirect(reportingDateId, reportingPeriodId);
         }
         if (reportingPeriodId == null || reportingPeriodId <= 0) {
             reportingPeriodId = resolveReportingPeriodId(activityPeriod);
         }
+        if (reportingDateId == null || reportingDateId <= 0) {
+            reportingDateId = resolveReportingDateId(activityPeriod);
+        }
         try {
-            sendActivityPeriodChangeNotice(activityPeriod, "deleted");
+            sendActivityPeriodChangeNotice(request, activityPeriod, "deleted");
             reportingDateActivityPeriodService.deleteActivityPeriod(activityPeriod);
             PortletUtils.addInfoMsg("Activity period successfully deleted.", request);
         } catch (IllegalArgumentException exception) {
             PortletUtils.addErrorMsg(exception.getMessage(), request);
         }
-        return reportingDatesRedirect(reportingPeriodId);
+        return activityPeriodsRedirect(reportingDateId, reportingPeriodId);
     }
 
     private Long resolveReportingPeriodId(ReportingDate reportingDate) {
@@ -316,11 +347,58 @@ public class ReportingPeriodController {
         return resolveReportingPeriodId(resolved);
     }
 
+    private Long resolveReportingDateId(ReportingDateActivityPeriod activityPeriod) {
+        if (activityPeriod == null || activityPeriod.getReportingDate() == null) {
+            return null;
+        }
+        ReportingDate reportingDate = activityPeriod.getReportingDate();
+        if (reportingDate.getId() > 0) {
+            return reportingDate.getId();
+        }
+        return null;
+    }
+
+    private ReportingDateActivityPeriod resolveActivityPeriodForm(Long activityPeriodId, ReportingDate reportingDate) {
+        ReportingDateActivityPeriod activityPeriod = null;
+        if (activityPeriodId != null && activityPeriodId > 0) {
+            ReportingDateActivityPeriod resolved = reportingDateActivityPeriodService.getActivityPeriodById(activityPeriodId);
+            if (resolved != null
+                    && resolved.getReportingDate() != null
+                    && reportingDate != null
+                    && resolved.getReportingDate().getId() == reportingDate.getId()) {
+                activityPeriod = resolved;
+            }
+        }
+        if (activityPeriod == null) {
+            activityPeriod = new ReportingDateActivityPeriod();
+            activityPeriod.setReportingDate(reportingDate);
+        }
+        return activityPeriod;
+    }
+
     private String reportingDatesRedirect(Long reportingPeriodId) {
         if (reportingPeriodId == null || reportingPeriodId <= 0) {
             return "redirect:/reporting-periods";
         }
         return "redirect:/reporting-periods/reporting-dates/" + reportingPeriodId;
+    }
+
+    private String activityPeriodsRedirect(Long reportingDateId, Long reportingPeriodId) {
+        if (reportingDateId != null && reportingDateId > 0) {
+            return "redirect:/reporting-periods/reporting-dates/" + reportingDateId + "/activity-periods";
+        }
+        return reportingDatesRedirect(reportingPeriodId);
+    }
+
+    private String activityPeriodsPath(ReportingDateActivityPeriod activityPeriod) {
+        Long reportingDateId = resolveReportingDateId(activityPeriod);
+        if (reportingDateId != null && reportingDateId > 0) {
+            return "/reporting-periods/reporting-dates/" + reportingDateId + "/activity-periods";
+        }
+        Long reportingPeriodId = resolveReportingPeriodId(activityPeriod);
+        return reportingPeriodId == null || reportingPeriodId <= 0
+                ? "/reporting-periods"
+                : "/reporting-periods/reporting-dates/" + reportingPeriodId;
     }
 
     private void sendReportingDateActivationNotice(HttpServletRequest request, ReportingDate reportingDate, String action) {
@@ -359,7 +437,7 @@ public class ReportingPeriodController {
         }
     }
 
-    private void sendActivityPeriodChangeNotice(ReportingDateActivityPeriod activityPeriod, String action) {
+    private void sendActivityPeriodChangeNotice(HttpServletRequest request, ReportingDateActivityPeriod activityPeriod, String action) {
         if (activityPeriod == null || !hasText(commonService.getHREmail())) {
             return;
         }
@@ -371,8 +449,35 @@ public class ReportingPeriodController {
                 + "Activity period: " + activityPeriod.getStartDate() + " to " + activityPeriod.getEndDate() + "\n"
                 + "Cutoff date: " + activityPeriod.getEndDate() + "\n"
                 + "Impact: actions outside the active configured period are restricted.\n"
-                + "Link: /reporting-periods/reporting-dates/" + resolveReportingPeriodId(activityPeriod);
+                + "System link: " + absoluteSystemUrl(request, activityPeriodsPath(activityPeriod));
         notificationService.sendUserMessageAsync(commonService.getHREmail().trim(), "HR", subject, message);
+    }
+
+    private String absoluteSystemUrl(HttpServletRequest request, String path) {
+        String host = "";
+        try {
+            host = commonService.getCurrentUrl(request);
+        } catch (Exception ignored) {
+            // Fall through to a relative path if the host cannot be resolved.
+        }
+        if (!hasText(host)) {
+            return path;
+        }
+        String normalizedHost = host.trim();
+        while (normalizedHost.endsWith("/")) {
+            normalizedHost = normalizedHost.substring(0, normalizedHost.length() - 1);
+        }
+        if (!hasText(path)) {
+            return normalizedHost;
+        }
+        String normalizedPath = path.trim();
+        if (normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")) {
+            return normalizedPath;
+        }
+        if (!normalizedPath.startsWith("/")) {
+            normalizedPath = "/" + normalizedPath;
+        }
+        return normalizedHost + normalizedPath;
     }
 
     private String activityLabel(String activityType) {

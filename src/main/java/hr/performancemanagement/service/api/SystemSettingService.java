@@ -37,6 +37,7 @@ public interface SystemSettingService {
     String getScorecardStatusModeratedByHr();
     String getScorecardStatusClosed();
     String getScorecardWorkflowSequence();
+    boolean isEmployeeScoreEvidenceAndJustificationRequired();
     boolean isMailConfigured();
     CredentialSettingsWrapper getCredentialSettings();
     void saveCredentialSettings(CredentialSettingsWrapper wrapper);

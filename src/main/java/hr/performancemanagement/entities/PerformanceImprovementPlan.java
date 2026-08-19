@@ -28,6 +28,15 @@ public class PerformanceImprovementPlan {
     @ManyToOne
     @JoinColumn(name = "reporting_period_id")
     private ReportingPeriod reportingPeriod;
+    @ManyToOne
+    @JoinColumn(name = "scorecard_id")
+    private Scorecard scorecard;
+    @ManyToOne
+    @JoinColumn(name = "reporting_date_id")
+    private ReportingDate reportingDate;
+    @ManyToOne
+    @JoinColumn(name = "target_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Target target;
 
     private String targetArea;
     private String concern;
@@ -35,6 +44,9 @@ public class PerformanceImprovementPlan {
     private String agreedAction;
     private String requiredSupport;
     private String reviewNotes;
+    private String source;
+    @Column(name = "not_applicable", nullable = false)
+    private Boolean notApplicable = Boolean.FALSE;
     private double progress;
     private String status;
     private String endDate;
@@ -47,5 +59,25 @@ public class PerformanceImprovementPlan {
     private List<PIPIssue> issueList;
     @OneToMany(mappedBy = "performanceImprovementPlan", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<PIPNote> noteList;
+
+    public boolean isNotApplicable() {
+        return Boolean.TRUE.equals(notApplicable);
+    }
+
+    public Boolean getNotApplicable() {
+        return Boolean.TRUE.equals(notApplicable);
+    }
+
+    public void setNotApplicable(Boolean notApplicable) {
+        this.notApplicable = Boolean.TRUE.equals(notApplicable);
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeNullableFlags() {
+        if (notApplicable == null) {
+            notApplicable = Boolean.FALSE;
+        }
+    }
 
 }

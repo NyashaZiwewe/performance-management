@@ -43,14 +43,18 @@ public class EmailNotificationLogServiceImpl implements EmailNotificationLogServ
 
         List<PendingActionNotification> unseenNotifications = emailLogs.stream()
                 .filter(log -> !seenEmailNotificationIds().contains(log.getId()))
-                .map(log -> new PendingActionNotification(
-                        log.getCategory() != null ? log.getCategory() : "Email",
-                        log.getSubject() != null ? log.getSubject() : "Email notification",
-                        log.getPreviewText() != null ? log.getPreviewText() : "Email activity",
-                        "/notifications/email/" + log.getId() + "/open",
-                        "fa fa-envelope-o",
-                        "info",
-                        log.getDate()))
+                .map(log -> {
+                    boolean failedEmail = log.getCategory() != null
+                            && "Email Failure".equalsIgnoreCase(log.getCategory().trim());
+                    return new PendingActionNotification(
+                            log.getCategory() != null ? log.getCategory() : "Email",
+                            log.getSubject() != null ? log.getSubject() : "Email notification",
+                            log.getPreviewText() != null ? log.getPreviewText() : "Email activity",
+                            "/notifications/email/" + log.getId() + "/open",
+                            failedEmail ? "fa fa-exclamation-triangle" : "fa fa-envelope-o",
+                            failedEmail ? "danger" : "info",
+                            log.getDate());
+                })
                 .collect(Collectors.toList());
 
         int safeLimit = Math.max(0, previewLimit);

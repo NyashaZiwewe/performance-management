@@ -233,7 +233,8 @@ public class AccessControlServiceImpl implements AccessControlService {
         if (!StringUtils.hasText(name)) {
             throw new IllegalArgumentException("Role name is required.");
         }
-        if (permissionCodes == null || permissionCodes.isEmpty()) {
+        Set<String> normalizedPermissionCodes = normalizePermissionCodes(permissionCodes);
+        if (normalizedPermissionCodes.isEmpty()) {
             throw new IllegalArgumentException("Select at least one permission.");
         }
 
@@ -246,7 +247,7 @@ public class AccessControlServiceImpl implements AccessControlService {
             if (!isAdminOrSpecial(actor)
                     && rolePermissionRepository.existsAccessRolePermissionByAccessRoleAndPermission_Code(
                     role, AccessPermissions.ACCESS_MANAGE)
-                    && !containsIgnoreCase(permissionCodes, AccessPermissions.ACCESS_MANAGE)) {
+                    && !normalizedPermissionCodes.contains(AccessPermissions.ACCESS_MANAGE)) {
                 throw new IllegalArgumentException("Only an administrator can remove access-management permission from this role.");
             }
         } else {
@@ -264,17 +265,7 @@ public class AccessControlServiceImpl implements AccessControlService {
         role.setStatus(PMConstants.STATUS_ACTIVE);
         role = roleRepository.save(role);
 
-        rolePermissionRepository.deleteAccessRolePermissionsByAccessRole(role);
-        for (String permissionCode : new LinkedHashSet<>(permissionCodes)) {
-            AccessPermission permission = permissionRepository.findAccessPermissionByCode(normalize(permissionCode));
-            if (permission == null) {
-                throw new IllegalArgumentException("Unknown permission: " + permissionCode);
-            }
-            AccessRolePermission rolePermission = new AccessRolePermission();
-            rolePermission.setAccessRole(role);
-            rolePermission.setPermission(permission);
-            rolePermissionRepository.save(rolePermission);
-        }
+        syncRolePermissions(role, normalizedPermissionCodes);
         recordAudit(actor.getClientId(), null, role, roleId > 0 ? "ROLE_UPDATED" : "ROLE_CREATED", role.getDescription(), actor);
         return role;
     }
@@ -440,6 +431,43 @@ public class AccessControlServiceImpl implements AccessControlService {
         recordAudit(account.getClientId(), account, role, "LEGACY_ROLE_MIGRATED", assignment.getReason(), actor);
     }
 
+    private void syncRolePermissions(AccessRole role, Set<String> permissionCodes) {
+        Map<String, AccessPermission> requestedPermissions = new LinkedHashMap<>();
+        for (String permissionCode : permissionCodes) {
+            AccessPermission permission = permissionRepository.findAccessPermissionByCode(permissionCode);
+            if (permission == null) {
+                throw new IllegalArgumentException("Unknown permission: " + permissionCode);
+            }
+            requestedPermissions.put(permissionCode, permission);
+        }
+
+        Set<String> existingCodes = new HashSet<>();
+        List<AccessRolePermission> existingRolePermissions =
+                rolePermissionRepository.findAccessRolePermissionsByAccessRoleOrderByPermission_ModuleAscPermission_NameAsc(role);
+        if (existingRolePermissions != null) {
+            for (AccessRolePermission rolePermission : existingRolePermissions) {
+                String existingCode = rolePermission.getPermission() == null
+                        ? ""
+                        : normalize(rolePermission.getPermission().getCode());
+                if (requestedPermissions.containsKey(existingCode)) {
+                    existingCodes.add(existingCode);
+                } else {
+                    rolePermissionRepository.delete(rolePermission);
+                }
+            }
+        }
+
+        for (Map.Entry<String, AccessPermission> entry : requestedPermissions.entrySet()) {
+            if (existingCodes.contains(entry.getKey())) {
+                continue;
+            }
+            AccessRolePermission rolePermission = new AccessRolePermission();
+            rolePermission.setAccessRole(role);
+            rolePermission.setPermission(entry.getValue());
+            rolePermissionRepository.save(rolePermission);
+        }
+    }
+
     private boolean isEffective(AccountAccessRole assignment, LocalDate today) {
         return assignment != null
                 && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(assignment.getStatus())
@@ -541,16 +569,18 @@ public class AccessControlServiceImpl implements AccessControlService {
         return value == null ? "" : value.trim().toUpperCase(Locale.ENGLISH);
     }
 
-    private boolean containsIgnoreCase(List<String> values, String expected) {
-        if (values == null || expected == null) {
-            return false;
+    private Set<String> normalizePermissionCodes(List<String> permissionCodes) {
+        Set<String> normalizedPermissionCodes = new LinkedHashSet<>();
+        if (permissionCodes == null) {
+            return normalizedPermissionCodes;
         }
-        for (String value : values) {
-            if (expected.equalsIgnoreCase(value)) {
-                return true;
+        for (String permissionCode : permissionCodes) {
+            String normalizedPermissionCode = normalize(permissionCode);
+            if (StringUtils.hasText(normalizedPermissionCode)) {
+                normalizedPermissionCodes.add(normalizedPermissionCode);
             }
         }
-        return false;
+        return normalizedPermissionCodes;
     }
 
     private void recordAudit(long clientId, Account account, AccessRole role, String action, String reason, Account actor) {

@@ -358,6 +358,27 @@ body.auth-light-page .login-company-name {
     color: #067647;
 }
 
+.score-field-status {
+    margin-top: 4px;
+    min-width: 120px;
+    font-size: 12px;
+    line-height: 1.25;
+    color: #344054;
+}
+
+.score-field-status:empty {
+    display: none;
+}
+
+.score-field-status.error {
+    color: #b42318;
+}
+
+.score-input-invalid {
+    border-color: #b42318 !important;
+    box-shadow: 0 0 0 0.12rem rgba(180, 35, 24, 0.12);
+}
+
 html,
 body {
     background:
@@ -1222,4 +1243,135 @@ html.theme-dark body .dashboard-stat-neutral {
     .dashboard-filter-actions {
         justify-content: flex-start;
     }
+}
+
+.self-assessment-pip-panel {
+    border-top: 1px solid #e5e7eb;
+    margin: 16px 0 12px;
+    padding-top: 12px;
+}
+
+.self-assessment-pip-card {
+    border: 1px solid #dbe3ec;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.self-assessment-pip-header {
+    align-items: center;
+    display: flex;
+    background: #f8fafc;
+}
+
+.self-assessment-pip-toggle {
+    align-items: center;
+    color: #183247;
+    display: flex;
+    font-weight: 600;
+    justify-content: space-between;
+    padding: 10px 12px;
+    text-align: left;
+    text-decoration: none;
+    width: 100%;
+}
+
+.self-assessment-pip-toggle:hover,
+.self-assessment-pip-toggle:focus {
+    color: #103d6d;
+    text-decoration: none;
+}
+
+.self-assessment-pip-title {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+}
+
+.self-assessment-pip-count {
+    background: #eaf2fb;
+    border: 1px solid #c9dff3;
+    border-radius: 999px;
+    color: #175ea8;
+    font-size: 12px;
+    margin-left: auto;
+    margin-right: 12px;
+    padding: 2px 8px;
+}
+
+.self-assessment-pip-chevron {
+    color: #64748b;
+    transition: transform 0.16s ease-in-out;
+}
+
+.self-assessment-pip-toggle[aria-expanded="true"] .self-assessment-pip-chevron {
+    transform: rotate(180deg);
+}
+
+.self-assessment-pip-body {
+    background: #ffffff;
+    padding: 12px;
+}
+
+.self-assessment-pip-table {
+    margin-bottom: 8px;
+    table-layout: fixed;
+}
+
+.self-assessment-pip-table th {
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.self-assessment-pip-table td {
+    vertical-align: top;
+}
+
+.self-assessment-pip-table .form-control {
+    font-size: 12px;
+    min-width: 120px;
+}
+
+.self-assessment-pip-table textarea.form-control {
+    min-height: 54px;
+    resize: vertical;
+}
+
+.self-assessment-pip-text {
+    color: #1f2937;
+    font-size: 12px;
+    line-height: 1.35;
+    min-height: 18px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.self-assessment-pip-empty-row td {
+    color: #64748b;
+    font-size: 12px;
+    text-align: center;
+}
+
+.self-assessment-pip-row.is-display-mode .self-assessment-pip-edit-control,
+.self-assessment-pip-row.is-display-mode .self-assessment-pip-save-action,
+.self-assessment-pip-row.is-display-mode .self-assessment-pip-cancel-action,
+.self-assessment-pip-row.is-edit-mode .self-assessment-pip-text,
+.self-assessment-pip-row.is-edit-mode .self-assessment-pip-edit-action {
+    display: none;
+}
+
+.self-assessment-pip-actions,
+.self-assessment-pip-na-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.self-assessment-pip-actions .btn {
+    margin-bottom: 4px;
+}
+
+.self-assessment-pip-add-row {
+    margin-top: 6px;
+    text-align: left;
 }

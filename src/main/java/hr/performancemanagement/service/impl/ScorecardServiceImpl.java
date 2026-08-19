@@ -524,19 +524,37 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
         }
 
         List<ScorecardWorkflowStage> activeStages = loadActiveStages(clientId);
-        ScorecardWorkflowStage resolvedStage = resolveStageFromReference(scorecard.getApprovalStage(), clientId, activeStages);
         String requestedStatus = normalizeStatus(scorecard.getApprovalStatus());
+        ScorecardWorkflowStage referencedStage = resolveStageFromReference(scorecard.getApprovalStage(), clientId, activeStages);
+        ScorecardWorkflowStage resolvedStage = null;
+
+        if (requestedStatus != null && stageMatchesStatus(referencedStage, requestedStatus)) {
+            resolvedStage = referencedStage;
+        }
 
         if (resolvedStage == null && requestedStatus != null) {
             resolvedStage = resolveStageByStatus(clientId, activeStages, requestedStatus);
         }
 
+        if (resolvedStage == null) {
+            resolvedStage = referencedStage;
+        }
+
         if (resolvedStage == null && scorecard.getId() > 0) {
             Scorecard existing = scoreCardRepository.findScorecardById(scorecard.getId());
             if (existing != null) {
-                resolvedStage = resolveStageFromReference(existing.getApprovalStage(), clientId, activeStages);
                 if (requestedStatus == null) {
                     requestedStatus = normalizeStatus(existing.getApprovalStatus());
+                }
+                ScorecardWorkflowStage existingStage = resolveStageFromReference(existing.getApprovalStage(), clientId, activeStages);
+                if (requestedStatus != null && stageMatchesStatus(existingStage, requestedStatus)) {
+                    resolvedStage = existingStage;
+                }
+                if (resolvedStage == null && requestedStatus != null) {
+                    resolvedStage = resolveStageByStatus(clientId, activeStages, requestedStatus);
+                }
+                if (resolvedStage == null) {
+                    resolvedStage = existingStage;
                 }
             }
         }
@@ -552,6 +570,30 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
         } else if (requestedStatus != null) {
             scorecard.setApprovalStatus(requestedStatus);
         }
+    }
+
+    private boolean stageMatchesStatus(ScorecardWorkflowStage stage, String statusCode) {
+        if (stage == null || statusCode == null) {
+            return false;
+        }
+        String normalizedStatus = normalizeStatus(statusCode);
+        if (normalizedStatus == null) {
+            return false;
+        }
+        if (normalizedStatus.equalsIgnoreCase(normalizeStatus(stage.getStatusCode()))) {
+            return true;
+        }
+        String statusCodes = stage.getStatusCodes();
+        if (statusCodes == null || statusCodes.trim().isEmpty()) {
+            return false;
+        }
+        String[] values = statusCodes.split(",");
+        for (String value : values) {
+            if (normalizedStatus.equalsIgnoreCase(normalizeStatus(value))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<ScorecardWorkflowStage> loadActiveStages(long clientId) {

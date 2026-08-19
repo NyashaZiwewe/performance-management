@@ -64,11 +64,11 @@ public class Scorecard {
     private String lockStatus;
 
     public String getApprovalStatus() {
-        if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
-            return approvalStage.getStatusCode();
-        }
         if (hasText(approvalStatus)) {
             return approvalStatus;
+        }
+        if (approvalStage != null && hasText(approvalStage.getStatusCode())) {
+            return approvalStage.getStatusCode();
         }
         return null;
     }

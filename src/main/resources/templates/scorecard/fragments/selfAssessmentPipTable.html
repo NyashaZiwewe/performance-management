@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.com">
+<body>
+<div th:fragment="table" th:if="${selfAssessmentPipRequired}" class="self-assessment-pip-panel accordion" id="selfAssessmentPipAccordion">
+    <div class="self-assessment-pip-card">
+        <div class="self-assessment-pip-header" id="selfAssessmentPipHeading">
+            <button type="button"
+                    class="btn btn-link self-assessment-pip-toggle collapsed"
+                    data-toggle="collapse"
+                    data-target="#selfAssessmentPipCollapse"
+                    aria-expanded="false"
+                    aria-controls="selfAssessmentPipCollapse">
+                <span class="self-assessment-pip-title">
+                    <i class="fa fa-graduation-cap"></i>
+                    Training Needs / PIP
+                </span>
+                <span class="self-assessment-pip-count"
+                      th:text="${#lists.isEmpty(selfAssessmentPips) ? '0 saved' : #lists.size(selfAssessmentPips) + ' saved'}">0 saved</span>
+                <i class="fa fa-chevron-down self-assessment-pip-chevron"></i>
+            </button>
+        </div>
+        <div id="selfAssessmentPipCollapse"
+             class="collapse"
+             aria-labelledby="selfAssessmentPipHeading"
+             data-parent="#selfAssessmentPipAccordion">
+            <div class="self-assessment-pip-body">
+                <div id="selfAssessmentPipStatus" class="score-save-status" role="status" aria-live="polite" aria-atomic="true"></div>
+                <input type="hidden" id="savedSelfAssessmentPipCount"
+                       th:value="${#lists.isEmpty(selfAssessmentPips) ? 0 : #lists.size(selfAssessmentPips)}">
+
+                <div class="table-responsive">
+                    <table class="table table-sm self-assessment-pip-table">
+                        <thead>
+                        <tr>
+                            <th>Target</th>
+                            <th>Development Area</th>
+                            <th>Identified Gap</th>
+                            <th>Expected Outcome</th>
+                            <th>Intervention</th>
+                            <th>Support Required</th>
+                            <th>Target Date</th>
+                            <th>N/A</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="selfAssessmentPipRows">
+                        <tr th:each="pip : ${selfAssessmentPips}"
+                            class="self-assessment-pip-row is-display-mode"
+                            th:attr="data-pip-id=${pip.id}">
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-target-text"
+                                     th:text="${pip.target != null ? pip.target.measure : 'No linked target'}"></div>
+                                <select class="form-control self-assessment-target self-assessment-pip-edit-control" disabled>
+                                    <option value="">No linked target</option>
+                                    <option th:each="targetOption : ${targetsList}"
+                                            th:value="${targetOption.id}"
+                                            th:selected="${pip.target != null and pip.target.id == targetOption.id}"
+                                            th:text="${targetOption.measure}">Target</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-target-area-text" th:text="${pip.targetArea}"></div>
+                                <textarea class="form-control self-assessment-target-area self-assessment-na-fill self-assessment-pip-edit-control" rows="2" disabled th:text="${pip.targetArea}"></textarea>
+                            </td>
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-concern-text" th:text="${pip.concern}"></div>
+                                <textarea class="form-control self-assessment-concern self-assessment-na-fill self-assessment-pip-edit-control" rows="2" disabled th:text="${pip.concern}"></textarea>
+                            </td>
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-expected-standard-text" th:text="${pip.expectedStandard}"></div>
+                                <textarea class="form-control self-assessment-expected-standard self-assessment-na-fill self-assessment-pip-edit-control" rows="2" disabled th:text="${pip.expectedStandard}"></textarea>
+                            </td>
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-agreed-action-text" th:text="${pip.agreedAction}"></div>
+                                <textarea class="form-control self-assessment-agreed-action self-assessment-na-fill self-assessment-pip-edit-control" rows="2" disabled th:text="${pip.agreedAction}"></textarea>
+                            </td>
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-required-support-text" th:text="${pip.requiredSupport}"></div>
+                                <textarea class="form-control self-assessment-required-support self-assessment-na-fill self-assessment-pip-edit-control" rows="2" disabled th:text="${pip.requiredSupport}"></textarea>
+                            </td>
+                            <td>
+                                <div class="self-assessment-pip-text self-assessment-end-date-text" th:text="${pip.endDate == null ? '' : pip.endDate}"></div>
+                                <input type="date" class="form-control self-assessment-end-date self-assessment-pip-edit-control" disabled th:value="${pip.endDate}">
+                            </td>
+                            <td class="self-assessment-pip-na-cell">
+                                <div class="self-assessment-pip-text self-assessment-not-applicable-text" th:text="${pip.notApplicable ? 'Yes' : 'No'}"></div>
+                                <input type="checkbox" class="self-assessment-not-applicable self-assessment-pip-edit-control" disabled th:checked="${pip.notApplicable}" onchange="toggleSelfAssessmentNotApplicable(this)" title="No training required">
+                            </td>
+                            <td class="self-assessment-pip-actions">
+                                <button type="button" class="btn btn-white btn-sm self-assessment-pip-edit-action" onclick="editSelfAssessmentPip(this)" title="Edit row">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-white btn-sm self-assessment-pip-save-action" onclick="saveSelfAssessmentPip(this)" title="Save row">
+                                    <i class="fa fa-save"></i>
+                                </button>
+                                <button type="button" class="btn btn-white btn-sm self-assessment-pip-cancel-action" onclick="cancelSelfAssessmentPipEdit(this)" title="Cancel edit">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                                <button type="button" class="btn btn-white btn-sm" onclick="confirmDeleteSelfAssessmentPip(this)" title="Delete row">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(selfAssessmentPips)}" class="self-assessment-pip-empty-row">
+                            <td colspan="9">No training and development interventions saved.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="self-assessment-pip-add-row">
+                    <button type="button" class="btn btn-white btn-sm" onclick="addSelfAssessmentPipRow()" title="Add intervention row">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </div>
+
+    <div class="modal" tabindex="-1" role="dialog" id="selfAssessmentPipDeleteConfirmModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Intervention</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Delete this training and development intervention?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteConfirmedSelfAssessmentPip()">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+                <template id="selfAssessmentPipRowTemplate">
+        <tr data-pip-id="" class="self-assessment-pip-row is-edit-mode">
+            <td>
+                <div class="self-assessment-pip-text self-assessment-target-text"></div>
+                <select class="form-control self-assessment-target self-assessment-pip-edit-control">
+                    <option value="">No linked target</option>
+                    <option th:each="targetOption : ${targetsList}"
+                            th:value="${targetOption.id}"
+                            th:text="${targetOption.measure}">Target</option>
+                </select>
+            </td>
+            <td>
+                <div class="self-assessment-pip-text self-assessment-target-area-text"></div>
+                <textarea class="form-control self-assessment-target-area self-assessment-na-fill self-assessment-pip-edit-control" rows="2"></textarea>
+            </td>
+            <td>
+                <div class="self-assessment-pip-text self-assessment-concern-text"></div>
+                <textarea class="form-control self-assessment-concern self-assessment-na-fill self-assessment-pip-edit-control" rows="2"></textarea>
+            </td>
+            <td>
+                <div class="self-assessment-pip-text self-assessment-expected-standard-text"></div>
+                <textarea class="form-control self-assessment-expected-standard self-assessment-na-fill self-assessment-pip-edit-control" rows="2"></textarea>
+            </td>
+            <td>
+                <div class="self-assessment-pip-text self-assessment-agreed-action-text"></div>
+                <textarea class="form-control self-assessment-agreed-action self-assessment-na-fill self-assessment-pip-edit-control" rows="2"></textarea>
+            </td>
+            <td>
+                <div class="self-assessment-pip-text self-assessment-required-support-text"></div>
+                <textarea class="form-control self-assessment-required-support self-assessment-na-fill self-assessment-pip-edit-control" rows="2"></textarea>
+            </td>
+            <td>
+                <div class="self-assessment-pip-text self-assessment-end-date-text"></div>
+                <input type="date" class="form-control self-assessment-end-date self-assessment-pip-edit-control">
+            </td>
+            <td class="self-assessment-pip-na-cell">
+                <div class="self-assessment-pip-text self-assessment-not-applicable-text"></div>
+                <input type="checkbox" class="self-assessment-not-applicable self-assessment-pip-edit-control" onchange="toggleSelfAssessmentNotApplicable(this)" title="No training required">
+            </td>
+            <td class="self-assessment-pip-actions">
+                <button type="button" class="btn btn-white btn-sm self-assessment-pip-edit-action" onclick="editSelfAssessmentPip(this)" title="Edit row">
+                    <i class="fa fa-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-white btn-sm self-assessment-pip-save-action" onclick="saveSelfAssessmentPip(this)" title="Save row">
+                    <i class="fa fa-save"></i>
+                </button>
+                <button type="button" class="btn btn-white btn-sm self-assessment-pip-cancel-action" onclick="cancelSelfAssessmentPipEdit(this)" title="Cancel edit">
+                    <i class="fa fa-times"></i>
+                </button>
+                <button type="button" class="btn btn-white btn-sm" onclick="confirmDeleteSelfAssessmentPip(this)" title="Delete row">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

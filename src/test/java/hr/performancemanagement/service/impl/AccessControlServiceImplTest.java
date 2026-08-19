@@ -11,10 +11,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.servlet.http.HttpSession;
+import java.util.Arrays;
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -75,6 +82,45 @@ class AccessControlServiceImplTest {
         assertFalse(service.hasPermission(approver, AccessPermissions.PROBATION_APPROVE_FINAL_ASSESSMENT, outOfScope));
     }
 
+    @Test
+    void updateRoleKeepsExistingPermissionAndAddsOnlyMissingPermissions() {
+        Account actor = account(10L, 7L, "NONE");
+        actor.setAdmin(PMConstants.IS_ADMIN);
+        AccessRole role = role(2L, 7L);
+        AccessPermission existingPermission = permission(3L, AccessPermissions.SCORECARD_MODERATE);
+        AccessPermission addedPermission = permission(4L, AccessPermissions.PROBATION_CONFIGURE);
+        AccessRolePermission existingRolePermission = rolePermission(role, existingPermission);
+        AccessControlServiceImpl service = service();
+
+        when(session.getAttribute("loggedUser")).thenReturn(actor);
+        when(roleRepository.findAccessRoleByIdAndClientId(2L, 7L)).thenReturn(role);
+        when(roleRepository.save(role)).thenReturn(role);
+        when(permissionRepository.findAccessPermissionByCode(anyString())).thenAnswer(invocation -> {
+            String code = invocation.getArgument(0);
+            if (AccessPermissions.SCORECARD_MODERATE.equals(code)) {
+                return existingPermission;
+            }
+            if (AccessPermissions.PROBATION_CONFIGURE.equals(code)) {
+                return addedPermission;
+            }
+            return permission(99L, code);
+        });
+        when(rolePermissionRepository.findAccessRolePermissionsByAccessRoleOrderByPermission_ModuleAscPermission_NameAsc(role))
+                .thenReturn(Collections.singletonList(existingRolePermission));
+
+        AccessRole saved = service.saveRole(2L, "HR Role", "Updated role",
+                Arrays.asList(AccessPermissions.SCORECARD_MODERATE,
+                        AccessPermissions.SCORECARD_MODERATE.toLowerCase(),
+                        AccessPermissions.PROBATION_CONFIGURE));
+
+        assertSame(role, saved);
+        verify(rolePermissionRepository, never()).deleteAccessRolePermissionsByAccessRole(role);
+        verify(rolePermissionRepository, never()).delete(existingRolePermission);
+        verify(rolePermissionRepository, times(1)).save(argThat(rolePermission ->
+                rolePermission.getAccessRole() == role
+                        && rolePermission.getPermission() == addedPermission));
+    }
+
     private AccessControlServiceImpl service() {
         return new AccessControlServiceImpl(permissionRepository, roleRepository, rolePermissionRepository,
                 assignmentRepository, auditRepository, accountRepository, divisionRepository, departmentRepository, session);
@@ -107,6 +153,23 @@ class AccessControlServiceImplTest {
         assignment.setScopeType(scopeType);
         assignment.setStatus(PMConstants.STATUS_ACTIVE);
         return assignment;
+    }
+
+    private AccessPermission permission(long id, String code) {
+        AccessPermission permission = new AccessPermission();
+        permission.setId(id);
+        permission.setCode(code);
+        permission.setName(code);
+        permission.setModule("Test");
+        permission.setStatus(PMConstants.STATUS_ACTIVE);
+        return permission;
+    }
+
+    private AccessRolePermission rolePermission(AccessRole role, AccessPermission permission) {
+        AccessRolePermission rolePermission = new AccessRolePermission();
+        rolePermission.setAccessRole(role);
+        rolePermission.setPermission(permission);
+        return rolePermission;
     }
 
     private Department department(long id, long clientId) {

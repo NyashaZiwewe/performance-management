@@ -1,9 +1,11 @@
 package hr.performancemanagement.service.impl;
 
+import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingDateActivityPeriod;
 import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.entities.ScorecardReportingDateStage;
+import hr.performancemanagement.repository.AccountRepository;
 import hr.performancemanagement.repository.ReportingDateActivityPeriodRepository;
 import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.repository.ScoreCardRepository;
@@ -26,6 +28,7 @@ import java.util.*;
 public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActivityPeriodService {
 
     private final ReportingDateActivityPeriodRepository activityPeriodRepository;
+    private final AccountRepository accountRepository;
     private final ReportingDateRepository reportingDateRepository;
     private final ScoreCardRepository scoreCardRepository;
     private final ScorecardReportingDateStageRepository scorecardReportingDateStageRepository;
@@ -33,12 +36,14 @@ public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActi
     private final SystemSettingService systemSettingService;
 
     public ReportingDateActivityPeriodServiceImpl(ReportingDateActivityPeriodRepository activityPeriodRepository,
+                                                  AccountRepository accountRepository,
                                                   ReportingDateRepository reportingDateRepository,
                                                   ScoreCardRepository scoreCardRepository,
                                                   ScorecardReportingDateStageRepository scorecardReportingDateStageRepository,
                                                   NotificationService notificationService,
                                                   SystemSettingService systemSettingService) {
         this.activityPeriodRepository = activityPeriodRepository;
+        this.accountRepository = accountRepository;
         this.reportingDateRepository = reportingDateRepository;
         this.scoreCardRepository = scoreCardRepository;
         this.scorecardReportingDateStageRepository = scorecardReportingDateStageRepository;
@@ -194,6 +199,7 @@ public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActi
                     || !Objects.equals(period.getStartDate(), startDate.toString())
                     || !Objects.equals(period.getEndDate(), endDate.toString())) {
                 period.setLastReminderDate(null);
+                period.setLastCutoffReminderDate(null);
             }
         }
         period.setReportingDate(reportingDate);
@@ -202,6 +208,7 @@ public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActi
         period.setEndDate(endDate.toString());
         validateSchedule(period);
         ReportingDateActivityPeriod saved = activityPeriodRepository.save(period);
+        sendActivityOpenedEmailIfDue(reportingDate, saved, LocalDate.now());
         requestedPeriod.setId(saved.getId());
         requestedPeriod.setReportingDate(saved.getReportingDate());
         requestedPeriod.setActivityType(saved.getActivityType());
@@ -244,18 +251,58 @@ public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActi
             for (ReportingDateActivityPeriod period : listActivityPeriods(reportingDate)) {
                 LocalDate start = parseDate(period.getStartDate(), "Activity start");
                 LocalDate cutoff = parseDate(period.getEndDate(), "Activity last");
-                if (!today.equals(start) && !today.equals(cutoff)) {
-                    continue;
+                boolean updated = false;
+                if (sendActivityOpenedEmailIfDue(reportingDate, period, today, start, cutoff)) {
+                    updated = true;
                 }
-                if (today.toString().equals(period.getLastReminderDate())) {
-                    continue;
+                if (today.equals(cutoff) && !today.toString().equals(period.getLastCutoffReminderDate())) {
+                    ActivityPeriodProgress progress = progressForPeriod(reportingDate, period);
+                    sendHREmail(reportingDate, period, progress, true);
+                    period.setLastCutoffReminderDate(today.toString());
+                    updated = true;
                 }
-                ActivityPeriodProgress progress = progressForPeriod(reportingDate, period);
-                sendHREmail(reportingDate, period, progress, today.equals(cutoff));
-                period.setLastReminderDate(today.toString());
-                activityPeriodRepository.save(period);
+                if (updated) {
+                    activityPeriodRepository.save(period);
+                }
             }
         }
+    }
+
+    private void sendActivityOpenedEmailIfDue(ReportingDate reportingDate,
+                                              ReportingDateActivityPeriod period,
+                                              LocalDate today) {
+        LocalDate start = parseDate(period.getStartDate(), "Activity start");
+        LocalDate cutoff = parseDate(period.getEndDate(), "Activity last");
+        if (sendActivityOpenedEmailIfDue(reportingDate, period, today, start, cutoff)) {
+            activityPeriodRepository.save(period);
+        }
+    }
+
+    private boolean sendActivityOpenedEmailIfDue(ReportingDate reportingDate,
+                                                 ReportingDateActivityPeriod period,
+                                                 LocalDate today,
+                                                 LocalDate start,
+                                                 LocalDate cutoff) {
+        if (period == null || today == null || start == null || cutoff == null) {
+            return false;
+        }
+        boolean activityOpen = !today.isBefore(start) && !today.isAfter(cutoff);
+        if (!activityOpen || !isOpenReportingDate(reportingDate) || StringUtils.hasText(period.getLastReminderDate())) {
+            return false;
+        }
+        ActivityPeriodProgress progress = progressForPeriod(reportingDate, period);
+        sendActivityOpenedEmails(reportingDate, period, progress);
+        period.setLastReminderDate(today.toString());
+        return true;
+    }
+
+    private boolean isOpenReportingDate(ReportingDate reportingDate) {
+        if (reportingDate == null || !StringUtils.hasText(reportingDate.getStatus())) {
+            return false;
+        }
+        String status = reportingDate.getStatus().trim();
+        return PMConstants.REPORTING_DATE_STATUS_OPEN.equalsIgnoreCase(status)
+                || PMConstants.STATUS_ACTIVE.equalsIgnoreCase(status);
     }
 
     private ActivityPeriodProgress progressForPeriod(ReportingDate reportingDate, ReportingDateActivityPeriod period) {
@@ -281,6 +328,34 @@ public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActi
         );
     }
 
+    private void sendActivityOpenedEmails(ReportingDate reportingDate,
+                                          ReportingDateActivityPeriod period,
+                                          ActivityPeriodProgress progress) {
+        List<Account> recipients = activityNotificationRecipients(reportingDate);
+        if (recipients.isEmpty()) {
+            return;
+        }
+        String activityLabel = activityLabel(period.getActivityType());
+        String subject = activityLabel + " window is open";
+        String link = absoluteSystemUrl("/scorecards");
+        String message = "The " + activityLabel + " window has been opened.\n"
+                + "Reporting date: " + (reportingDate == null ? "N/A" : reportingDate.getEndDate()) + "\n"
+                + "Activity period: " + period.getStartDate() + " to " + period.getEndDate() + "\n"
+                + "Cutoff date: " + period.getEndDate() + "\n"
+                + "Progress: " + progress.getCompletedScorecards() + " of " + progress.getTotalScorecards() + " scorecards complete\n"
+                + "Outstanding: " + progress.getOutstandingScorecards() + "\n"
+                + "Only actions belonging to this activity period are now allowed.\n"
+                + "System link: " + link;
+        for (Account recipient : recipients) {
+            notificationService.sendUserMessageAsync(
+                    recipient.getEmail().trim(),
+                    recipient.getFullName(),
+                    subject,
+                    message
+            );
+        }
+    }
+
     private void sendHREmail(ReportingDate reportingDate,
                              ReportingDateActivityPeriod period,
                              ActivityPeriodProgress progress,
@@ -301,11 +376,73 @@ public class ReportingDateActivityPeriodServiceImpl implements ReportingDateActi
                 + (cutoffNotice
                 ? "Previous-stage actions will be restricted after this cutoff."
                 : "Only actions belonging to this activity period are now allowed.")
-                + "\nLink: /reporting-periods/reporting-dates/"
-                + (reportingDate == null || reportingDate.getReportingPeriod() == null
-                ? ""
-                : reportingDate.getReportingPeriod().getId());
+                + "\nSystem link: " + absoluteSystemUrl(activityPeriodsPath(reportingDate));
         notificationService.sendUserMessageAsync(hrEmail.trim(), "HR", subject, message);
+    }
+
+    private String activityPeriodsPath(ReportingDate reportingDate) {
+        if (reportingDate == null || reportingDate.getId() <= 0) {
+            return "/reporting-periods";
+        }
+        return "/reporting-periods/reporting-dates/" + reportingDate.getId() + "/activity-periods";
+    }
+
+    private List<Account> activityNotificationRecipients(ReportingDate reportingDate) {
+        List<Account> accounts;
+        long clientId = resolveReportingDateClientId(reportingDate);
+        if (clientId > 0) {
+            accounts = accountRepository.findAccountsByClient_ClientId(clientId);
+        } else {
+            accounts = accountRepository.findAll();
+        }
+        if (accounts == null || accounts.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<String, Account> recipientsByEmail = new LinkedHashMap<String, Account>();
+        for (Account account : accounts) {
+            if (!isActiveRecipient(account)) {
+                continue;
+            }
+            String emailKey = account.getEmail().trim().toLowerCase(Locale.ENGLISH);
+            recipientsByEmail.putIfAbsent(emailKey, account);
+        }
+        return new ArrayList<Account>(recipientsByEmail.values());
+    }
+
+    private boolean isActiveRecipient(Account account) {
+        return account != null
+                && StringUtils.hasText(account.getEmail())
+                && StringUtils.hasText(account.getStatus())
+                && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(account.getStatus().trim());
+    }
+
+    private long resolveReportingDateClientId(ReportingDate reportingDate) {
+        if (reportingDate == null || reportingDate.getReportingPeriod() == null) {
+            return 0L;
+        }
+        return reportingDate.getReportingPeriod().getClientId();
+    }
+
+    private String absoluteSystemUrl(String path) {
+        String host = systemSettingService.getHostUrl();
+        if (!StringUtils.hasText(host)) {
+            return path;
+        }
+        String normalizedHost = host.trim();
+        while (normalizedHost.endsWith("/")) {
+            normalizedHost = normalizedHost.substring(0, normalizedHost.length() - 1);
+        }
+        if (!StringUtils.hasText(path)) {
+            return normalizedHost;
+        }
+        String normalizedPath = path.trim();
+        if (normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")) {
+            return normalizedPath;
+        }
+        if (!normalizedPath.startsWith("/")) {
+            normalizedPath = "/" + normalizedPath;
+        }
+        return normalizedHost + normalizedPath;
     }
 
     private void validateSchedule(ReportingDateActivityPeriod candidate) {

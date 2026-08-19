@@ -35,6 +35,7 @@ public class PMConstants {
     public static final String APPROVAL_STATUS_REJECTED_BY_HR = "REJECTED_BY_HR";
     public static final String APPROVAL_STATUS_SCORED_BY_EMPLOYEE = "SCORED_BY_EMPLOYEE";
     public static final String APPROVAL_STATUS_APPROVED_OWNER_SCORES = "APPROVED_OWNER_SCORES";
+    public static final String APPROVAL_STATUS_REJECTED_OWNER_SCORES = "REJECTED_OWNER_SCORES";
     public static final String APPROVAL_STATUS_SCORED_BY_SUPERVISOR = "SCORED_BY_SUPERVISOR";
     public static final String APPROVAL_STATUS_AGREED_BY_TWO = "AGREED_BY_TWO";
     public static final String APPROVAL_STATUS_APPROVED_AGREED_SCORES = "APPROVED_AGREED_SCORES";
@@ -55,6 +56,9 @@ public class PMConstants {
 
     public static final String TASK_STATUS_OPEN = "OPEN";
     public static final String TASK_STATUS_COMPLETED = "COMPLETED";
+    public static final String PIP_STATUS_TODO = "todo";
+    public static final String PIP_STATUS_NOT_APPLICABLE = "NOT_APPLICABLE";
+    public static final String PIP_SOURCE_SELF_ASSESSMENT = "SELF_ASSESSMENT";
 
     public static final String PROBATION_STATUS_DRAFT = "DRAFT";
     public static final String PROBATION_STATUS_PENDING = "PENDING";

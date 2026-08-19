@@ -512,8 +512,8 @@
                             </li>
                             <li th:each="notification : ${emailNotificationPreview}" class="notification-item">
                                 <a th:href="${notification.link}">
-                                    <div class="notification-item-icon notification-item-icon-info">
-                                        <i class="fa fa-envelope-o"></i>
+                                    <div class="notification-item-icon" th:classappend="${' notification-item-icon-' + notification.accentClass}">
+                                        <i th:class="${notification.iconClass}"></i>
                                     </div>
                                     <div class="notification-item-body">
                                         <div class="notification-item-title" th:text="${notification.title}">Email notification</div>
@@ -629,7 +629,7 @@
             </div>
         </div>
         <div class="alerts" th:fragment="alerts" aria-live="polite" aria-atomic="true">
-            <div class="alert alert-info"
+            <div th:class="${activeReportingActivityAlertClass}"
                  th:if="${activeReportingActivitySummary != null and !activeReportingActivitySummary.isEmpty()}">
                 <strong>Current reporting activity:</strong>
                 <span th:text="${activeReportingActivitySummary}">Activity period and cutoff</span>

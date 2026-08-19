@@ -39,6 +39,7 @@ public class Pages {
     public static final String EDIT_REPORTING_PERIOD = "reporting-period/editReportingPeriod";
     public static final String VIEW_STRATEGIC_OBJECTIVES = "reporting-period/viewStrategicObjectives";
     public static final String VIEW_REPORTING_DATES = "reporting-period/viewReportingDates";
+    public static final String MANAGE_REPORTING_DATE_ACTIVITY_PERIODS = "reporting-period/manageReportingDateActivityPeriods";
     public static final String VIEW_PERFORMANCE_IMPROVEMENT_PLANS = "performance-improvement-plan/viewPerformanceImprovementPlans";
     public static final String VIEW_PERFORMANCE_IMPROVEMENT_PLANS2 = "performance-improvement-plan/viewPerformanceImprovementPlans2";
     public static final String VIEW_PERFORMANCE_IMPROVEMENT_PLAN = "performance-improvement-plan/viewPerformanceImprovementPlan";

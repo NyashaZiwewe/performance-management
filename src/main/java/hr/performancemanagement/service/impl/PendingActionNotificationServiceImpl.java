@@ -4,9 +4,11 @@ import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.entities.Scorecard;
+import hr.performancemanagement.entities.ScorecardReportingDateStage;
 import hr.performancemanagement.service.api.CommonService;
 import hr.performancemanagement.service.api.PendingActionNotificationService;
 import hr.performancemanagement.service.api.ReportingDateService;
+import hr.performancemanagement.service.api.ScorecardReportingDateStageService;
 import hr.performancemanagement.service.api.ScorecardWorkflowService;
 import hr.performancemanagement.service.api.ScorecardService;
 import hr.performancemanagement.utils.constants.PMConstants;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -31,6 +34,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
     private final CommonService commonService;
     private final ScorecardService scorecardService;
     private final ReportingDateService reportingDateService;
+    private final ScorecardReportingDateStageService scorecardReportingDateStageService;
     private final ScorecardWorkflowService scorecardWorkflowService;
     private final Map<String, CacheEntry> summaryCache = new ConcurrentHashMap<>();
 
@@ -60,7 +64,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             if (!isPotentiallyActionable(scorecard)) {
                 continue;
             }
-            PendingActionNotification notification = resolveScorecardNotification(loggedUser, scorecard);
+            PendingActionNotification notification = resolveScorecardNotification(scorecard);
             if (notification != null) {
                 notifications.add(notification);
             }
@@ -142,7 +146,7 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         }
     }
 
-    private PendingActionNotification resolveScorecardNotification(Account loggedUser, Scorecard scorecard) {
+    private PendingActionNotification resolveScorecardNotification(Scorecard scorecard) {
         if (scorecard == null || scorecard.getOwner() == null || scorecard.getApprovalStatus() == null) {
             return null;
         }
@@ -150,21 +154,14 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         Account owner = scorecard.getOwner();
         String status = scorecard.getApprovalStatus().trim();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-        boolean canCaptureTargets = isAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard);
-        boolean canApprove = isAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard);
-        boolean canCaptureEmployeeScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
-        boolean canApproveOwnerScores = isAllowed(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES, scorecard);
-        boolean canCaptureManagerScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard);
-        boolean canCaptureAgreedScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
-        boolean canApproveAgreedScores = isAllowed(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES, scorecard);
-        boolean canCaptureModeratedScores = isAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
-        boolean canCloseScorecard = isAllowed(PMConstants.ACTIVITY_CLOSE_SCORECARD, scorecard);
+        String contractRole = resolveContractStageRole(scorecard);
 
         Date date = scorecard.getLastUpdate() != null ? scorecard.getLastUpdate() : scorecard.getDate();
         String ownerName = owner.getFullName() != null ? owner.getFullName() : "Employee";
         String periodLabel = formatPeriod(scorecard.getReportingPeriod());
 
-        if (canCaptureTargets) {
+        if (isTargetCaptureStage(contractRole)
+                && isAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard)) {
             return new PendingActionNotification(
                     "Scorecard",
                     "Scorecard ready for submission",
@@ -176,7 +173,9 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canApprove && scorecardWorkflowService.matches(status, workflow.getPendingApprovalStatus())) {
+        if (isSupervisorTargetApprovalStage(contractRole)
+                && scorecardWorkflowService.matches(status, workflow.getPendingApprovalStatus())
+                && isAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard)) {
             return new PendingActionNotification(
                     "Approval",
                     "Scorecard awaiting your approval",
@@ -188,7 +187,9 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canApprove && scorecardWorkflowService.matches(status, workflow.getApprovedBySupervisorStatus())) {
+        if (isHrTargetApprovalStage(contractRole)
+                && scorecardWorkflowService.matches(status, workflow.getApprovedBySupervisorStatus())
+                && isAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard)) {
             return new PendingActionNotification(
                     "HR Review",
                     "Scorecard awaiting HR approval",
@@ -200,7 +201,13 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canCaptureEmployeeScores) {
+        if (!isContractReadyForScoring(scorecard, workflow)) {
+            return null;
+        }
+
+        String reportingDateRole = resolveActiveReportingDateRole(scorecard);
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING)
+                && isAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)) {
             return new PendingActionNotification(
                     "Scores",
                     "Employee score submission pending",
@@ -212,7 +219,8 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canApproveOwnerScores) {
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL)
+                && isAllowed(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES, scorecard)) {
             return new PendingActionNotification(
                     "Scores",
                     "Owner scores awaiting your approval",
@@ -224,7 +232,8 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canCaptureManagerScores) {
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING)
+                && isAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)) {
             return new PendingActionNotification(
                     "Scores",
                     "Manager score submission pending",
@@ -236,7 +245,8 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canCaptureAgreedScores) {
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING)
+                && isAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)) {
             return new PendingActionNotification(
                     "Scores",
                     "Agreed score submission pending",
@@ -248,7 +258,8 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canApproveAgreedScores) {
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL)
+                && isAllowed(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES, scorecard)) {
             return new PendingActionNotification(
                     "Moderation",
                     "Agreed scores awaiting your approval",
@@ -260,7 +271,8 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canCaptureModeratedScores) {
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)
+                && isAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)) {
             return new PendingActionNotification(
                     "Scores",
                     "Moderated score submission pending",
@@ -272,7 +284,8 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
             );
         }
 
-        if (canCloseScorecard && scorecardWorkflowService.matches(status, workflow.getModeratedByHrStatus())) {
+        if (scorecardWorkflowService.matches(status, workflow.getModeratedByHrStatus())
+                && isAllowed(PMConstants.ACTIVITY_CLOSE_SCORECARD, scorecard)) {
             return new PendingActionNotification(
                     "Scorecard",
                     "Scorecard closure pending",
@@ -285,6 +298,103 @@ public class PendingActionNotificationServiceImpl implements PendingActionNotifi
         }
 
         return null;
+    }
+
+    private String resolveContractStageRole(Scorecard scorecard) {
+        if (scorecard == null) {
+            return null;
+        }
+        if (scorecard.getApprovalStage() != null && hasText(scorecard.getApprovalStage().getRoleKey())) {
+            return normalizeRole(scorecard.getApprovalStage().getRoleKey());
+        }
+        return mapContractStatusToRole(scorecard.getApprovalStatus());
+    }
+
+    private String mapContractStatusToRole(String approvalStatus) {
+        if (!hasText(approvalStatus)) {
+            return PMConstants.SCORECARD_STAGE_NEW;
+        }
+        switch (approvalStatus.trim().toUpperCase(Locale.ENGLISH)) {
+            case PMConstants.APPROVAL_STATUS_NEW:
+                return PMConstants.SCORECARD_STAGE_NEW;
+            case PMConstants.APPROVAL_STATUS_PENDING_APPROVAL:
+            case PMConstants.APPROVAL_STATUS_REJECTED_BY_HR:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR;
+            case PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR;
+            case PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS;
+            case PMConstants.APPROVAL_STATUS_APPROVED_BY_HR:
+                return PMConstants.SCORECARD_STAGE_OWNER_SCORING;
+            default:
+                return null;
+        }
+    }
+
+    private String resolveActiveReportingDateRole(Scorecard scorecard) {
+        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
+        if (scorecard == null || reportingDate == null) {
+            return null;
+        }
+        String roleKey = scorecardReportingDateStageService.getCurrentRoleKey(scorecard, reportingDate);
+        if (hasText(roleKey)) {
+            return normalizeRole(roleKey);
+        }
+        ScorecardReportingDateStage stage = scorecardReportingDateStageService.getOrCreateStage(scorecard, reportingDate);
+        if (stage == null || stage.getApprovalStage() == null || !hasText(stage.getApprovalStage().getRoleKey())) {
+            return null;
+        }
+        return normalizeRole(stage.getApprovalStage().getRoleKey());
+    }
+
+    private boolean isTargetCaptureStage(String contractRole) {
+        return matchesRole(contractRole, PMConstants.SCORECARD_STAGE_NEW)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS);
+    }
+
+    private boolean isSupervisorTargetApprovalStage(String contractRole) {
+        return matchesRole(contractRole, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+    }
+
+    private boolean isHrTargetApprovalStage(String contractRole) {
+        return matchesRole(contractRole, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR);
+    }
+
+    private boolean isContractReadyForScoring(Scorecard scorecard, ScorecardWorkflowDefinition workflow) {
+        if (scorecard == null || workflow == null) {
+            return false;
+        }
+        String contractRole = resolveContractStageRole(scorecard);
+        if (matchesRole(contractRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_CLOSED)) {
+            return true;
+        }
+        String approvalStatus = scorecard.getApprovalStatus();
+        return scorecardWorkflowService.matches(approvalStatus, workflow.getApprovedByHrStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getScoredByEmployeeStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getApprovedOwnerScoresStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getScoredBySupervisorStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getAgreedByTwoStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getApprovedAgreedScoresStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getModeratedByHrStatus())
+                || scorecardWorkflowService.matches(approvalStatus, workflow.getClosedStatus());
+    }
+
+    private boolean matchesRole(String left, String right) {
+        return left != null && right != null && left.trim().equalsIgnoreCase(right.trim());
+    }
+
+    private String normalizeRole(String roleKey) {
+        return hasText(roleKey) ? roleKey.trim().toUpperCase(Locale.ENGLISH) : null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private boolean isAllowed(String activity, Scorecard scorecard) {

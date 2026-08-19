@@ -34,4 +34,5 @@ public class SystemSettingsWrapper {
     private String scorecardStatusModeratedByHr;
     private String scorecardStatusClosed;
     private String scorecardWorkflowSequence;
+    private Boolean employeeScoreEvidenceAndJustificationRequired;
 }

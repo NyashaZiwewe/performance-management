@@ -99,6 +99,34 @@ public class ScorecardController {
         }
     }
 
+    private static class ScorecardActionState {
+        private boolean canCaptureTargets;
+        private boolean canSupervisorApproveTargets;
+        private boolean canHrApproveTargets;
+        private boolean canCaptureEmployeeScore;
+        private boolean canCaptureManagerScore;
+        private boolean canCaptureAgreedScore;
+        private boolean canModerate;
+        private boolean canApproveOwnerScores;
+        private boolean canApproveAgreedScores;
+        private String expectedActivity;
+
+        private boolean canApproveTargets() {
+            return canSupervisorApproveTargets || canHrApproveTargets;
+        }
+
+        private boolean hasAllowedAction() {
+            return canCaptureTargets
+                    || canApproveTargets()
+                    || canCaptureEmployeeScore
+                    || canCaptureManagerScore
+                    || canCaptureAgreedScore
+                    || canModerate
+                    || canApproveOwnerScores
+                    || canApproveAgreedScores;
+        }
+    }
+
     @Autowired
     private final ReportingPeriodService reportingPeriodService;
     @Autowired
@@ -138,7 +166,13 @@ public class ScorecardController {
     @Autowired
     private final CommonService commonService;
     @Autowired
+    private final SystemSettingService systemSettingService;
+    @Autowired
     private AccessControlService accessControlService;
+    @Autowired
+    private PerformanceImprovementPlanService performanceImprovementPlanService;
+    @Autowired
+    private ReportingDateActivityPeriodService reportingDateActivityPeriodService;
     @Autowired
     private final ScorecardWorkflowService scorecardWorkflowService;
     @Autowired
@@ -159,7 +193,7 @@ public class ScorecardController {
     private final Environment environment;
 
 
-    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, ScorecardWorkflowService scorecardWorkflowService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, EvidenceService evidenceService, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, SystemSettingService systemSettingService, ScorecardWorkflowService scorecardWorkflowService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, EvidenceService evidenceService, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
         this.departmentService = departmentService;
@@ -179,6 +213,7 @@ public class ScorecardController {
         this.valueBasedScoreService = valueBasedScoreService;
         this.scorecardModelService = scorecardModelService;
         this.commonService = commonService;
+        this.systemSettingService = systemSettingService;
         this.scorecardWorkflowService = scorecardWorkflowService;
         this.scorecardReportingDateStageService = scorecardReportingDateStageService;
         this.evidenceRepository = evidenceRepository;
@@ -388,10 +423,11 @@ public class ScorecardController {
             if (scorecard == null || scorecard.getId() <= 0) {
                 continue;
             }
+            String reportingDateRole = captureWindowOpen ? resolveReportingDateRole(scorecard, reportingDate) : null;
             boolean canCapture = captureWindowOpen
                     && isScoreCaptureWindowOpen(scorecard, reportingDate)
                     && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
-                    && isAnyScoreCaptureAllowed(scorecard);
+                    && isAnyScoreCaptureAllowed(scorecard, reportingDateRole);
             map.put(scorecard.getId(), canCapture);
         }
         return map;
@@ -406,10 +442,7 @@ public class ScorecardController {
             if (scorecard == null || scorecard.getId() <= 0) {
                 continue;
             }
-            boolean canEditTargets = PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
-                    && isScorecardInActiveReportingPeriod(scorecard)
-                    && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard);
-            map.put(scorecard.getId(), canEditTargets);
+            map.put(scorecard.getId(), canCaptureTargets(scorecard));
         }
         return map;
     }
@@ -1474,6 +1507,11 @@ public class ScorecardController {
             }
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
+            boolean selfAssessmentPipRequired = captureStage == ValueBasedCaptureStage.EMPLOYEE;
+            modelAndView.addObject("selfAssessmentPipRequired", selfAssessmentPipRequired);
+            modelAndView.addObject("selfAssessmentPips", selfAssessmentPipRequired
+                    ? performanceImprovementPlanService.listSelfAssessmentPerformanceImprovementPlans(scorecard, reportingDate)
+                    : Collections.emptyList());
             addScorecardDisplayModel(modelAndView, scorecard, targetsList, reportingDates);
             List<ScorecardDisplaySection> displaySections =
                     (List<ScorecardDisplaySection>) modelAndView.getModel().get("displaySections");
@@ -1578,6 +1616,13 @@ public class ScorecardController {
             return null;
         }
         ReportingDate reportingDate = resolveActiveReportingDate();
+        return resolveReportingDateRole(scorecard, reportingDate);
+    }
+
+    private String resolveReportingDateRole(Scorecard scorecard, ReportingDate reportingDate) {
+        if (scorecard == null) {
+            return null;
+        }
         if (reportingDate == null) {
             return null;
         }
@@ -1593,14 +1638,6 @@ public class ScorecardController {
             return null;
         }
         return stage.getApprovalStage().getRoleKey();
-    }
-
-    private boolean isActiveReportingDateRole(Scorecard scorecard, String roleKey) {
-        String currentRole = resolveActiveReportingDateRole(scorecard);
-        if (currentRole == null || roleKey == null) {
-            return false;
-        }
-        return currentRole.trim().equalsIgnoreCase(roleKey.trim());
     }
 
     private boolean moveActiveReportingDateStage(Scorecard scorecard, String roleKey, HttpServletRequest request) {
@@ -1623,6 +1660,111 @@ public class ScorecardController {
             return false;
         }
         return true;
+    }
+
+    private boolean validateValueBasedScoreSubmission(Scorecard scorecard,
+                                                      ReportingDate reportingDate,
+                                                      ValueBasedCaptureStage stage,
+                                                      HttpServletRequest request) {
+        String validationMessage = resolveValueBasedScoreSubmissionIssue(scorecard, reportingDate, stage);
+        if (validationMessage == null) {
+            return true;
+        }
+        PortletUtils.addErrorMsg(validationMessage, request);
+        return false;
+    }
+
+    private String resolveValueBasedScoreSubmissionIssue(Scorecard scorecard,
+                                                        ReportingDate reportingDate,
+                                                        ValueBasedCaptureStage stage) {
+        if (scorecard == null) {
+            return "Scorecard not found.";
+        }
+        if (stage == null) {
+            return "Score capture stage could not be resolved.";
+        }
+        if (hasReportingDateConflict(scorecard)) {
+            return "Score capture is blocked: multiple OPEN/ACTIVE reporting dates exist. Contact an administrator.";
+        }
+        if (reportingDate == null) {
+            return "No active reporting date was found.";
+        }
+        if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+            return "Scores can only be submitted for an OPEN reporting date.";
+        }
+        if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+            return "Scores can only be submitted for the OPEN reporting date in this scorecard's reporting period.";
+        }
+        if (!isStageCaptureAllowed(scorecard, stage)) {
+            return "You are not allowed to submit " + scoreStageDisplayName(stage) + " scores for this scorecard.";
+        }
+
+        List<Target> targetsList = resolveTargetsForScoreSubmission(scorecard);
+        if (targetsList.isEmpty()) {
+            return "No targets are available for score capture.";
+        }
+        for (Target target : targetsList) {
+            Score score = resolveTargetReportingDateScore(target, reportingDate);
+            if (!hasValidCapturedScore(score, stage)) {
+                return "Capture a valid " + scoreStageDisplayName(stage) + " score between 1 and 5 for every target before submitting.";
+            }
+        }
+        return null;
+    }
+
+    private List<Target> resolveTargetsForScoreSubmission(Scorecard scorecard) {
+        if (scorecard == null || scorecard.getId() <= 0) {
+            return new ArrayList<Target>();
+        }
+        String hierarchyModel = resolveHierarchyModel(scorecard);
+        if (isLegacyHierarchyModel(hierarchyModel)) {
+            return attachLegacyTargets(scorecard, gearService.listSelectedGears(scorecard));
+        }
+        List<Target> targetsList = targetService.getAllTargetsByScorecard(scorecard.getId());
+        return targetsList == null ? new ArrayList<Target>() : targetsList;
+    }
+
+    private boolean hasValidCapturedScore(Score score, ValueBasedCaptureStage stage) {
+        if (score == null) {
+            return false;
+        }
+        return isValidValueBasedScore(resolveCapturedScoreValue(score, stage));
+    }
+
+    private Double resolveCapturedScoreValue(Score score, ValueBasedCaptureStage stage) {
+        if (score == null || stage == null) {
+            return null;
+        }
+        switch (stage) {
+            case EMPLOYEE:
+                return score.getEmployeeScore();
+            case MANAGER:
+                return score.getManagerScore();
+            case AGREED:
+                return score.getAgreedScore();
+            case MODERATED:
+                return score.getModeratedScore();
+            default:
+                return null;
+        }
+    }
+
+    private String scoreStageDisplayName(ValueBasedCaptureStage stage) {
+        if (stage == null) {
+            return "score";
+        }
+        switch (stage) {
+            case EMPLOYEE:
+                return "employee";
+            case MANAGER:
+                return "manager";
+            case AGREED:
+                return "agreed";
+            case MODERATED:
+                return "moderated";
+            default:
+                return "score";
+        }
     }
 
     private String resolveCaptureSubmitLabel(ValueBasedCaptureStage captureStage, ScorecardWorkflowDefinition workflow) {
@@ -1781,10 +1923,246 @@ public class ScorecardController {
     }
 
     private boolean canCaptureTargets(Scorecard scorecard) {
+        return canCaptureTargets(scorecard, isTargetCaptureStage(resolveContractStageRole(scorecard)));
+    }
+
+    private boolean canCaptureTargets(Scorecard scorecard, boolean targetCaptureStage) {
         return scorecard != null
+                && targetCaptureStage
                 && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
                 && isScorecardInActiveReportingPeriod(scorecard)
                 && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_TARGETS, scorecard);
+    }
+
+    private ScorecardActionState resolveScorecardActionState(Scorecard scorecard,
+                                                             String contractRole,
+                                                             String reportingDateRole,
+                                                             ScorecardWorkflowDefinition workflow) {
+        ScorecardActionState state = new ScorecardActionState();
+        Account loggedUser = commonService.getLoggedUser();
+        if (scorecard == null || loggedUser == null) {
+            return state;
+        }
+
+        if (isTargetCaptureStage(contractRole)) {
+            if (canCurrentUserCaptureTargetsIgnoringActivity(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_CAPTURE_TARGETS;
+                state.canCaptureTargets = canCaptureTargets(scorecard, true);
+            }
+            return state;
+        }
+
+        if (isSupervisorTargetApprovalStage(contractRole)) {
+            if (isScorecardSupervisor(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_APPROVE_SCORECARD;
+                state.canSupervisorApproveTargets = commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard);
+            }
+            return state;
+        }
+
+        if (isHrTargetApprovalStage(contractRole)) {
+            if (canCurrentUserApproveTargetsAsHr(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_APPROVE_SCORECARD;
+                state.canHrApproveTargets = commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard);
+            }
+            return state;
+        }
+
+        if (!isContractReadyForScoring(scorecard, workflow) || !StringUtils.hasText(reportingDateRole)) {
+            return state;
+        }
+
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING)) {
+            if (canCurrentUserCaptureEmployeeScoresIgnoringActivity(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES;
+                state.canCaptureEmployeeScore = commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
+            }
+            return state;
+        }
+
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL)) {
+            if (isScorecardSupervisor(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_APPROVE_OWNER_SCORES;
+                state.canApproveOwnerScores = commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES, scorecard);
+            }
+            return state;
+        }
+
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING)) {
+            if (isScorecardSupervisor(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES;
+                state.canCaptureManagerScore = commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard);
+            }
+            return state;
+        }
+
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING)) {
+            if (isScorecardSupervisor(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES;
+                state.canCaptureAgreedScore = commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
+            }
+            return state;
+        }
+
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL)) {
+            if (canCurrentUserApproveAgreedScoresIgnoringActivity(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_APPROVE_AGREED_SCORES;
+                state.canApproveAgreedScores = commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES, scorecard);
+            }
+            return state;
+        }
+
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)) {
+            if (canCurrentUserModerateIgnoringActivity(scorecard, loggedUser)) {
+                state.expectedActivity = PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES;
+                state.canModerate = commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
+            }
+            return state;
+        }
+
+        if (equalsStatus(scorecard.getApprovalStatus(), workflow.getModeratedByHrStatus())
+                && canCurrentUserCloseScorecardIgnoringActivity(scorecard, loggedUser)) {
+            state.expectedActivity = PMConstants.ACTIVITY_CLOSE_SCORECARD;
+        }
+        return state;
+    }
+
+    private boolean canCurrentUserCaptureEmployeeScoresIgnoringActivity(Scorecard scorecard, Account loggedUser) {
+        return isScorecardOwner(scorecard, loggedUser)
+                || (loggedUser != null && PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial()));
+    }
+
+    private boolean canCurrentUserApproveTargetsAsHr(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_TARGETS_HR, scorecard.getOwner());
+    }
+
+    private boolean canCurrentUserApproveAgreedScoresIgnoringActivity(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_APPROVE_AGREED_SCORES_HR, scorecard.getOwner());
+    }
+
+    private boolean canCurrentUserModerateIgnoringActivity(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_MODERATE, scorecard.getOwner());
+    }
+
+    private boolean canCurrentUserCloseScorecardIgnoringActivity(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && scorecard.getOwner() != null
+                && accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_CLOSE, scorecard.getOwner());
+    }
+
+    private String resolveScorecardActivityRestrictionNotice(Scorecard scorecard,
+                                                             ReportingDate reportingDate,
+                                                             boolean hasAllowedAction,
+                                                             String expectedActivity) {
+        if (hasAllowedAction) {
+            return "";
+        }
+        if (scorecard == null
+                || reportingDate == null
+                || !reportingDateService.isReportingDateOpen(reportingDate)
+                || !isReportingDateForScorecard(scorecard, reportingDate)
+                || !reportingDateActivityPeriodService.hasConfiguredActivityPeriods(reportingDate)) {
+            return "";
+        }
+
+        if (!StringUtils.hasText(expectedActivity)
+                || reportingDateActivityPeriodService.isActivityAllowed(reportingDate, expectedActivity)) {
+            return "";
+        }
+
+        String activitySummary = reportingDateActivityPeriodService.getCurrentActivitySummary(reportingDate);
+        if (StringUtils.hasText(activitySummary)) {
+            return "Current reporting-date activity: " + activitySummary;
+        }
+        return "The active reporting date has activity periods configured, but none is active today.";
+    }
+
+    private boolean canCurrentUserCaptureTargetsIgnoringActivity(Scorecard scorecard, Account loggedUser) {
+        return scorecard != null
+                && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
+                && isScorecardInActiveReportingPeriod(scorecard)
+                && PMConstants.LOCK_STATUS_OPEN.equalsIgnoreCase(scorecard.getLockStatus())
+                && (isScorecardOwner(scorecard, loggedUser)
+                || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())
+                || PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin()));
+    }
+
+    private boolean isTargetCaptureStage(String contractRole) {
+        return matchesRole(contractRole, PMConstants.SCORECARD_STAGE_NEW)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS);
+    }
+
+    private boolean isSupervisorTargetApprovalStage(String contractRole) {
+        return matchesRole(contractRole, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+    }
+
+    private boolean isHrTargetApprovalStage(String contractRole) {
+        return matchesRole(contractRole, PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR);
+    }
+
+    private boolean isContractReadyForScoring(Scorecard scorecard, ScorecardWorkflowDefinition workflow) {
+        if (scorecard == null || workflow == null) {
+            return false;
+        }
+        String contractRole = resolveContractStageRole(scorecard);
+        if (matchesRole(contractRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)
+                || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_CLOSED)) {
+            return true;
+        }
+        return equalsStatus(scorecard.getApprovalStatus(), workflow.getApprovedByHrStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getScoredByEmployeeStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getApprovedOwnerScoresStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getScoredBySupervisorStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getAgreedByTwoStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getApprovedAgreedScoresStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getModeratedByHrStatus())
+                || equalsStatus(scorecard.getApprovalStatus(), workflow.getClosedStatus());
+    }
+
+    private String resolveContractStageRole(Scorecard scorecard) {
+        if (scorecard == null) {
+            return null;
+        }
+        if (scorecard.getApprovalStage() != null && StringUtils.hasText(scorecard.getApprovalStage().getRoleKey())) {
+            return scorecard.getApprovalStage().getRoleKey().trim().toUpperCase(Locale.ENGLISH);
+        }
+        return mapContractStatusToRole(scorecard.getApprovalStatus());
+    }
+
+    private String mapContractStatusToRole(String approvalStatus) {
+        if (!StringUtils.hasText(approvalStatus)) {
+            return PMConstants.SCORECARD_STAGE_NEW;
+        }
+        switch (approvalStatus.trim().toUpperCase(Locale.ENGLISH)) {
+            case PMConstants.APPROVAL_STATUS_NEW:
+                return PMConstants.SCORECARD_STAGE_NEW;
+            case PMConstants.APPROVAL_STATUS_PENDING_APPROVAL:
+            case PMConstants.APPROVAL_STATUS_REJECTED_BY_HR:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR;
+            case PMConstants.APPROVAL_STATUS_APPROVED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR;
+            case PMConstants.APPROVAL_STATUS_REJECTED_BY_SUPERVISOR:
+                return PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS;
+            case PMConstants.APPROVAL_STATUS_APPROVED_BY_HR:
+                return PMConstants.SCORECARD_STAGE_OWNER_SCORING;
+            default:
+                return null;
+        }
+    }
+
+    private boolean matchesRole(String left, String right) {
+        return left != null && right != null && left.trim().equalsIgnoreCase(right.trim());
     }
 
     @RequestMapping(value = "/save-target", method = RequestMethod.POST)
@@ -2107,15 +2485,21 @@ public class ScorecardController {
         if (scorecard == null || !StringUtils.hasText(userType)) {
             return false;
         }
+        String reportingDateRole = resolveActiveReportingDateRole(scorecard);
         if (PMConstants.USER_TYPE_OWNER.equalsIgnoreCase(userType)) {
-            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
+            return matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING)
+                    && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
         }
         if (PMConstants.USER_TYPE_SUPERVISOR.equalsIgnoreCase(userType)) {
-            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)
-                    || commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
+            if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING)) {
+                return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard);
+            }
+            return matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING)
+                    && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
         }
         if (PMConstants.USER_TYPE_MODERATOR.equalsIgnoreCase(userType)) {
-            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
+            return matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)
+                    && commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
         }
         return false;
     }
@@ -2219,7 +2603,7 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
 
-        PortletUtils.addInfoMsg("Scorecard successfully submitted for approval. An email was sent to your supervisor", request);
+        PortletUtils.addInfoMsg("Scorecard successfully submitted for approval. An email notification will be sent to your supervisor.", request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
     }
 
@@ -2227,6 +2611,20 @@ public class ScorecardController {
     public String submitEmployeeScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
         Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Scorecard not found.", request);
+            return "redirect:/scorecards";
+        }
+        ReportingDate reportingDate = resolveActiveReportingDate();
+        if (reportingDate != null
+                && isScoreCaptureWindowOpen(scorecard, reportingDate)
+                && !performanceImprovementPlanService.hasSelfAssessmentPerformanceImprovementPlan(scorecard, reportingDate)) {
+            PortletUtils.addErrorMsg("Add at least one training and development intervention, or save N/A if none is required.", request);
+            return "redirect:/scorecards/capture-scores/" + scorecard.getId();
+        }
+        if (!validateEmployeeScoreEvidenceAndJustificationSubmission(scorecard, reportingDate, request)) {
+            return "redirect:/scorecards/capture-scores/" + scorecard.getId();
+        }
         if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL, request)) {
             return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
         }
@@ -2246,8 +2644,194 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
         }
 
-        PortletUtils.addInfoMsg("Owner scores submitted successfully for supervisor approval. An email was sent to " + supervisor.getFullName(), request);
+        PortletUtils.addInfoMsg("Owner scores submitted successfully for supervisor approval. An email notification will be sent to " + supervisor.getFullName(), request);
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
+    }
+
+    private boolean validateEmployeeScoreEvidenceAndJustificationSubmission(Scorecard scorecard,
+                                                                            ReportingDate reportingDate,
+                                                                            HttpServletRequest request) {
+        if (systemSettingService == null || !systemSettingService.isEmployeeScoreEvidenceAndJustificationRequired()) {
+            return true;
+        }
+        String validationMessage = resolveEmployeeScoreEvidenceAndJustificationIssue(scorecard, reportingDate);
+        if (validationMessage == null) {
+            return true;
+        }
+        PortletUtils.addErrorMsg(validationMessage, request);
+        return false;
+    }
+
+    private String resolveEmployeeScoreEvidenceAndJustificationIssue(Scorecard scorecard, ReportingDate reportingDate) {
+        if (scorecard == null) {
+            return "Scorecard not found.";
+        }
+        if (reportingDate == null) {
+            return "No active reporting date was found.";
+        }
+        if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+            return "Scores can only be submitted for an OPEN reporting date.";
+        }
+        if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+            return "Scores can only be submitted for the OPEN reporting date in this scorecard's reporting period.";
+        }
+
+        List<Target> targetsList = resolveTargetsForScoreSubmission(scorecard);
+        if (targetsList.isEmpty()) {
+            return "No targets are available for score capture.";
+        }
+        for (Target target : targetsList) {
+            Score score = resolveTargetReportingDateScore(target, reportingDate);
+            if (!hasEmployeeScoreEvidenceAndJustification(target, score, reportingDate)) {
+                return "Capture evidence and justification for " + targetDisplayName(target) + " before submitting employee scores.";
+            }
+        }
+        return null;
+    }
+
+    private boolean hasEmployeeScoreEvidenceAndJustification(Target target, Score score, ReportingDate reportingDate) {
+        if (target == null || score == null) {
+            return false;
+        }
+        Evidence evidence = resolveLatestEvidence(target, reportingDate);
+        String evidenceLink = firstText(evidence == null ? null : evidence.getEvidence(), score.getEvidence());
+        String attachmentName = firstText(evidence == null ? null : evidence.getAttachmentName(), score.getAttachmentName());
+        String justification = firstText(evidence == null ? null : evidence.getJustification(), score.getJustification());
+        return (StringUtils.hasText(evidenceLink) || StringUtils.hasText(attachmentName))
+                && StringUtils.hasText(justification);
+    }
+
+    private String firstText(String primary, String fallback) {
+        if (StringUtils.hasText(primary)) {
+            return primary;
+        }
+        return fallback;
+    }
+
+    private String targetDisplayName(Target target) {
+        if (target != null && StringUtils.hasText(target.getMeasure())) {
+            return target.getMeasure().trim();
+        }
+        return "every target";
+    }
+
+    @RequestMapping(value = "/save-self-assessment-pip", method = RequestMethod.POST, consumes = {"*/*"})
+    public void saveSelfAssessmentPerformanceImprovementPlan(HttpServletResponse response,
+                                                             @RequestParam(value = "id", required = false) Long id,
+                                                             @RequestParam(value = "scorecardId", required = false) Long scorecardId,
+                                                             @RequestParam(value = "targetId", required = false) Long targetId,
+                                                             @RequestParam(value = "targetArea", required = false) String targetArea,
+                                                             @RequestParam(value = "concern", required = false) String concern,
+                                                             @RequestParam(value = "expectedStandard", required = false) String expectedStandard,
+                                                             @RequestParam(value = "agreedAction", required = false) String agreedAction,
+                                                             @RequestParam(value = "requiredSupport", required = false) String requiredSupport,
+                                                             @RequestParam(value = "endDate", required = false) String endDate,
+                                                             @RequestParam(value = "notApplicable", required = false) Boolean notApplicable) {
+        try {
+            Scorecard scorecard = resolveScorecardForSelfAssessmentPip(scorecardId);
+            if (scorecard == null) {
+                writeSelfAssessmentPipResponse(response, false, "Scorecard could not be resolved", null);
+                return;
+            }
+
+            ReportingDate reportingDate = resolveActiveReportingDate();
+            String captureIssue = resolveSelfAssessmentPipCaptureIssue(scorecard, reportingDate);
+            if (captureIssue != null) {
+                writeSelfAssessmentPipResponse(response, false, captureIssue, null);
+                return;
+            }
+
+            PerformanceImprovementPlan plan = resolveEditableSelfAssessmentPip(id, scorecard, reportingDate);
+            if (id != null && id > 0 && plan == null) {
+                writeSelfAssessmentPipResponse(response, false, "Development intervention could not be resolved", null);
+                return;
+            }
+            if (plan == null) {
+                plan = new PerformanceImprovementPlan();
+            }
+
+            Target target = resolveOptionalSelfAssessmentPipTarget(targetId, scorecard);
+            if (targetId != null && targetId > 0 && target == null) {
+                writeSelfAssessmentPipResponse(response, false, "Selected target does not belong to this scorecard", null);
+                return;
+            }
+
+            boolean isNotApplicable = Boolean.TRUE.equals(notApplicable);
+            String conflictMessage = resolveSelfAssessmentPipConflictMessage(scorecard, reportingDate, plan.getId(), isNotApplicable);
+            if (conflictMessage != null) {
+                writeSelfAssessmentPipResponse(response, false, conflictMessage, null);
+                return;
+            }
+
+            String validationMessage = validateSelfAssessmentPipFields(
+                    target,
+                    targetArea,
+                    concern,
+                    expectedStandard,
+                    agreedAction,
+                    requiredSupport,
+                    endDate,
+                    isNotApplicable
+            );
+            if (validationMessage != null) {
+                writeSelfAssessmentPipResponse(response, false, validationMessage, null);
+                return;
+            }
+
+            applySelfAssessmentPipValues(
+                    plan,
+                    scorecard,
+                    reportingDate,
+                    target,
+                    targetArea,
+                    concern,
+                    expectedStandard,
+                    agreedAction,
+                    requiredSupport,
+                    endDate,
+                    isNotApplicable
+            );
+
+            PerformanceImprovementPlan savedPlan = performanceImprovementPlanService.savePerformanceImprovementPlan(plan);
+            writeSelfAssessmentPipResponse(response, true, "Development intervention saved.", savedPlan);
+        } catch (Exception exception) {
+            log.error("Failed to save self-assessment PIP for scorecardId={}", scorecardId, exception);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeSelfAssessmentPipResponse(response, false, "Development intervention could not be saved. Please retry.", null);
+        }
+    }
+
+    @RequestMapping(value = "/delete-self-assessment-pip", method = RequestMethod.POST, consumes = {"*/*"})
+    public void deleteSelfAssessmentPerformanceImprovementPlan(HttpServletResponse response,
+                                                               @RequestParam(value = "id", required = false) Long id,
+                                                               @RequestParam(value = "scorecardId", required = false) Long scorecardId) {
+        try {
+            Scorecard scorecard = resolveScorecardForSelfAssessmentPip(scorecardId);
+            if (scorecard == null) {
+                writeSelfAssessmentPipResponse(response, false, "Scorecard could not be resolved", null);
+                return;
+            }
+
+            ReportingDate reportingDate = resolveActiveReportingDate();
+            String captureIssue = resolveSelfAssessmentPipCaptureIssue(scorecard, reportingDate);
+            if (captureIssue != null) {
+                writeSelfAssessmentPipResponse(response, false, captureIssue, null);
+                return;
+            }
+
+            PerformanceImprovementPlan plan = resolveEditableSelfAssessmentPip(id, scorecard, reportingDate);
+            if (plan == null) {
+                writeSelfAssessmentPipResponse(response, false, "Development intervention could not be resolved", null);
+                return;
+            }
+
+            performanceImprovementPlanService.deletePerformanceImprovementPlan(plan);
+            writeSelfAssessmentPipResponse(response, true, "Development intervention deleted.", null);
+        } catch (Exception exception) {
+            log.error("Failed to delete self-assessment PIP id={}", id, exception);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeSelfAssessmentPipResponse(response, false, "Development intervention could not be deleted. Please retry.", null);
+        }
     }
 
     @RequestMapping(value = "/supervisor-approve-owner-scores", method = RequestMethod.POST)
@@ -2285,10 +2869,82 @@ public class ScorecardController {
         return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
     }
 
+    @RequestMapping(value = "/supervisor-reject-owner-scores", method = RequestMethod.POST)
+    public String supervisorRejectOwnerScores(HttpServletRequest request, Long id, String message) throws MalformedURLException {
+        Scorecard scorecard = scorecardService.getScorecardById(id);
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Scorecard not found.", request);
+            return "redirect:/scorecards";
+        }
+        if (!commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES, scorecard)) {
+            PortletUtils.addErrorMsg("You are not allowed to reject owner scores on this scorecard.", request);
+            return "redirect:/scorecards/view-scorecard/" + id;
+        }
+
+        String rejectionReason = cleanText(message);
+        if (!StringUtils.hasText(rejectionReason)) {
+            PortletUtils.addErrorMsg("A rejection reason is required.", request);
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
+
+        if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_OWNER_SCORING, request)) {
+            return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+        }
+
+        Account loggedUser = commonService.getLoggedUser();
+        Account owner = scorecard.getOwner();
+        String supervisorName = loggedUser != null && StringUtils.hasText(loggedUser.getFullName())
+                ? loggedUser.getFullName()
+                : "your supervisor";
+        String ownerName = owner != null && StringUtils.hasText(owner.getFullName())
+                ? owner.getFullName()
+                : "there";
+        String recipient = owner == null ? null : owner.getEmail();
+
+        try {
+            Approval approval = new Approval();
+            approval.setScorecard(scorecard);
+            approval.setAccount(loggedUser);
+            approval.setMessage(rejectionReason);
+            approval.setStatus(PMConstants.APPROVAL_STATUS_REJECTED_OWNER_SCORES);
+            approvalService.addApproval(approval);
+        } catch (Exception exception) {
+            log.warn("Failed to persist owner score rejection audit for scorecardId={}", scorecard.getId(), exception);
+        }
+
+        URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/" + scorecard.getId()));
+        String subject = "Scorecard Scoring,";
+        String template = "Good day " + ownerName + ", \n\n"
+                + "Please note that " + supervisorName + " rejected your captured scores with the following reason:\n\n"
+                + ".........................................................................................\n"
+                + rejectionReason + "\n"
+                + ".........................................................................................\n\n"
+                + "Please log in, review the feedback, and resubmit your scores.\n"
+                + "Link: " + currentURL + "\n\n";
+        try {
+            sendScorecardEmail(request, recipient, subject, template);
+        } catch (Exception exception) {
+            PortletUtils.addErrorMsg("Email to " + recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
+        }
+
+        PortletUtils.addInfoMsg("Owner scores rejected successfully. An email notification will be sent to " + ownerName + ".", request);
+        return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
+    }
+
     @RequestMapping(value = "/submit-manager-scores", method = RequestMethod.POST)
     public String submitManagerScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
-        Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        long scorecardId = updatedScorecard == null ? 0 : updatedScorecard.getId();
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Scorecard not found.", request);
+            return "redirect:/scorecards";
+        }
+
+        ReportingDate reportingDate = resolveActiveReportingDate();
+        if (!validateValueBasedScoreSubmission(scorecard, reportingDate, ValueBasedCaptureStage.MANAGER, request)) {
+            return "redirect:/scorecards/capture-scores/" + scorecard.getId();
+        }
 
         if (!moveActiveReportingDateStage(scorecard, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING, request)) {
             return "redirect:/scorecards/view-scorecard/" + scorecard.getId();
@@ -2316,7 +2972,16 @@ public class ScorecardController {
     @RequestMapping(value = "/submit-agreed-scores", method = RequestMethod.POST)
     public String submitAgreedScore(HttpServletRequest request, Scorecard updatedScorecard) throws MalformedURLException {
 
-        Scorecard scorecard = scorecardService.getScorecardById(updatedScorecard.getId());
+        long scorecardId = updatedScorecard == null ? 0 : updatedScorecard.getId();
+        Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Scorecard not found.", request);
+            return "redirect:/scorecards";
+        }
+        ReportingDate reportingDate = resolveActiveReportingDate();
+        if (!validateValueBasedScoreSubmission(scorecard, reportingDate, ValueBasedCaptureStage.AGREED, request)) {
+            return "redirect:/scorecards/capture-scores/" + scorecard.getId();
+        }
         Account loggedUser = commonService.getLoggedUser();
         Account supervisor = scorecard.getOwner().getSupervisor();
         Account owner = scorecard.getOwner();
@@ -2352,7 +3017,7 @@ public class ScorecardController {
                 PortletUtils.addErrorMsg("Notification to scorecard moderation approvers failed to send.", request);
             }
 
-            PortletUtils.addInfoMsg("Agreed scores submitted successfully. An email was sent to " + owner.getFullName() + " and HR for moderation approval.", request);
+            PortletUtils.addInfoMsg("Agreed scores submitted successfully. Email notifications will be sent to " + owner.getFullName() + " and HR for moderation approval.", request);
 
         }catch (Exception e){
 
@@ -2366,7 +3031,7 @@ public class ScorecardController {
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addErrorMsg("Scorecard wasn't submitted. An Email was sent to the administrator", request);
+            PortletUtils.addErrorMsg("Scorecard wasn't submitted. A technical failure notification will be sent to the administrator.", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -2475,7 +3140,7 @@ public class ScorecardController {
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addErrorMsg("Scorecard wasn't submitted. An Email was sent to the administrator", request);
+            PortletUtils.addErrorMsg("Scorecard wasn't submitted. A technical failure notification will be sent to the administrator.", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ scorecard.getId();
@@ -2528,7 +3193,7 @@ public class ScorecardController {
             }
 
 
-            PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to HR for further approval and to "+ owner + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully approved. Email notifications will be sent to HR for further approval and to "+ owner + " as feedback", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }catch (Exception e){
 
@@ -2543,7 +3208,7 @@ public class ScorecardController {
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. A technical failure notification will be sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }
     }
@@ -2588,7 +3253,7 @@ public class ScorecardController {
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-            PortletUtils.addInfoMsg("Scorecard successfully rejected. An email was sent to "+ owner + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully rejected. An email notification will be sent to "+ owner + " as feedback", request);
 
         }catch (Exception e){
 
@@ -2603,7 +3268,7 @@ public class ScorecardController {
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. A technical failure notification will be sent to the administrator with error details. ", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ id;
@@ -2662,7 +3327,7 @@ public class ScorecardController {
             }
 
 
-            PortletUtils.addInfoMsg("Scorecard successfully approved. An email was sent to "+supervisor+" and to "+ owner + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully approved. Email notifications will be sent to "+supervisor+" and to "+ owner + " as feedback", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }catch (Exception e){
 
@@ -2677,7 +3342,7 @@ public class ScorecardController {
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. A technical failure notification will be sent to the administrator with error details. ", request);
             return "redirect:/scorecards/view-scorecard/"+ id;
         }
     }
@@ -2726,7 +3391,7 @@ public class ScorecardController {
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
 
-            PortletUtils.addInfoMsg("Scorecard successfully rejected. An email was sent to "+ supervisor + " as feedback", request);
+            PortletUtils.addInfoMsg("Scorecard successfully rejected. An email notification will be sent to "+ supervisor + " as feedback", request);
 
         }catch (Exception e){
 
@@ -2741,7 +3406,7 @@ public class ScorecardController {
             }catch (Exception x){
                 PortletUtils.addErrorMsg("Email to "+ recipient + " failed to send. It's likely due to a network issue. Must be alerted offline", request);
             }
-            PortletUtils.addInfoMsg("Scorecard approval failed. An email was sent to the administrator with error details. ", request);
+            PortletUtils.addInfoMsg("Scorecard approval failed. A technical failure notification will be sent to the administrator with error details. ", request);
         }
 
         return "redirect:/scorecards/view-scorecard/"+ id;
@@ -2815,6 +3480,7 @@ public class ScorecardController {
             modelAndView.addObject("comment", new Comment());
             modelAndView.addObject("reportingDates", reportingDates);
             modelAndView.addObject("activeReportingDateId", resolveDefaultReportingDateId(reportingDates));
+            modelAndView.addObject("selfAssessmentPipsByReportingDate", buildSelfAssessmentPipsByReportingDate(scorecard, reportingDates));
             modelAndView.addObject("overallScoresByReportingDate", buildOverallScoresByReportingDate(scorecard, reportingDates));
             modelAndView.addObject("overallCommentsByReportingDate", buildOverallCommentsByReportingDate(scorecard));
             modelAndView.addObject(
@@ -2833,19 +3499,35 @@ public class ScorecardController {
             modelAndView.addObject("viewTableColumnCount", resolveViewTableColumnCount(displayHierarchyColumnCount, scorecardModel));
             modelAndView.addObject("isSupervisor", commonService.isSupervisor(scorecard.getOwner()));
             ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
-            modelAndView.addObject("ownerCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_OWNER_SCORING));
-            modelAndView.addObject("supervisorCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING));
-            modelAndView.addObject("agreedCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING));
-            modelAndView.addObject("moderatedCaptureStage", isActiveReportingDateRole(scorecard, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING));
+            String contractRole = resolveContractStageRole(scorecard);
+            ReportingDate activeReportingDate = resolveActiveReportingDate();
+            String reportingDateRole = resolveReportingDateRole(scorecard, activeReportingDate);
+            boolean ownerCaptureStage = matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING);
+            boolean supervisorCaptureStage = matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING);
+            boolean agreedCaptureStage = matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING);
+            boolean moderatedCaptureStage = matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING);
+            modelAndView.addObject("ownerCaptureStage", ownerCaptureStage);
+            modelAndView.addObject("supervisorCaptureStage", supervisorCaptureStage);
+            modelAndView.addObject("agreedCaptureStage", agreedCaptureStage);
+            modelAndView.addObject("moderatedCaptureStage", moderatedCaptureStage);
             modelAndView.addObject("canViewReport", canViewScorecardReport(scorecard));
-            modelAndView.addObject("canApprove", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_SCORECARD, scorecard));
-            modelAndView.addObject("canCaptureTargets", canCaptureTargets(scorecard));
-            modelAndView.addObject("canCaptureEmployeeScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard));
-            modelAndView.addObject("canCaptureManagerScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard));
-            modelAndView.addObject("canCaptureAgreedScoreAgreedScore", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard));
-            modelAndView.addObject("canModerate", commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard));
-            modelAndView.addObject("canApproveOwnerScores", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_OWNER_SCORES, scorecard));
-            modelAndView.addObject("canApproveAgreedScores", commonService.isUserAllowed(PMConstants.ACTIVITY_APPROVE_AGREED_SCORES, scorecard));
+            ScorecardActionState actionState = resolveScorecardActionState(scorecard, contractRole, reportingDateRole, workflow);
+            modelAndView.addObject("canSupervisorApproveTargets", actionState.canSupervisorApproveTargets);
+            modelAndView.addObject("canHrApproveTargets", actionState.canHrApproveTargets);
+            modelAndView.addObject("canCaptureTargets", actionState.canCaptureTargets);
+            modelAndView.addObject("canCaptureEmployeeScore", actionState.canCaptureEmployeeScore);
+            modelAndView.addObject("canCaptureManagerScore", actionState.canCaptureManagerScore);
+            modelAndView.addObject("canCaptureAgreedScoreAgreedScore", actionState.canCaptureAgreedScore);
+            modelAndView.addObject("canModerate", actionState.canModerate);
+            modelAndView.addObject("canApproveOwnerScores", actionState.canApproveOwnerScores);
+            modelAndView.addObject("canApproveAgreedScores", actionState.canApproveAgreedScores);
+            modelAndView.addObject("scorecardActivityRestrictionNotice",
+                    resolveScorecardActivityRestrictionNotice(
+                            scorecard,
+                            activeReportingDate,
+                            actionState.hasAllowedAction(),
+                            actionState.expectedActivity
+                    ));
 
         }catch (Exception e){
             log.error("Failed to open scorecard id={}", id, e);
@@ -3080,8 +3762,8 @@ public class ScorecardController {
                 writeScoreSaveResponse(response, true, "Scorecard reference is required");
                 return;
             }
-            if (score == null || score < 0.0 || score > 5.0) {
-                writeScoreSaveResponse(response, true, "Score must be between 0 and 5");
+            if (score == null || score < 1.0 || score > 5.0) {
+                writeScoreSaveResponse(response, true, "Score must be between 1 and 5");
                 return;
             }
             Scorecard scorecard = scorecardService.getScorecardById(scorecardId);
@@ -3161,7 +3843,7 @@ public class ScorecardController {
                 return;
             }
             if (!isValidValueBasedScore(scoreValue)) {
-                writeScoreSaveResponse(response, true, "Score must be between 0 and 5");
+                writeScoreSaveResponse(response, true, "Score must be between 1 and 5");
                 return;
             }
 
@@ -3185,12 +3867,26 @@ public class ScorecardController {
     }
 
     private boolean isAnyScoreCaptureAllowed(Scorecard scorecard) {
-        return scorecard != null && (
-                commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)
-                        || commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard)
-                        || commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard)
-                        || commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard)
-        );
+        return isAnyScoreCaptureAllowed(scorecard, resolveActiveReportingDateRole(scorecard));
+    }
+
+    private boolean isAnyScoreCaptureAllowed(Scorecard scorecard, String reportingDateRole) {
+        if (scorecard == null || !StringUtils.hasText(reportingDateRole)) {
+            return false;
+        }
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_OWNER_SCORING)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
+        }
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES, scorecard);
+        }
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES, scorecard);
+        }
+        if (matchesRole(reportingDateRole, PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING)) {
+            return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES, scorecard);
+        }
+        return false;
     }
 
     private String resolveScoreCaptureBlockedMessage(Scorecard scorecard, ReportingDate reportingDate) {
@@ -3223,6 +3919,251 @@ public class ScorecardController {
         return clientId > 0 && reportingDateService.hasMultipleOpenOrActiveReportingDates(clientId);
     }
 
+    private Scorecard resolveScorecardForSelfAssessmentPip(Long scorecardId) {
+        if (scorecardId == null || scorecardId <= 0) {
+            return null;
+        }
+        return scorecardService.getScorecardById(scorecardId);
+    }
+
+    private Map<Long, List<PerformanceImprovementPlan>> buildSelfAssessmentPipsByReportingDate(Scorecard scorecard,
+                                                                                               List<ReportingDate> reportingDates) {
+        Map<Long, List<PerformanceImprovementPlan>> pipsByReportingDate = new HashMap<>();
+        if (scorecard == null || reportingDates == null || reportingDates.isEmpty()) {
+            return pipsByReportingDate;
+        }
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null) {
+                continue;
+            }
+            List<PerformanceImprovementPlan> plans =
+                    performanceImprovementPlanService.listSelfAssessmentPerformanceImprovementPlans(scorecard, reportingDate);
+            pipsByReportingDate.put(reportingDate.getId(), plans == null ? Collections.emptyList() : plans);
+        }
+        return pipsByReportingDate;
+    }
+
+    private String resolveSelfAssessmentPipCaptureIssue(Scorecard scorecard, ReportingDate reportingDate) {
+        if (scorecard == null) {
+            return "Scorecard could not be resolved";
+        }
+        if (hasReportingDateConflict(scorecard)) {
+            return "Score capture is blocked: multiple OPEN/ACTIVE reporting dates exist. Contact an administrator.";
+        }
+        if (reportingDate == null) {
+            return "No active reporting date is configured";
+        }
+        if (!reportingDateService.isReportingDateOpen(reportingDate)) {
+            return "Development interventions can only be captured for an open reporting date";
+        }
+        if (!isReportingDateForScorecard(scorecard, reportingDate)) {
+            return "Development interventions can only be captured for the open reporting date in this scorecard's reporting period";
+        }
+        if (!commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard)) {
+            return "You are not allowed to capture development interventions for this scorecard at the current stage";
+        }
+        return null;
+    }
+
+    private PerformanceImprovementPlan resolveEditableSelfAssessmentPip(Long id, Scorecard scorecard, ReportingDate reportingDate) {
+        if (id == null || id <= 0) {
+            return null;
+        }
+        PerformanceImprovementPlan plan = performanceImprovementPlanService.getPerformanceImprovementPlanById(id);
+        if (plan == null || !isSelfAssessmentPip(plan)) {
+            return null;
+        }
+        if (plan.getScorecard() == null || scorecard == null || plan.getScorecard().getId() != scorecard.getId()) {
+            return null;
+        }
+        return plan.getReportingDate() != null
+                && reportingDate != null
+                && plan.getReportingDate().getId() == reportingDate.getId()
+                ? plan
+                : null;
+    }
+
+    private Target resolveOptionalSelfAssessmentPipTarget(Long targetId, Scorecard scorecard) {
+        if (targetId == null || targetId <= 0) {
+            return null;
+        }
+        Target target = targetService.getTargetById(targetId);
+        if (target == null || !isTargetOwnedByScorecard(target, scorecard)) {
+            return null;
+        }
+        return target;
+    }
+
+    private boolean isTargetOwnedByScorecard(Target target, Scorecard scorecard) {
+        Scorecard targetScorecard = resolveScorecardFromTarget(target);
+        return targetScorecard != null && scorecard != null && targetScorecard.getId() == scorecard.getId();
+    }
+
+    private boolean isSelfAssessmentPip(PerformanceImprovementPlan plan) {
+        return plan != null
+                && PMConstants.PIP_SOURCE_SELF_ASSESSMENT.equalsIgnoreCase(defaultString(plan.getSource()));
+    }
+
+    private String resolveSelfAssessmentPipConflictMessage(Scorecard scorecard,
+                                                           ReportingDate reportingDate,
+                                                           long currentPlanId,
+                                                           boolean savingNotApplicable) {
+        List<PerformanceImprovementPlan> existingPlans =
+                performanceImprovementPlanService.listSelfAssessmentPerformanceImprovementPlans(scorecard, reportingDate);
+        for (PerformanceImprovementPlan existingPlan : existingPlans) {
+            if (existingPlan == null || existingPlan.getId() == currentPlanId) {
+                continue;
+            }
+            if (savingNotApplicable && !existingPlan.isNotApplicable()) {
+                return "Remove existing development interventions before saving N/A.";
+            }
+            if (!savingNotApplicable && existingPlan.isNotApplicable()) {
+                return "Remove the N/A row before adding development interventions.";
+            }
+        }
+        return null;
+    }
+
+    private String validateSelfAssessmentPipFields(Target target,
+                                                   String targetArea,
+                                                   String concern,
+                                                   String expectedStandard,
+                                                   String agreedAction,
+                                                   String requiredSupport,
+                                                   String endDate,
+                                                   boolean notApplicable) {
+        if (notApplicable) {
+            return null;
+        }
+        if (!StringUtils.hasText(targetArea) && target == null) {
+            return "Development area or linked target is required.";
+        }
+        if (!StringUtils.hasText(concern)) {
+            return "Identified gap is required.";
+        }
+        if (!StringUtils.hasText(expectedStandard)) {
+            return "Expected outcome is required.";
+        }
+        if (!StringUtils.hasText(agreedAction)) {
+            return "Training/development intervention is required.";
+        }
+        if (!StringUtils.hasText(requiredSupport)) {
+            return "Required support is required.";
+        }
+        if (!StringUtils.hasText(endDate)) {
+            return "Target date is required.";
+        }
+        try {
+            LocalDate.parse(endDate.trim());
+        } catch (DateTimeParseException exception) {
+            return "Target date must be a valid date.";
+        }
+        return null;
+    }
+
+    private void applySelfAssessmentPipValues(PerformanceImprovementPlan plan,
+                                              Scorecard scorecard,
+                                              ReportingDate reportingDate,
+                                              Target target,
+                                              String targetArea,
+                                              String concern,
+                                              String expectedStandard,
+                                              String agreedAction,
+                                              String requiredSupport,
+                                              String endDate,
+                                              boolean notApplicable) {
+        Account owner = scorecard.getOwner();
+        plan.setClientId(resolveScorecardClientId(scorecard));
+        plan.setEmployee(owner);
+        plan.setReportingPeriod(scorecard.getReportingPeriod());
+        plan.setScorecard(scorecard);
+        plan.setReportingDate(reportingDate);
+        plan.setTarget(notApplicable ? null : target);
+        plan.setSource(PMConstants.PIP_SOURCE_SELF_ASSESSMENT);
+        plan.setNotApplicable(notApplicable);
+
+        if (notApplicable) {
+            plan.setTargetArea("N/A");
+            plan.setConcern("N/A");
+            plan.setExpectedStandard("N/A");
+            plan.setAgreedAction("N/A");
+            plan.setRequiredSupport("N/A");
+            plan.setEndDate(null);
+            plan.setStatus(PMConstants.PIP_STATUS_NOT_APPLICABLE);
+            plan.setProgress(100.0);
+            return;
+        }
+
+        plan.setTargetArea(resolveSelfAssessmentTargetArea(target, targetArea));
+        plan.setConcern(cleanText(concern));
+        plan.setExpectedStandard(cleanText(expectedStandard));
+        plan.setAgreedAction(cleanText(agreedAction));
+        plan.setRequiredSupport(cleanText(requiredSupport));
+        plan.setEndDate(cleanText(endDate));
+        if (!StringUtils.hasText(plan.getStatus()) || PMConstants.PIP_STATUS_NOT_APPLICABLE.equalsIgnoreCase(plan.getStatus())) {
+            plan.setStatus(PMConstants.PIP_STATUS_TODO);
+            plan.setProgress(0.0);
+        }
+    }
+
+    private long resolveScorecardClientId(Scorecard scorecard) {
+        if (scorecard == null) {
+            return 0L;
+        }
+        long clientId = scorecard.getClientId();
+        if (clientId <= 0 && scorecard.getOwner() != null) {
+            clientId = scorecard.getOwner().getClientId();
+        }
+        return clientId;
+    }
+
+    private String resolveSelfAssessmentTargetArea(Target target, String targetArea) {
+        if (StringUtils.hasText(targetArea)) {
+            return cleanText(targetArea);
+        }
+        if (target != null && StringUtils.hasText(target.getMeasure())) {
+            return target.getMeasure().trim();
+        }
+        return "";
+    }
+
+    private String cleanText(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private String defaultString(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private void writeSelfAssessmentPipResponse(HttpServletResponse response,
+                                                boolean saved,
+                                                String message,
+                                                PerformanceImprovementPlan plan) {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("saved", saved);
+        if (message != null && !message.trim().isEmpty()) {
+            jsonObject.put("message", message);
+        }
+        if (plan != null) {
+            jsonObject.put("id", plan.getId());
+            jsonObject.put("targetArea", defaultString(plan.getTargetArea()));
+            jsonObject.put("concern", defaultString(plan.getConcern()));
+            jsonObject.put("expectedStandard", defaultString(plan.getExpectedStandard()));
+            jsonObject.put("agreedAction", defaultString(plan.getAgreedAction()));
+            jsonObject.put("requiredSupport", defaultString(plan.getRequiredSupport()));
+            jsonObject.put("endDate", defaultString(plan.getEndDate()));
+            jsonObject.put("notApplicable", plan.isNotApplicable());
+            jsonObject.put("targetId", plan.getTarget() == null ? "" : String.valueOf(plan.getTarget().getId()));
+        }
+        try(OutputStream outputStream = response.getOutputStream()){
+            response.setContentType("application/json; charset=UTF-8");
+            response.setCharacterEncoding("UTF-8");
+            outputStream.write(jsonObject.toString().getBytes(StandardCharsets.UTF_8));
+        }catch (IOException exception){
+            log.error("Failed to write self-assessment PIP response", exception);
+        }
+    }
+
     private Scorecard resolveScorecardFromTarget(Target target) {
         if (target == null) {
             return null;
@@ -3247,6 +4188,10 @@ public class ScorecardController {
     }
 
     private boolean isStageCaptureAllowed(Scorecard scorecard, ValueBasedCaptureStage stage) {
+        String reportingDateRole = resolveActiveReportingDateRole(scorecard);
+        if (!matchesRole(reportingDateRole, roleKeyForCaptureStage(stage))) {
+            return false;
+        }
         switch (stage) {
             case EMPLOYEE:
                 return commonService.isUserAllowed(PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES, scorecard);
@@ -3261,8 +4206,26 @@ public class ScorecardController {
         }
     }
 
+    private String roleKeyForCaptureStage(ValueBasedCaptureStage stage) {
+        if (stage == null) {
+            return null;
+        }
+        switch (stage) {
+            case EMPLOYEE:
+                return PMConstants.SCORECARD_STAGE_OWNER_SCORING;
+            case MANAGER:
+                return PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING;
+            case AGREED:
+                return PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING;
+            case MODERATED:
+                return PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING;
+            default:
+                return null;
+        }
+    }
+
     private boolean isValidValueBasedScore(Double scoreValue) {
-        return scoreValue != null && scoreValue >= 0.0 && scoreValue <= 5.0;
+        return scoreValue != null && scoreValue >= 1.0 && scoreValue <= 5.0;
     }
 
     private void persistScoreByStage(Score score, Double scoreValue, ValueBasedCaptureStage stage) {

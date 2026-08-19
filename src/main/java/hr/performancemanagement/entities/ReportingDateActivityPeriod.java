@@ -44,6 +44,9 @@ public class ReportingDateActivityPeriod {
     @Column(length = 10)
     private String lastReminderDate;
 
+    @Column(length = 10)
+    private String lastCutoffReminderDate;
+
     @CreationTimestamp
     @Column(updatable = false)
     private Date dateCreated;

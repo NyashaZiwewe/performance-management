@@ -37,14 +37,7 @@ public class ScorecardReportingDateStageServiceImpl implements ScorecardReportin
 
         ScorecardReportingDateStage stage = repository.findScorecardReportingDateStageByScorecardAndReportingDate(scorecard, reportingDate);
         if (stage != null) {
-            if (stage.getApprovalStage() == null) {
-                ScorecardWorkflowStage mapped = resolveStageByRoleKey(resolveClientId(scorecard), fallbackRoleKey(scorecard));
-                if (mapped != null) {
-                    stage.setApprovalStage(mapped);
-                    stage = repository.save(stage);
-                }
-            }
-            return stage;
+            return alignStageWithContract(scorecard, stage);
         }
 
         ScorecardWorkflowStage defaultStage = resolveStageByRoleKey(resolveClientId(scorecard), fallbackRoleKey(scorecard));
@@ -55,6 +48,65 @@ public class ScorecardReportingDateStageServiceImpl implements ScorecardReportin
         created.setApprovalStage(defaultStage);
         created.setStatus(PMConstants.STATUS_ACTIVE);
         return repository.save(created);
+    }
+
+    private ScorecardReportingDateStage alignStageWithContract(Scorecard scorecard, ScorecardReportingDateStage stage) {
+        if (stage == null) {
+            return null;
+        }
+        String fallbackRoleKey = fallbackRoleKey(scorecard);
+        if (stage.getApprovalStage() == null) {
+            ScorecardWorkflowStage mapped = resolveStageByRoleKey(resolveClientId(scorecard), fallbackRoleKey);
+            if (mapped != null) {
+                stage.setApprovalStage(mapped);
+                stage = repository.save(stage);
+            }
+        } else if (shouldSyncFromContractStage(stage, scorecard, fallbackRoleKey)) {
+            ScorecardWorkflowStage mapped = resolveStageByRoleKey(resolveClientId(scorecard), fallbackRoleKey);
+            if (mapped != null) {
+                stage.setApprovalStage(mapped);
+                stage = repository.save(stage);
+            }
+        }
+        return stage;
+    }
+
+    private boolean shouldSyncFromContractStage(ScorecardReportingDateStage stage, Scorecard scorecard, String fallbackRoleKey) {
+        if (!isContractInScoreWorkflow(scorecard) || !isScoreWorkflowRole(fallbackRoleKey)
+                || stage == null || stage.getApprovalStage() == null) {
+            return false;
+        }
+        String currentRole = normalize(stage.getApprovalStage().getRoleKey());
+        return isTargetWorkflowRole(currentRole);
+    }
+
+    private boolean isContractInScoreWorkflow(Scorecard scorecard) {
+        if (scorecard == null) {
+            return false;
+        }
+        if (scorecard.getApprovalStage() != null && isScoreWorkflowRole(scorecard.getApprovalStage().getRoleKey())) {
+            return true;
+        }
+        String status = normalize(scorecard.getApprovalStatus());
+        return status != null && isScoreWorkflowRole(mapStatusToRoleKey(status));
+    }
+
+    private boolean isTargetWorkflowRole(String roleKey) {
+        String role = normalize(roleKey);
+        return PMConstants.SCORECARD_STAGE_NEW.equals(role)
+                || PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS.equals(role)
+                || PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR.equals(role)
+                || PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR.equals(role);
+    }
+
+    private boolean isScoreWorkflowRole(String roleKey) {
+        String role = normalize(roleKey);
+        return PMConstants.SCORECARD_STAGE_OWNER_SCORING.equals(role)
+                || PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL.equals(role)
+                || PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING.equals(role)
+                || PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING.equals(role)
+                || PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL.equals(role)
+                || PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING.equals(role);
     }
 
     @Override
@@ -77,12 +129,13 @@ public class ScorecardReportingDateStageServiceImpl implements ScorecardReportin
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public String getCurrentRoleKey(Scorecard scorecard, ReportingDate reportingDate) {
         if (scorecard == null || reportingDate == null) {
             return null;
         }
         ScorecardReportingDateStage stage = repository.findScorecardReportingDateStageByScorecardAndReportingDate(scorecard, reportingDate);
+        stage = alignStageWithContract(scorecard, stage);
         if (stage == null || stage.getApprovalStage() == null || stage.getApprovalStage().getRoleKey() == null) {
             return null;
         }
@@ -174,4 +227,3 @@ public class ScorecardReportingDateStageServiceImpl implements ScorecardReportin
         return value.trim().toUpperCase(Locale.ENGLISH);
     }
 }
-

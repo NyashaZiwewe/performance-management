@@ -18,8 +18,10 @@ import org.springframework.stereotype.Service;
 import javax.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +76,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private boolean send(String to, String subject, String body) {
         if (to == null || to.trim().isEmpty()) {
+            recordEmailFailureNotification(to, subject, body, "Recipient email address is blank.");
             return false;
         }
 
@@ -94,6 +97,7 @@ public class NotificationServiceImpl implements NotificationService {
             return true;
         } catch (Exception e) {
             log.warn("Failed to send email to {}: {}", to, e.getMessage());
+            recordEmailFailureNotification(to, subject, body, e.getMessage());
             // Mail delivery is optional; operational flows should continue even when email is unavailable.
             return false;
         }
@@ -161,6 +165,40 @@ public class NotificationServiceImpl implements NotificationService {
             emailNotificationLogRepository.save(log);
         } catch (RuntimeException ignored) {
             // Notification logging should not interrupt operational flows.
+        }
+    }
+
+    private void recordEmailFailureNotification(String to, String subject, String body, String failureReason) {
+        try {
+            Set<String> notificationRecipients = new LinkedHashSet<String>();
+            String adminEmail = systemSettingService.getAdminEmail();
+            if (adminEmail != null && !adminEmail.trim().isEmpty()) {
+                notificationRecipients.add(adminEmail.trim());
+            }
+            if (to != null && !to.trim().isEmpty()) {
+                notificationRecipients.add(to.trim());
+            }
+            if (notificationRecipients.isEmpty()) {
+                return;
+            }
+
+            String failedSubject = "Email delivery failed: " + defaultText(subject, "Notification");
+            String preview = "Email delivery to "
+                    + defaultText(to, "the intended recipient")
+                    + " failed. Reason: "
+                    + defaultText(failureReason, "Unknown mail delivery error.");
+            String actionLink = extractActionLink(body);
+            for (String recipient : notificationRecipients) {
+                EmailNotificationLog log = new EmailNotificationLog();
+                log.setRecipientEmail(recipient);
+                log.setSubject(failedSubject);
+                log.setPreviewText(truncate(preview, 1500));
+                log.setActionLink(actionLink);
+                log.setCategory("Email Failure");
+                emailNotificationLogRepository.save(log);
+            }
+        } catch (RuntimeException ignored) {
+            // Failure notification logging should not interrupt operational flows.
         }
     }
 
@@ -457,6 +495,16 @@ public class NotificationServiceImpl implements NotificationService {
 
     private String greeting(String name) {
         return name != null && !name.trim().isEmpty() ? "Good day " + name + "," : "Good day,";
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || maxLength <= 0 || value.length() <= maxLength) {
+            return value;
+        }
+        if (maxLength <= 3) {
+            return value.substring(0, maxLength);
+        }
+        return value.substring(0, maxLength - 3) + "...";
     }
 
     private String defaultText(String value, String fallback) {

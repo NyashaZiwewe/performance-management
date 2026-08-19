@@ -17,7 +17,7 @@
           th:href="@{/css/animate.css}">
     <link href="../../../static/css/style.css" rel="stylesheet"
           th:href="@{/css/style.css}">
-    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css(v=2026081902)}">
     <link href="../../../static/css/plugins/select2/select2.min.css" rel="stylesheet"
           th:href="@{/css/plugins/select2/select2.min.css}">
     <link href="../../../static/css/plugins/select2/select2-bootstrap4.min.css" rel="stylesheet"
@@ -319,12 +319,19 @@
                                             <td th:if="${scorecardModel == 'STANDARD_SCORECARD'}" colspan="3"></td>
                                         </tr>
                                         </tbody>
-                                    </table>
-                                </div>
+	                                    </table>
+	                                </div>
 
-                                <div class="form-group row" th:with="overallComment=${overallCommentsByReportingDate[date.id]}" th:if="${overallComment != null}">
-                                    <div class="col-4">
-                                        <fieldset class="border p-2">
+	                                <div th:with="trainingNeedsPips=${selfAssessmentPipsByReportingDate == null ? null : selfAssessmentPipsByReportingDate[date.id]},
+	                                              trainingNeedsAccordionId=${'trainingNeedsAccordion' + date.id},
+	                                              trainingNeedsHeadingId=${'trainingNeedsHeading' + date.id},
+	                                              trainingNeedsCollapseId=${'trainingNeedsCollapse' + date.id}">
+	                                    <div th:replace="scorecard/fragments/trainingNeedsReadonlyAccordion :: readonly"></div>
+	                                </div>
+
+	                                <div class="form-group row" th:with="overallComment=${overallCommentsByReportingDate[date.id]}" th:if="${overallComment != null}">
+	                                    <div class="col-4">
+	                                        <fieldset class="border p-2">
                                             <legend class="w-auto">Owner's Overall Comment</legend>
                                             <span th:text="${overallComment.ownerComment}"></span>
                                         </fieldset>
@@ -346,20 +353,25 @@
                         </div>
                     </div>
                 </div>
+                <div class="alert alert-warning"
+                     th:if="${scorecardActivityRestrictionNotice != null and !#strings.isEmpty(scorecardActivityRestrictionNotice)}">
+                    <strong>No scorecard activity is allowed at this moment.</strong>
+                    <span th:text="${scorecardActivityRestrictionNotice}"></span>
+                </div>
                 <div class="form-group row">
                     <div class="col-lg-4">
                         <input type="hidden" name="scorecardId" th:value="${id}">
                     </div>
 
-                    <div class="col-lg-2" th:if="${canApprove && isSupervisor}">
+                    <div class="col-lg-2" th:if="${canSupervisorApproveTargets}">
                         <a data-toggle="modal" data-target="#rejectModal"><button class="btn btn-danger" type="button"
                                 th:text="${workflowRoleRejectionLabels != null and workflowRoleRejectionLabels['SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR'] != null ? workflowRoleRejectionLabels['SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR'] : 'Reject Scorecard'}">Reject Scorecard</button></a>
                     </div>
-                    <div class="col-lg-2" th:if="${canApprove && !isSupervisor}">
+                    <div class="col-lg-2" th:if="${canHrApproveTargets}">
                         <a data-toggle="modal" data-target="#hrRejectModal"><button class="btn btn-danger" type="button"
                                 th:text="${workflowRoleRejectionLabels != null and workflowRoleRejectionLabels['SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR'] != null ? workflowRoleRejectionLabels['SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR'] : 'Reject Scorecard'}">Reject Scorecard</button></a>
                     </div>
-                    <div class="col-lg-2" th:if="${canApprove && isSupervisor}">
+                    <div class="col-lg-2" th:if="${canSupervisorApproveTargets}">
                         <form method="post" th:action="@{/scorecards/supervisor-approve}">
                             <input type="hidden" name="id" th:value="${id}">
                             <button class="btn btn-success" type="submit"
@@ -367,7 +379,7 @@
                         </form>
                     </div>
 
-                    <div class="col-lg-2" th:if="${canApprove && !isSupervisor}">
+                    <div class="col-lg-2" th:if="${canHrApproveTargets}">
                         <form method="post" th:action="@{/scorecards/hr-approve}">
                             <input type="hidden" name="id" th:value="${id}">
                             <button class="btn btn-success" type="submit"
@@ -377,6 +389,8 @@
 
 
                     <div class="col-5">
+                        <button th:if="${canApproveOwnerScores && captureWindowOpen}" class="btn btn-danger" type="button" data-toggle="modal" data-target="#rejectOwnerScoresModal"
+                                th:text="${workflowRoleRejectionLabels != null and workflowRoleRejectionLabels['SCORECARD_STAGE_OWNER_SCORE_APPROVAL'] != null ? workflowRoleRejectionLabels['SCORECARD_STAGE_OWNER_SCORE_APPROVAL'] : 'Reject Owner Scores'}">Reject Owner Scores</button>
                         <form th:if="${canApproveOwnerScores && captureWindowOpen}" method="post" th:action="@{/scorecards/supervisor-approve-owner-scores}" style="display:inline-block;">
                             <input type="hidden" name="id" th:value="${id}">
                             <button class="btn btn-success" type="submit"
@@ -401,6 +415,40 @@
         </div>
         <div th:replace="fragments/template :: footer"></div>
 
+    </div>
+</div>
+
+<div class="modal fade" id="rejectOwnerScoresModal" tabindex="-1" role="dialog" aria-labelledby="rejectOwnerScoresModalLabel" aria-hidden="true" th:if="${canApproveOwnerScores && captureWindowOpen}">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="rejectOwnerScoresModalLabel">Reject Owner Scores</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" th:action="@{/scorecards/supervisor-reject-owner-scores}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="form-group row">
+                                <label class="col-form-label col-lg-4">Rejection Reason</label>
+                                <div class="col-lg-8">
+                                    <div class="input-group m-b">
+                                        <textarea rows="3" name="message" class="form-control" required></textarea>
+                                        <input type="hidden" name="id" th:value="${id}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

@@ -22,7 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -127,7 +127,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Bean
     public AuthenticationSuccessHandler successHandler() {
-        SimpleUrlAuthenticationSuccessHandler handler = new SimpleUrlAuthenticationSuccessHandler() {
+        SavedRequestAwareAuthenticationSuccessHandler handler = new SavedRequestAwareAuthenticationSuccessHandler() {
             @Override
             public void onAuthenticationSuccess(
                     javax.servlet.http.HttpServletRequest request,
@@ -135,8 +135,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     Authentication authentication) throws java.io.IOException, javax.servlet.ServletException {
                 HttpSession session = request.getSession(false);
                 boolean bootstrapAdmin = session != null && Boolean.TRUE.equals(session.getAttribute("bootstrapAdmin"));
-                String target = bootstrapAdmin ? "/system-settings" : "/";
-                getRedirectStrategy().sendRedirect(request, response, target);
+                if (bootstrapAdmin) {
+                    getRedirectStrategy().sendRedirect(request, response, "/system-settings");
+                    return;
+                }
+                super.onAuthenticationSuccess(request, response, authentication);
             }
         };
         handler.setUseReferer(false);

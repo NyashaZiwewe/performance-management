@@ -17,7 +17,7 @@
           th:href="@{/css/animate.css}">
     <link href="../../../static/css/style.css" rel="stylesheet"
           th:href="@{/css/style.css}">
-    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css}">
+    <link href="/css/custom.css" rel="stylesheet" th:href="@{/css/custom.css(v=2026081902)}">
 
     <script type="text/javascript">
         function saveScore(targetId){
@@ -32,9 +32,8 @@
         }
 
         function saveOverallScore(score) {
-            if (Number(score) < 0 || Number(score) > 5) {
-                alert("Score must be between 0 and 5 inclusive.");
-                document.getElementById("overallScore").value = "";
+            const scoreField = document.getElementById("overallScore");
+            if (!validateScoreCaptureInput(scoreField, true)) {
                 return false;
             }
             const scorecardId = document.getElementById("id").value;
@@ -417,17 +416,17 @@
                                                 <td th:text="${rowWeight == null ? '' : #numbers.formatDecimal(rowWeight, 0, 2)}"></td>
 
                                                 <td th:if="${captureStage == 'EMPLOYEE'}">
-                                                    <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null ? '' : score.employeeScore}" required>
+                                                    <input type="number" step="any" min="1" max="5" th:id="'employeeScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null || score.employeeScore <= 0.0 ? '' : score.employeeScore}" required>
                                                 </td>
                                                 <td th:unless="${captureStage == 'EMPLOYEE'}" th:text="${score == null ? '' : score.employeeScore}"></td>
 
                                                 <td th:if="${captureStage == 'MANAGER'}">
-                                                    <input type="number" step="any" min="1" max="5" th:id="'managerScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null ? '' : score.managerScore}" required>
+                                                    <input type="number" step="any" min="1" max="5" th:id="'managerScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null || score.managerScore <= 0.0 ? '' : score.managerScore}" required>
                                                 </td>
                                                 <td th:if="${captureStage == 'AGREED' || captureStage == 'MODERATED'}" th:text="${score == null ? '' : score.managerScore}"></td>
 
                                                 <td th:if="${captureStage == 'AGREED'}">
-                                                    <input type="number" step="any" min="1" max="5" th:id="'agreedScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null ? '' : score.agreedScore}" required>
+                                                    <input type="number" step="any" min="1" max="5" th:id="'agreedScore' + ${target.id}" th:onchange="saveScore([[${target.id}]])" th:value="${score == null || score.agreedScore <= 0.0 ? '' : score.agreedScore}" required>
                                                 </td>
                                                 <td th:if="${captureStage == 'MODERATED'}" th:text="${score == null ? '' : score.agreedScore}"></td>
 
@@ -605,7 +604,7 @@
                                                 </td>
                                                 <td th:if="${captureStage == 'MODERATED'}" colspan="2"><strong>Moderator's Score</strong></td>
                                                 <td th:if="${captureStage == 'MODERATED'}" th:attr="class = ${overallScore == null || overallScore.moderatedOverall == null || overallScore.moderatedOverall < 2.5 ? 'fail' : 'pass' }">
-                                                    <input type="number" class="validate" step="0.1" min="0" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore?.moderatedOverall}" style="width: 5em">
+                                                    <input type="number" class="validate" step="0.1" min="1" max="5" id="overallScore" onchange="saveOverallScore(this.value)" th:value="${overallScore == null || overallScore.moderatedOverall == null || overallScore.moderatedOverall <= 0.0 ? '' : overallScore.moderatedOverall}" style="width: 5em">
                                                 </td>
                                                 <td th:if="${captureStage != 'EMPLOYEE' && captureStage != 'MODERATED'}" th:attr="class = ${totalCaptureWeightedScore < 50 ? 'fail' : 'pass' }">
                                                     <h4 th:text="${totalCaptureWeightedScore <= 0.0 ? '' : #numbers.formatDecimal(totalCaptureWeightedScore, 0, 2) + '%'}"></h4>
@@ -616,7 +615,9 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}">
+                                    <div th:replace="scorecard/fragments/selfAssessmentPipTable :: table"></div>
+                                    <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}"
+                                          th:onsubmit="'return validateScoreCaptureFormSubmission(' + ${selfAssessmentPipRequired} + ');'">
                                         <div class="form-group row">
                                         <div class="col-lg-4">
                                             <input type="hidden" name="id" id="id" th:value="${scorecard.id}">
@@ -674,7 +675,7 @@
 <script src="../../../static/js/plugins/metisMenu/jquery.metisMenu.js"
         th:src="@{/js/plugins/metisMenu/jquery.metisMenu.js}"></script>
 <script src="../../../static/js/scorecard-capture.js"
-        th:src="@{/js/scorecard-capture.js}"></script>
+        th:src="@{/js/scorecard-capture.js(v=2026081902)}"></script>
 
 <script src="../../../static/js/inspinia.js"
         th:src="@{/js/inspinia.js}"></script>

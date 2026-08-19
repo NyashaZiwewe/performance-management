@@ -6,8 +6,11 @@ import hr.performancemanagement.service.api.*;
 import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ActionPlan;
 import hr.performancemanagement.entities.PerformanceImprovementPlan;
+import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
+import hr.performancemanagement.entities.Scorecard;
 import hr.performancemanagement.repository.PerformanceImprovementPlanRepository;
+import hr.performancemanagement.utils.constants.PMConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +71,30 @@ public class PerformanceImprovementPlanServiceImpl implements hr.performancemana
         List<PerformanceImprovementPlan> performanceImprovementPlanList = new ArrayList<>();
         performanceImprovementPlanRepository.findPerformanceImprovementPlansByEmployee(employee).forEach(performanceImprovementPlan -> performanceImprovementPlanList.add(performanceImprovementPlan));
         return performanceImprovementPlanList;
+    }
+
+    @Override
+    public List<PerformanceImprovementPlan> listSelfAssessmentPerformanceImprovementPlans(Scorecard scorecard, ReportingDate reportingDate){
+        if(scorecard == null || reportingDate == null){
+            return new ArrayList<>();
+        }
+        return performanceImprovementPlanRepository.findPerformanceImprovementPlansByScorecardAndReportingDateAndSourceOrderByIdAsc(
+                scorecard,
+                reportingDate,
+                PMConstants.PIP_SOURCE_SELF_ASSESSMENT
+        );
+    }
+
+    @Override
+    public boolean hasSelfAssessmentPerformanceImprovementPlan(Scorecard scorecard, ReportingDate reportingDate){
+        if(scorecard == null || reportingDate == null){
+            return false;
+        }
+        return performanceImprovementPlanRepository.existsPerformanceImprovementPlanByScorecardAndReportingDateAndSource(
+                scorecard,
+                reportingDate,
+                PMConstants.PIP_SOURCE_SELF_ASSESSMENT
+        );
     }
 
     @Override

@@ -3,6 +3,7 @@ package hr.performancemanagement.service.impl;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingDateActivityPeriod;
 import hr.performancemanagement.entities.ReportingPeriod;
+import hr.performancemanagement.repository.AccountRepository;
 import hr.performancemanagement.repository.ReportingDateActivityPeriodRepository;
 import hr.performancemanagement.repository.ReportingDateRepository;
 import hr.performancemanagement.repository.ScoreCardRepository;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.when;
 class ReportingDateActivityPeriodServiceImplTest {
 
     @Mock private ReportingDateActivityPeriodRepository activityPeriodRepository;
+    @Mock private AccountRepository accountRepository;
     @Mock private ReportingDateRepository reportingDateRepository;
     @Mock private ScoreCardRepository scoreCardRepository;
     @Mock private ScorecardReportingDateStageRepository scorecardReportingDateStageRepository;
@@ -40,6 +42,7 @@ class ReportingDateActivityPeriodServiceImplTest {
     void setUp() {
         service = new ReportingDateActivityPeriodServiceImpl(
                 activityPeriodRepository,
+                accountRepository,
                 reportingDateRepository,
                 scoreCardRepository,
                 scorecardReportingDateStageRepository,
