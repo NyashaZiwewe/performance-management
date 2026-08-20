@@ -68,9 +68,8 @@
         }
 
         .plan-capture-modal .pm-work-columns {
-            display: grid;
-            gap: 14px;
-            grid-template-columns: 1.2fr 0.8fr;
+            display: flex;
+            flex-wrap: wrap;
         }
 
         .plan-capture-modal .pm-work-columns > div {
@@ -310,7 +309,7 @@
                                                         </table>
                                                     </div>
                                                     <div class="row">
-                                                        <div class="col-lg-7">
+                                                        <div class="col-7">
                                                             <h4 style="color: #000000">Tasks</h4>
                                                             <ul class="todo-list small-list m-t" th:each="task : ${plan.taskList}" th:id="'newTasks' + ${plan.id}">
                                                                 <li>
@@ -344,7 +343,7 @@
                                                                 <li> <input th:id="'newIssue' + ${plan.id}" class="form-control" th:onchange="saveIssue([[${plan.id}]])"></li>
                                                             </ul>
                                                         </div>
-                                                        <div class="col-lg-5">
+                                                        <div class="col-5">
                                                             <h4 style="color: #000000">Comments & Feedback</h4>
                                                             <ul class="todo-list small-list m-t">
                                                                 <li th:each="note : ${plan.noteList}" th:text="${note.comment +' ['+ note.date +']'}"> </li>
