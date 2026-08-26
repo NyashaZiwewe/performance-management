@@ -21,6 +21,7 @@ public interface ScorecardService {
     List<Double> findAverageWeightedScorePerStrategicObjective();
     Scorecard getScorecardById(long id);
     Scorecard getActiveEmployeeScorecardByOwner(Account account);
+    Scorecard getScorecardByOwnerAndReportingPeriod(Account owner, ReportingPeriod reportingPeriod);
     void addScorecard(Scorecard scorecard);
     Scorecard saveScorecard(Scorecard scorecard);
     int countActiveScorecards(Account owner, ReportingPeriod reportingPeriod);

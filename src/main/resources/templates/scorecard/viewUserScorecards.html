@@ -114,7 +114,8 @@
                                                 </a>
                                                 </span>
                                             </span>
-                                            <a th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}">
+                                            <a th:if="${activeReportingPeriod != null and scorecard.reportingPeriod != null and scorecard.reportingPeriod.id == activeReportingPeriod.id}"
+                                               th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}">
                                                 <button class="btn btn-success btn-sm" type="button">Clone Scorecard</button>
                                             </a>
                                             <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}">

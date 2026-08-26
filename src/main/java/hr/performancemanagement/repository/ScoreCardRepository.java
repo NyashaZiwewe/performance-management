@@ -17,6 +17,7 @@ public interface ScoreCardRepository extends JpaRepository<Scorecard, Long> {
     List<Scorecard> findScorecardsByOwner(Account owner);
     List<Scorecard> findScorecardsByReportingPeriod(ReportingPeriod reportingPeriod);
     List<Scorecard> findScorecardsByReportingPeriodAndClient_ClientId(ReportingPeriod reportingPeriod, long clientId);
+    List<Scorecard> findScorecardsByOwnerAndReportingPeriodOrderByIdDesc(Account owner, ReportingPeriod reportingPeriod);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner(ReportingPeriod reportingPeriod, Account account);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner_Supervisor(ReportingPeriod reportingPeriod, Account account);
     List<Scorecard> findScorecardsByReportingPeriodAndOwner_Department(ReportingPeriod reportingPeriod, Department department);

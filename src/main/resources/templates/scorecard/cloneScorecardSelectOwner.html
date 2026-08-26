@@ -44,6 +44,18 @@
                     <div class="row">
                         <div class="col-sm-12">
                             <div class="form-group row">
+                                <label class="col-form-label col-lg-4">Current Reporting Period</label>
+                                <div class="col-lg-8">
+                                    <p class="form-control-static"
+                                       th:if="${activeReportingPeriod != null}"
+                                       th:text="${activeReportingPeriod.startDate} + ' - ' + ${activeReportingPeriod.endDate}"></p>
+                                    <p class="form-control-static text-danger"
+                                       th:if="${activeReportingPeriod == null}">No current reporting period configured</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-12">
+                            <div class="form-group row">
                                 <label class="col-form-label col-lg-4 required">Existing Contract [Owner]</label>
                                 <div class="col-lg-8">
                                     <select class=" select2_demo_1 form-control" name="id" required>

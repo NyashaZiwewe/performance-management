@@ -435,6 +435,19 @@ public class ScorecardServiceImpl implements hr.performancemanagement.service.ap
             return null;
         }
     }
+
+    @Override
+    public Scorecard getScorecardByOwnerAndReportingPeriod(Account owner, ReportingPeriod reportingPeriod) {
+        if (owner == null || reportingPeriod == null) {
+            return null;
+        }
+        List<Scorecard> scorecards = scoreCardRepository.findScorecardsByOwnerAndReportingPeriodOrderByIdDesc(owner, reportingPeriod);
+        if (scorecards == null || scorecards.isEmpty()) {
+            return null;
+        }
+        return scorecards.get(0);
+    }
+
     @Override
     @Transactional
     public void addScorecard(Scorecard scorecard) {

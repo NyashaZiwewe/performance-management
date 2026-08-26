@@ -55,6 +55,8 @@ class ScorecardControllerTest {
 
     private ScorecardService scorecardService;
     private CommonService commonService;
+    private ReportingPeriodService reportingPeriodService;
+    private AccountService accountService;
     private ReportingDateService reportingDateService;
     private ScorecardReportingDateStageService reportingDateStageService;
     private ApprovalService approvalService;
@@ -65,14 +67,16 @@ class ScorecardControllerTest {
     void setUp() {
         scorecardService = mock(ScorecardService.class);
         commonService = mock(CommonService.class);
+        reportingPeriodService = mock(ReportingPeriodService.class);
+        accountService = mock(AccountService.class);
         reportingDateService = mock(ReportingDateService.class);
         reportingDateStageService = mock(ScorecardReportingDateStageService.class);
         approvalService = mock(ApprovalService.class);
         notificationService = mock(NotificationService.class);
 
         controller = new ScorecardController(
-                mock(ReportingPeriodService.class),
-                mock(AccountService.class),
+                reportingPeriodService,
+                accountService,
                 mock(DepartmentService.class),
                 scorecardService,
                 mock(PerspectiveService.class),
@@ -159,10 +163,43 @@ class ScorecardControllerTest {
         assertTrue(bodyCaptor.getValue().contains("http://localhost/scorecards/view-scorecard/10"));
     }
 
+    @Test
+    void cloneScorecardSaveOwnerUsesCurrentReportingPeriod() {
+        Account owner = account("Source Employee", "source@example.com");
+        ReportingPeriod currentPeriod = reportingPeriod();
+        Scorecard sourceScorecard = scorecard();
+        sourceScorecard.setId(15L);
+        sourceScorecard.setOwner(owner);
+        sourceScorecard.setReportingPeriod(currentPeriod);
+
+        when(accountService.getAccountById(1L)).thenReturn(owner);
+        when(reportingPeriodService.getActiveReportingPeriod()).thenReturn(currentPeriod);
+        when(scorecardService.getScorecardByOwnerAndReportingPeriod(owner, currentPeriod)).thenReturn(sourceScorecard);
+
+        String result = controller.cloneScorecardSaveOwner(new MockHttpServletRequest(), 1L);
+
+        assertEquals("redirect:/scorecards/clone-scorecard/15", result);
+        verify(scorecardService).getScorecardByOwnerAndReportingPeriod(owner, currentPeriod);
+        verify(scorecardService, never()).getActiveEmployeeScorecardByOwner(any());
+    }
+
+    @Test
+    void cloneScorecardSaveOwnerRejectsOwnerWithoutCurrentPeriodScorecard() {
+        Account owner = account("Source Employee", "source@example.com");
+        ReportingPeriod currentPeriod = reportingPeriod();
+
+        when(accountService.getAccountById(1L)).thenReturn(owner);
+        when(reportingPeriodService.getActiveReportingPeriod()).thenReturn(currentPeriod);
+
+        String result = controller.cloneScorecardSaveOwner(new MockHttpServletRequest(), 1L);
+
+        assertEquals("redirect:/scorecards/clone-scorecard-select-owner", result);
+        verify(scorecardService).getScorecardByOwnerAndReportingPeriod(owner, currentPeriod);
+        verify(scorecardService, never()).getActiveEmployeeScorecardByOwner(any());
+    }
+
     private Scorecard scorecard() {
-        ReportingPeriod reportingPeriod = new ReportingPeriod();
-        reportingPeriod.setId(99L);
-        reportingPeriod.setStatus(PMConstants.STATUS_ACTIVE);
+        ReportingPeriod reportingPeriod = reportingPeriod();
 
         Account supervisor = new Account();
         supervisor.setId(2L);
@@ -182,6 +219,23 @@ class ScorecardControllerTest {
         scorecard.setStatus(PMConstants.STATUS_ACTIVE);
         scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
         return scorecard;
+    }
+
+    private Account account(String fullName, String email) {
+        Account account = new Account();
+        account.setId(1L);
+        account.setFullName(fullName);
+        account.setEmail(email);
+        return account;
+    }
+
+    private ReportingPeriod reportingPeriod() {
+        ReportingPeriod reportingPeriod = new ReportingPeriod();
+        reportingPeriod.setId(99L);
+        reportingPeriod.setStartDate("2026-01-01");
+        reportingPeriod.setEndDate("2026-12-31");
+        reportingPeriod.setStatus(PMConstants.STATUS_ACTIVE);
+        return reportingPeriod;
     }
 
     private ReportingDate reportingDate(ReportingPeriod reportingPeriod) {

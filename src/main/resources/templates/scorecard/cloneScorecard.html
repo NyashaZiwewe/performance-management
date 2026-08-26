@@ -105,12 +105,12 @@
                         <div class="form-group row">
                             <label class="col-form-label col-lg-4 required">Reporting Period</label>
                             <div class="col-lg-8">
-                                <select class="select2_demo_1 form-control" name="reportingPeriod" required>
-                                    <option selected value="">--Reporting Period--</option>
-                                    <option th:each="period :${reportingPeriodsList.?[#this.status eq 'ACTIVE']}" th:value="${period.id}" th:text="${period.startDate} + ' - ' + ${period.endDate}">Option
-                                        1
-                                    </option>
-                                </select>
+                                <input th:if="${activeReportingPeriod != null}" type="hidden" name="reportingPeriod" th:value="${activeReportingPeriod.id}">
+                                <p class="form-control-static"
+                                   th:if="${activeReportingPeriod != null}"
+                                   th:text="${activeReportingPeriod.startDate} + ' - ' + ${activeReportingPeriod.endDate}"></p>
+                                <p class="form-control-static text-danger"
+                                   th:if="${activeReportingPeriod == null}">No current reporting period configured</p>
                             </div>
                         </div>
                     </div>

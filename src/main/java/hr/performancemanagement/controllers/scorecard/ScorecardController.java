@@ -240,6 +240,7 @@ public class ScorecardController {
         Account loggedUser = commonService.getLoggedUser();
         long loggedUserId = loggedUser.getId();
         String role = loggedUser.getRole();
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         ReportingDate activeReportingDate = reportingDateService.getActiveReportingDate();
         boolean captureWindowOpen = reportingDateService.isReportingDateOpen(activeReportingDate);
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
@@ -251,6 +252,7 @@ public class ScorecardController {
         modelAndView.addObject("accountsList", ACCOUNTS_LIST);
         modelAndView.addObject("departmentsList", DEPARTMENTS_LIST);
         modelAndView.addObject("perspectivesList", PERSPECTIVES_LIST);
+        modelAndView.addObject("activeReportingPeriod", activeReportingPeriod);
         modelAndView.addObject("loggedUserId", loggedUserId);
         modelAndView.addObject("loggedUser", loggedUser);
         modelAndView.addObject("role", role);
@@ -4468,6 +4470,19 @@ public class ScorecardController {
         ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD);
         modelAndView.addObject("pageTitle", "Clone Scorecard");
         Scorecard scorecard = scorecardService.getScorecardById(id);
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg("Source scorecard could not be found.", request);
+            modelAndView.setViewName(Pages.CLONE_SCORECARD_SELECT_OWNER);
+            preparePage(modelAndView, request, session);
+            return modelAndView;
+        }
+        if (!isSameReportingPeriod(scorecard.getReportingPeriod(), activeReportingPeriod)) {
+            PortletUtils.addErrorMsg("Scorecards can only be cloned from the current reporting period.", request);
+            modelAndView.setViewName(Pages.CLONE_SCORECARD_SELECT_OWNER);
+            preparePage(modelAndView, request, session);
+            return modelAndView;
+        }
         modelAndView.addObject("scorecard", scorecard);
         modelAndView.addObject("owner", scorecard.getOwner());
         preparePage(modelAndView, request, session);
@@ -4485,15 +4500,24 @@ public class ScorecardController {
     @RequestMapping(value = "/clone-scorecard-save-owner", method = RequestMethod.POST)
     public String cloneScorecardSaveOwner(HttpServletRequest request, Long id) {
         Account owner = accountService.getAccountById(id);
-        try {
-            Scorecard scorecard = scorecardService.getActiveEmployeeScorecardByOwner(owner);
-            PortletUtils.addInfoMsg("You have selected "+ owner.getFullName()+ "'s scorecard", request);
-            return "redirect:/scorecards/clone-scorecard/"+ scorecard.getId();
-        }catch (Exception e){
-            PortletUtils.addErrorMsg(owner.getFullName()+ " Does not have an active scorecard. Please try another employee or You may go to view scorecards and select the scorecard you want from the archives", request);
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        if (owner == null) {
+            PortletUtils.addErrorMsg("Validation failed: Selected owner could not be found.", request);
+            return "redirect:/scorecards/clone-scorecard-select-owner";
+        }
+        if (activeReportingPeriod == null) {
+            PortletUtils.addErrorMsg("No current reporting period is configured for cloning.", request);
             return "redirect:/scorecards/clone-scorecard-select-owner";
         }
 
+        Scorecard scorecard = scorecardService.getScorecardByOwnerAndReportingPeriod(owner, activeReportingPeriod);
+        if (scorecard == null) {
+            PortletUtils.addErrorMsg(owner.getFullName() + " does not have a scorecard for the current reporting period (" + activeReportingPeriod.getStartDate() + " - " + activeReportingPeriod.getEndDate() + ").", request);
+            return "redirect:/scorecards/clone-scorecard-select-owner";
+        }
+
+        PortletUtils.addInfoMsg("You have selected " + owner.getFullName() + "'s scorecard for the current reporting period", request);
+        return "redirect:/scorecards/clone-scorecard/" + scorecard.getId();
     }
 
 
@@ -4508,30 +4532,31 @@ public class ScorecardController {
             PortletUtils.addErrorMsg("Validation failed: New scorecard owner is required.", request);
             return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
         }
-        if (imaginaryScorecard.getReportingPeriod() == null || imaginaryScorecard.getReportingPeriod().getId() <= 0) {
-            PortletUtils.addErrorMsg("Validation failed: Reporting period is required.", request);
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        if (activeReportingPeriod == null) {
+            PortletUtils.addErrorMsg("No current reporting period is configured for cloning.", request);
             return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
         }
 
         Account owner = accountService.getAccountById(imaginaryScorecard.getOwner().getId());
-        ReportingPeriod reportingPeriod = reportingPeriodService.getReportingPeriodById(imaginaryScorecard.getReportingPeriod().getId());
+        ReportingPeriod reportingPeriod = activeReportingPeriod;
         if (owner == null) {
             PortletUtils.addErrorMsg("Validation failed: Selected owner could not be found.", request);
             return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
         }
-        if (reportingPeriod == null) {
-            PortletUtils.addErrorMsg("Validation failed: Selected reporting period could not be found.", request);
-            return "redirect:/scorecards/clone-scorecard/" + imaginaryScorecard.getId();
-        }
 
         if (scorecardService.countActiveScorecards(owner, reportingPeriod) >= 1) {
-            PortletUtils.addErrorMsg(owner.getFullName() + " already has an active scorecard for the selected reporting period (" + reportingPeriod.getStartDate() + " - " + reportingPeriod.getEndDate() + ")", request);
+            PortletUtils.addErrorMsg(owner.getFullName() + " already has a scorecard for the current reporting period (" + reportingPeriod.getStartDate() + " - " + reportingPeriod.getEndDate() + ")", request);
             return "redirect:/scorecards/clone-scorecard/"+ imaginaryScorecard.getId();
         } else {
 
             Scorecard scorecard = scorecardService.getScorecardById(imaginaryScorecard.getId());
             if (scorecard == null) {
                 PortletUtils.addErrorMsg("Validation failed: Source scorecard could not be found.", request);
+                return "redirect:/scorecards/clone-scorecard-select-owner";
+            }
+            if (!isSameReportingPeriod(scorecard.getReportingPeriod(), reportingPeriod)) {
+                PortletUtils.addErrorMsg("Scorecards can only be cloned from the current reporting period.", request);
                 return "redirect:/scorecards/clone-scorecard-select-owner";
             }
             Scorecard newScorecard = new Scorecard();
@@ -4585,7 +4610,7 @@ public class ScorecardController {
 
 
             }
-            String recipient = imaginaryScorecard.getOwner().getEmail();
+            String recipient = owner.getEmail();
             String subject = "Scorecard Creation,";
             String template = "Good day, \n\n"
                     + "We are pleased to notify you that your scorecard has been cloned and is already populated with targets. "
@@ -4597,6 +4622,10 @@ public class ScorecardController {
             }
             return "redirect:/scorecards/view-scorecard/" + id;
         }
+    }
+
+    private boolean isSameReportingPeriod(ReportingPeriod left, ReportingPeriod right) {
+        return left != null && right != null && left.getId() == right.getId();
     }
 
     @RequestMapping("/view-evidence/{fileName}")

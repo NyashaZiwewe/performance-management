@@ -193,7 +193,8 @@
                                                    th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}"
                                                    class="btn btn-success btn-sm m-r-xs">Edit Targets</a>
                                             </span>
-                                            <a th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}"
+                                            <a th:if="${activeReportingPeriod != null and scorecard.reportingPeriod != null and scorecard.reportingPeriod.id == activeReportingPeriod.id}"
+                                               th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}"
                                                class="btn btn-success btn-sm m-r-xs m-b-xs">Clone Scorecard</a>
                                             <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}"
                                                class="btn btn-primary btn-sm m-r-xs m-b-xs">View Scorecard</a>
