@@ -206,7 +206,12 @@
                                                                                         <li th:class="${existingComment?.sender?.id == session.loggedUser?.id ? 'me' : 'you'}">
                                                                                             <div class="entete">
                                                                                                 <h3 th:text="${existingComment.date}"></h3>
-                                                                                                <h2 th:text="${existingComment.sender?.fullName}"></h2>
+                                                                                                <h2>
+                                                                                                    <a th:if="${existingComment.sender != null}"
+                                                                                                       class="entity-link"
+                                                                                                       th:href="@{/accounts/view-account/{id}(id=${existingComment.sender.id})}"
+                                                                                                       th:text="${existingComment.sender.fullName}"></a>
+                                                                                                </h2>
                                                                                             </div>
                                                                                             <div class="triangle"></div>
                                                                                             <div class="message" th:text="${existingComment.name}"></div>
@@ -291,7 +296,12 @@
 	                                                                        th:with="scoreEvidence=${score.reportingDate == null ? null : row.evidenceByReportingDate[score.reportingDate.id]},
 	                                                                                 scoreEvidenceLink=${scoreEvidence != null ? scoreEvidence.evidence : score.evidence},
 	                                                                                 scoreAttachmentName=${scoreEvidence != null ? scoreEvidence.attachmentName : score.attachmentName}">
-                                                                        <td th:text="${score.reportingDate?.endDate}"></td>
+                                                                        <td>
+                                                                            <a th:if="${score.reportingDate != null}"
+                                                                               class="entity-link"
+                                                                               th:href="@{/reporting-periods/reporting-dates/{id}/activity-periods(id=${score.reportingDate.id})}"
+                                                                               th:text="${score.reportingDate.endDate}"></a>
+                                                                        </td>
                                                                         <td th:text="${target.baseTarget == null ? '' : #numbers.formatDecimal(target.baseTarget, 0, 2)}"></td>
                                                                         <td th:text="${target.stretchTarget == null && target.normalTarget == null ? '' : #numbers.formatDecimal(target.stretchTarget != null ? target.stretchTarget : target.normalTarget, 0, 2)}"></td>
                                                                         <td th:text="${score.employeeScore}"></td>
@@ -361,7 +371,11 @@
                             <div class="panel-body">
                                 <div id="scoreSaveStatus" class="score-save-status" role="status" aria-live="polite" aria-atomic="true"></div>
                                 <fieldset class="border p-2" th:attr="disabled=${scoreCaptureAllowed == false ? 'disabled' : null}">
-                                    <legend class="w-auto"><span th:text="${reportingPeriod.startDate +' - '+ reportingPeriod.endDate}"></span></legend>
+                                    <legend class="w-auto">
+                                        <a class="entity-link"
+                                           th:href="@{/reporting-periods/reporting-dates/{id}(id=${reportingPeriod.id})}"
+                                           th:text="${reportingPeriod.startDate + ' - ' + reportingPeriod.endDate}"></a>
+                                    </legend>
                                     <div class="row table-responsive">
                                         <table class="table">
                                             <thead>
@@ -488,7 +502,12 @@
                                                                                             <li th:class="${existingComment?.sender?.id == session.loggedUser?.id ? 'me' : 'you'}">
                                                                                                 <div class="entete">
                                                                                                     <h3 th:text="${existingComment.date}"></h3>
-                                                                                                    <h2 th:text="${existingComment.sender?.fullName}"></h2>
+                                                                                                    <h2>
+                                                                                                        <a th:if="${existingComment.sender != null}"
+                                                                                                           class="entity-link"
+                                                                                                           th:href="@{/accounts/view-account/{id}(id=${existingComment.sender.id})}"
+                                                                                                           th:text="${existingComment.sender.fullName}"></a>
+                                                                                                    </h2>
                                                                                                 </div>
                                                                                                 <div class="triangle"></div>
                                                                                                 <div class="message" th:text="${existingComment.name}"></div>

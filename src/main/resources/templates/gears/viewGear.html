@@ -57,7 +57,11 @@
               <div class="metric-meta">
                 <span><strong>Category:</strong> <span th:text="${gear.category}"></span></span>
                 <span><strong>Reporting Period:</strong>
-                  <span th:text="${gear.reportingPeriod != null ? gear.reportingPeriod.startDate + ' - ' + gear.reportingPeriod.endDate : 'Not set'}"></span>
+                  <a th:if="${gear.reportingPeriod != null}"
+                     class="entity-link"
+                     th:href="@{/reporting-periods/reporting-dates/{id}(id=${gear.reportingPeriod.id})}"
+                     th:text="${gear.reportingPeriod.startDate + ' - ' + gear.reportingPeriod.endDate}"></a>
+                  <span th:if="${gear.reportingPeriod == null}" class="text-muted">Not set</span>
                 </span>
                 <span><strong>Description:</strong> <span th:text="${gear.description}"></span></span>
               </div>

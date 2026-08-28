@@ -3,7 +3,6 @@ package hr.performancemanagement.service.impl;
 import org.springframework.stereotype.Service;
 import hr.performancemanagement.service.api.*;
 
-import hr.performancemanagement.entities.Account;
 import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.entities.ReportingPeriod;
 import hr.performancemanagement.repository.ReportingDateRepository;
@@ -18,6 +17,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 
 @Service
@@ -42,11 +42,24 @@ public class ReportingPeriodServiceImpl implements hr.performancemanagement.serv
     @Override
     public ReportingPeriod getActiveReportingPeriod(){
         long clientId = cs.getConfiguredClientId();
-        ReportingPeriod reportingPeriod = reportingPeriodRepository.findReportingPeriodByClientIdAndStatus(clientId, PMConstants.STATUS_ACTIVE);
-        if (reportingPeriod == null) {
-            reportingPeriod = reportingPeriodRepository.findReportingPeriodByStatus(PMConstants.STATUS_ACTIVE);
+        List<ReportingPeriod> activeReportingPeriods = listActiveReportingPeriodsForClientOrFallback(clientId);
+        if (activeReportingPeriods.size() != 1) {
+            return null;
         }
+        ReportingPeriod reportingPeriod = activeReportingPeriods.get(0);
         return isCurrentReportingPeriod(reportingPeriod) ? reportingPeriod : null;
+    }
+
+    @Override
+    public void validateSingleActiveReportingPeriod(long clientId) {
+        List<ReportingPeriod> activeReportingPeriods = listActiveReportingPeriodsForClientOrFallback(clientId);
+        if (activeReportingPeriods.size() > 1) {
+            throw new IllegalArgumentException(
+                    "Multiple active reporting periods were detected: "
+                            + summarizeReportingPeriods(activeReportingPeriods)
+                            + ". Only one reporting period may be ACTIVE."
+            );
+        }
     }
 
     @Override
@@ -85,6 +98,7 @@ public class ReportingPeriodServiceImpl implements hr.performancemanagement.serv
         reportingPeriod.setStatus(normalizeStatus(reportingPeriod.getStatus()));
         if (PMConstants.STATUS_ACTIVE.equalsIgnoreCase(reportingPeriod.getStatus())) {
             validatePeriodIncludesToday(reportingPeriod);
+            validateNoOtherActiveReportingPeriod(reportingPeriod);
         }
         ReportingPeriod savedReportingPeriod = reportingPeriodRepository.save(reportingPeriod);
         if (!PMConstants.STATUS_ACTIVE.equalsIgnoreCase(savedReportingPeriod.getStatus())) {
@@ -103,11 +117,94 @@ public class ReportingPeriodServiceImpl implements hr.performancemanagement.serv
         if (!StringUtils.hasText(status)) {
             return PMConstants.STATUS_IN_ACTIVE;
         }
-        String normalized = status.trim().toUpperCase();
+        String normalized = status.trim().toUpperCase(Locale.ENGLISH);
         if ("INACTIVE".equals(normalized)) {
             return PMConstants.STATUS_IN_ACTIVE;
         }
         return normalized;
+    }
+
+    private void validateNoOtherActiveReportingPeriod(ReportingPeriod reportingPeriod) {
+        long clientId = reportingPeriod.getClientId() > 0
+                ? reportingPeriod.getClientId()
+                : cs.getConfiguredClientId();
+        List<ReportingPeriod> activeReportingPeriods = listActiveReportingPeriodsForClient(clientId);
+        List<ReportingPeriod> conflictingReportingPeriods = new ArrayList<>();
+        for (ReportingPeriod activeReportingPeriod : activeReportingPeriods) {
+            if (activeReportingPeriod == null) {
+                continue;
+            }
+            if (reportingPeriod.getId() > 0 && activeReportingPeriod.getId() == reportingPeriod.getId()) {
+                continue;
+            }
+            conflictingReportingPeriods.add(activeReportingPeriod);
+        }
+        if (!conflictingReportingPeriods.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Cannot activate this reporting period because another active reporting period already exists: "
+                            + summarizeReportingPeriods(conflictingReportingPeriods)
+                            + ". Deactivate the existing active reporting period before activating another one."
+            );
+        }
+    }
+
+    private List<ReportingPeriod> listActiveReportingPeriodsForClientOrFallback(long clientId) {
+        long resolvedClientId = clientId > 0 ? clientId : cs.getConfiguredClientId();
+        List<ReportingPeriod> activeReportingPeriods = listActiveReportingPeriodsForClient(resolvedClientId);
+        if (activeReportingPeriods.isEmpty()) {
+            activeReportingPeriods = reportingPeriodRepository.findReportingPeriodsByStatusOrderByStartDateDescEndDateDescIdDesc(
+                    PMConstants.STATUS_ACTIVE
+            );
+        }
+        return activeReportingPeriods == null ? new ArrayList<ReportingPeriod>() : activeReportingPeriods;
+    }
+
+    private List<ReportingPeriod> listActiveReportingPeriodsForClient(long clientId) {
+        if (clientId <= 0) {
+            return new ArrayList<ReportingPeriod>();
+        }
+        List<ReportingPeriod> activeReportingPeriods =
+                reportingPeriodRepository.findReportingPeriodsByClientIdAndStatusOrderByStartDateDescEndDateDescIdDesc(
+                        clientId,
+                        PMConstants.STATUS_ACTIVE
+                );
+        return activeReportingPeriods == null ? new ArrayList<ReportingPeriod>() : activeReportingPeriods;
+    }
+
+    private String summarizeReportingPeriods(List<ReportingPeriod> reportingPeriods) {
+        if (reportingPeriods == null || reportingPeriods.isEmpty()) {
+            return "none";
+        }
+        StringBuilder summary = new StringBuilder();
+        int displayed = 0;
+        for (ReportingPeriod reportingPeriod : reportingPeriods) {
+            if (reportingPeriod == null) {
+                continue;
+            }
+            if (displayed > 0) {
+                summary.append("; ");
+            }
+            summary.append(formatReportingPeriod(reportingPeriod));
+            displayed++;
+            if (displayed == 3 && reportingPeriods.size() > displayed) {
+                summary.append("; and ").append(reportingPeriods.size() - displayed).append(" more");
+                break;
+            }
+        }
+        return summary.length() == 0 ? "none" : summary.toString();
+    }
+
+    private String formatReportingPeriod(ReportingPeriod reportingPeriod) {
+        String startDate = StringUtils.hasText(reportingPeriod.getStartDate())
+                ? reportingPeriod.getStartDate().trim()
+                : "missing start";
+        String endDate = StringUtils.hasText(reportingPeriod.getEndDate())
+                ? reportingPeriod.getEndDate().trim()
+                : "missing end";
+        String client = reportingPeriod.getClientId() > 0
+                ? ", client " + reportingPeriod.getClientId()
+                : "";
+        return startDate + " - " + endDate + " (ID " + reportingPeriod.getId() + client + ")";
     }
 
     private void validatePeriodIncludesToday(ReportingPeriod reportingPeriod) {

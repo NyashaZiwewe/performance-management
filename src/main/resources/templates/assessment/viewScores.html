@@ -949,8 +949,17 @@
                                                             th:if="${overall != null && overall.scorecard != null && (scorecardIdsForView == null || scorecardIdsForView.contains(overall.scorecard.id))}"
                                                             th:with="scorecard=${overall.scorecard},
                                                                      profile=${riskProfilesByScorecardId != null ? riskProfilesByScorecardId.get(scorecard.id) : null}">
-                                                            <td th:text="${scorecard.owner?.fullName}"></td>
-                                                            <td th:text="${date.endDate}"></td>
+                                                            <td>
+                                                                <a th:if="${scorecard.owner != null}"
+                                                                   class="entity-link"
+                                                                   th:href="@{/accounts/view-account/{id}(id=${scorecard.owner.id})}"
+                                                                   th:text="${scorecard.owner.fullName}"></a>
+                                                            </td>
+                                                            <td>
+                                                                <a class="entity-link"
+                                                                   th:href="@{/reporting-periods/reporting-dates/{id}/activity-periods(id=${date.id})}"
+                                                                   th:text="${date.endDate}"></a>
+                                                            </td>
                                                             <td th:text="${overall.employeeOverall == null || overall.employeeOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.employeeOverall, 0, 2)}" th:attr="class = ${overall.employeeOverall == null || overall.employeeOverall < 2.5 ? 'fail' : 'pass' }"></td>
                                                             <td th:text="${overall.managerOverall == null || overall.managerOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.managerOverall, 0, 2)}" th:attr="class = ${overall.managerOverall == null || overall.managerOverall < 2.5 ? 'fail' : 'pass' }"></td>
                                                             <td th:text="${overall.agreedOverall == null || overall.agreedOverall <= 0.0 ? '' : #numbers.formatDecimal(overall.agreedOverall, 0, 2)}" th:attr="class = ${overall.agreedOverall == null || overall.agreedOverall < 2.5 ? 'fail' : 'pass' }"></td>

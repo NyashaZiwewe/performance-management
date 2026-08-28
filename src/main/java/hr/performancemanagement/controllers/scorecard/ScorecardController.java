@@ -99,6 +99,190 @@ public class ScorecardController {
         }
     }
 
+    private enum ScorecardOperationScope {
+        CONTRACT,
+        SCORE
+    }
+
+    private enum ScorecardOperation {
+        CAPTURE_TARGETS(
+                "capture_targets",
+                "Capture Targets",
+                PMConstants.ACTIVITY_CAPTURE_TARGETS,
+                ScorecardOperationScope.CONTRACT,
+                "/scorecards/capture-targets/",
+                PMConstants.SCORECARD_STAGE_NEW,
+                PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS
+        ),
+        APPROVE_TARGETS_SUPERVISOR(
+                "approve_targets_supervisor",
+                "Approve Targets - Supervisor",
+                PMConstants.ACTIVITY_APPROVE_SCORECARD,
+                ScorecardOperationScope.CONTRACT,
+                null,
+                PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR
+        ),
+        APPROVE_TARGETS_HR(
+                "approve_targets_hr",
+                "Approve Targets - HR",
+                PMConstants.ACTIVITY_APPROVE_SCORECARD,
+                ScorecardOperationScope.CONTRACT,
+                null,
+                PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR
+        ),
+        CAPTURE_OWNER_SCORES(
+                "capture_owner_scores",
+                "Capture Owner Scores",
+                PMConstants.ACTIVITY_CAPTURE_EMPLOYEE_SCORES,
+                ScorecardOperationScope.SCORE,
+                "/scorecards/capture-scores/",
+                PMConstants.SCORECARD_STAGE_OWNER_SCORING
+        ),
+        APPROVE_OWNER_SCORES(
+                "approve_owner_scores",
+                "Approve Owner Scores",
+                PMConstants.ACTIVITY_APPROVE_OWNER_SCORES,
+                ScorecardOperationScope.SCORE,
+                null,
+                PMConstants.SCORECARD_STAGE_OWNER_SCORE_APPROVAL
+        ),
+        CAPTURE_SUPERVISOR_SCORES(
+                "capture_supervisor_scores",
+                "Capture Supervisor Scores",
+                PMConstants.ACTIVITY_CAPTURE_MANAGER_SCORES,
+                ScorecardOperationScope.SCORE,
+                "/scorecards/capture-scores/",
+                PMConstants.SCORECARD_STAGE_SUPERVISOR_SCORING
+        ),
+        CAPTURE_AGREED_SCORES(
+                "capture_agreed_scores",
+                "Capture Agreed Scores",
+                PMConstants.ACTIVITY_CAPTURE_AGREED_SCORES,
+                ScorecardOperationScope.SCORE,
+                "/scorecards/capture-scores/",
+                PMConstants.SCORECARD_STAGE_AGREED_SCORE_CAPTURING
+        ),
+        APPROVE_AGREED_SCORES(
+                "approve_agreed_scores",
+                "Approve Agreed Scores",
+                PMConstants.ACTIVITY_APPROVE_AGREED_SCORES,
+                ScorecardOperationScope.SCORE,
+                null,
+                PMConstants.SCORECARD_STAGE_AGREED_SCORE_APPROVAL
+        ),
+        CAPTURE_MODERATED_SCORES(
+                "capture_moderated_scores",
+                "Capture Moderated Scores",
+                PMConstants.ACTIVITY_CAPTURE_MODERATED_SCORES,
+                ScorecardOperationScope.SCORE,
+                "/scorecards/capture-scores/",
+                PMConstants.SCORECARD_STAGE_MODERATOR_SCORE_CAPTURING
+        );
+
+        private final String value;
+        private final String defaultLabel;
+        private final String activity;
+        private final ScorecardOperationScope scope;
+        private final String actionPathPrefix;
+        private final String[] requiredRoleKeys;
+
+        ScorecardOperation(String value,
+                           String defaultLabel,
+                           String activity,
+                           ScorecardOperationScope scope,
+                           String actionPathPrefix,
+                           String... requiredRoleKeys) {
+            this.value = value;
+            this.defaultLabel = defaultLabel;
+            this.activity = activity;
+            this.scope = scope;
+            this.actionPathPrefix = actionPathPrefix;
+            this.requiredRoleKeys = requiredRoleKeys;
+        }
+
+        private boolean matchesRole(String roleKey) {
+            if (roleKey == null || requiredRoleKeys == null) {
+                return false;
+            }
+            for (String requiredRoleKey : requiredRoleKeys) {
+                if (requiredRoleKey != null && requiredRoleKey.equalsIgnoreCase(roleKey.trim())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static ScorecardOperation fromValue(String value) {
+            if (!StringUtils.hasText(value)) {
+                return null;
+            }
+            for (ScorecardOperation operation : values()) {
+                if (operation.value.equalsIgnoreCase(value.trim())) {
+                    return operation;
+                }
+            }
+            return null;
+        }
+    }
+
+    private static class ScorecardOperationOption {
+        private final String value;
+        private final String label;
+
+        private ScorecardOperationOption(String value, String label) {
+            this.value = value;
+            this.label = label;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    private static class ScorecardOperationValidation {
+        private final boolean allowed;
+        private final String operationLabel;
+        private final String message;
+        private final String actionUrl;
+        private final String actionLabel;
+
+        private ScorecardOperationValidation(boolean allowed,
+                                             String operationLabel,
+                                             String message,
+                                             String actionUrl,
+                                             String actionLabel) {
+            this.allowed = allowed;
+            this.operationLabel = operationLabel;
+            this.message = message;
+            this.actionUrl = actionUrl;
+            this.actionLabel = actionLabel;
+        }
+
+        public boolean isAllowed() {
+            return allowed;
+        }
+
+        public String getOperationLabel() {
+            return operationLabel;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public String getActionUrl() {
+            return actionUrl;
+        }
+
+        public String getActionLabel() {
+            return actionLabel;
+        }
+    }
+
     private static class ScorecardActionState {
         private boolean canCaptureTargets;
         private boolean canSupervisorApproveTargets;
@@ -266,9 +450,57 @@ public class ScorecardController {
         modelAndView.addObject("workflowRoleStageNames", workflow.getRoleStageNames());
         modelAndView.addObject("workflowRoleActionLabels", workflow.getRoleActionButtonLabels());
         modelAndView.addObject("workflowRoleRejectionLabels", workflow.getRoleRejectionButtonLabels());
+        modelAndView.addObject("scorecardOperationOptions", buildConfiguredScorecardOperationOptions(workflow));
         addTerminology(modelAndView);
         PortletUtils.addMessagesToPage(modelAndView, request);
 
+    }
+
+    private List<ScorecardOperationOption> buildConfiguredScorecardOperationOptions(ScorecardWorkflowDefinition workflow) {
+        List<ScorecardOperationOption> options = new ArrayList<ScorecardOperationOption>();
+        for (ScorecardOperation operation : ScorecardOperation.values()) {
+            if (!isScorecardOperationConfigured(operation, workflow)) {
+                continue;
+            }
+            options.add(new ScorecardOperationOption(operation.value, resolveScorecardOperationLabel(operation, workflow)));
+        }
+        return options;
+    }
+
+    private boolean isScorecardOperationConfigured(ScorecardOperation operation, ScorecardWorkflowDefinition workflow) {
+        if (operation == null || workflow == null || workflow.getRoleStageNames() == null) {
+            return false;
+        }
+        for (String requiredRoleKey : operation.requiredRoleKeys) {
+            String normalizedRoleKey = normalizeRoleKey(requiredRoleKey);
+            if (normalizedRoleKey != null && workflow.getRoleStageNames().containsKey(normalizedRoleKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String resolveScorecardOperationLabel(ScorecardOperation operation, ScorecardWorkflowDefinition workflow) {
+        if (operation == null) {
+            return "Scorecard Operation";
+        }
+        if (workflow != null && workflow.getRoleStageNames() != null) {
+            for (String requiredRoleKey : operation.requiredRoleKeys) {
+                String normalizedRoleKey = normalizeRoleKey(requiredRoleKey);
+                String configuredStageName = normalizedRoleKey == null ? null : workflow.getRoleStageNames().get(normalizedRoleKey);
+                if (StringUtils.hasText(configuredStageName) && !"New".equalsIgnoreCase(configuredStageName.trim())) {
+                    return configuredStageName.trim();
+                }
+            }
+        }
+        return operation.defaultLabel;
+    }
+
+    private String normalizeRoleKey(String roleKey) {
+        if (!StringUtils.hasText(roleKey)) {
+            return null;
+        }
+        return roleKey.trim().toUpperCase(Locale.ENGLISH);
     }
 
     private List<ReportingDate> listReportingDates(List<ReportingPeriod> reportingPeriods) {
@@ -331,8 +563,6 @@ public class ScorecardController {
 
         modelAndView.addObject("scorecards", scorecards);
         modelAndView.addObject("unmappedWorkflowScorecardCount", countUnmappedWorkflowScorecards(scorecards));
-        modelAndView.addObject("scorecardCaptureScoresAllowed", buildCaptureScoresAllowedMap(scorecards));
-        modelAndView.addObject("scorecardEditTargetsAllowed", buildEditTargetsAllowedMap(scorecards));
         modelAndView.addObject("scorecardViewReportAllowed", buildViewReportAllowedMap(scorecards));
         modelAndView.addObject("selectedReportingPeriodId", selectedReportingPeriodId);
         modelAndView.addObject("selectedReportingDateId", selectedReportingDateId);
@@ -414,41 +644,6 @@ public class ScorecardController {
         return filteredScorecards;
     }
 
-    private Map<Long, Boolean> buildCaptureScoresAllowedMap(List<Scorecard> scorecards) {
-        Map<Long, Boolean> map = new HashMap<Long, Boolean>();
-        if (scorecards == null || scorecards.isEmpty()) {
-            return map;
-        }
-        ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-        boolean captureWindowOpen = reportingDateService.isReportingDateOpen(reportingDate);
-        for (Scorecard scorecard : scorecards) {
-            if (scorecard == null || scorecard.getId() <= 0) {
-                continue;
-            }
-            String reportingDateRole = captureWindowOpen ? resolveReportingDateRole(scorecard, reportingDate) : null;
-            boolean canCapture = captureWindowOpen
-                    && isScoreCaptureWindowOpen(scorecard, reportingDate)
-                    && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
-                    && isAnyScoreCaptureAllowed(scorecard, reportingDateRole);
-            map.put(scorecard.getId(), canCapture);
-        }
-        return map;
-    }
-
-    private Map<Long, Boolean> buildEditTargetsAllowedMap(List<Scorecard> scorecards) {
-        Map<Long, Boolean> map = new HashMap<Long, Boolean>();
-        if (scorecards == null || scorecards.isEmpty()) {
-            return map;
-        }
-        for (Scorecard scorecard : scorecards) {
-            if (scorecard == null || scorecard.getId() <= 0) {
-                continue;
-            }
-            map.put(scorecard.getId(), canCaptureTargets(scorecard));
-        }
-        return map;
-    }
-
     private Map<Long, Boolean> buildViewReportAllowedMap(List<Scorecard> scorecards) {
         Map<Long, Boolean> map = new HashMap<Long, Boolean>();
         if (scorecards == null || scorecards.isEmpty()) {
@@ -472,8 +667,6 @@ public class ScorecardController {
 
         modelAndView.addObject("scorecards", scorecards);
         modelAndView.addObject("unmappedWorkflowScorecardCount", countUnmappedWorkflowScorecards(scorecards));
-        modelAndView.addObject("scorecardCaptureScoresAllowed", buildCaptureScoresAllowedMap(scorecards));
-        modelAndView.addObject("scorecardEditTargetsAllowed", buildEditTargetsAllowedMap(scorecards));
         modelAndView.addObject("scorecardViewReportAllowed", buildViewReportAllowedMap(scorecards));
         preparePage(modelAndView, request, session);
         return modelAndView;
@@ -499,6 +692,7 @@ public class ScorecardController {
         modelAndView.addObject("pageTitle", "New Scorecard");
         modelAndView.addObject("scorecard", new Scorecard());
         modelAndView.addObject("scorecardModel", scorecardModel);
+        validateStableReportingConfiguration(request, "creation");
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -519,6 +713,9 @@ public class ScorecardController {
         if (newScorecard.getScorecardModel() == null
                 || newScorecard.getScorecardModel().getId() <= 0) {
             PortletUtils.addErrorMsg("Validation failed: Scorecard model is required", request);
+            return "redirect:/scorecards/add-scorecard";
+        }
+        if (!validateStableReportingConfiguration(request, "creation")) {
             return "redirect:/scorecards/add-scorecard";
         }
 
@@ -2058,38 +2255,243 @@ public class ScorecardController {
                 && accessControlService.hasPermission(loggedUser, AccessPermissions.SCORECARD_CLOSE, scorecard.getOwner());
     }
 
-    private String resolveScorecardActivityRestrictionNotice(Scorecard scorecard,
-                                                             ReportingDate reportingDate,
-                                                             boolean hasAllowedAction,
-                                                             String expectedActivity) {
-        if (hasAllowedAction) {
-            return "";
-        }
-        if (scorecard == null
-                || reportingDate == null
-                || !reportingDateService.isReportingDateOpen(reportingDate)
-                || !isReportingDateForScorecard(scorecard, reportingDate)
-                || !reportingDateActivityPeriodService.hasConfiguredActivityPeriods(reportingDate)) {
-            return "";
+    private ScorecardOperationValidation validateSelectedScorecardOperation(Scorecard scorecard,
+                                                                            String selectedOperationValue,
+                                                                            String contractRole,
+                                                                            String reportingDateRole,
+                                                                            ReportingDate activeReportingDate,
+                                                                            ScorecardWorkflowDefinition workflow) {
+        if (!StringUtils.hasText(selectedOperationValue)) {
+            return null;
         }
 
-        if (!StringUtils.hasText(expectedActivity)
-                || reportingDateActivityPeriodService.isActivityAllowed(reportingDate, expectedActivity)) {
-            return "";
+        ScorecardOperation operation = ScorecardOperation.fromValue(selectedOperationValue);
+        if (operation == null) {
+            return new ScorecardOperationValidation(
+                    false,
+                    "Scorecard Operation",
+                    "The selected scorecard operation is not recognized.",
+                    null,
+                    null
+            );
         }
 
-        String activitySummary = reportingDateActivityPeriodService.getCurrentActivitySummary(reportingDate);
-        if (StringUtils.hasText(activitySummary)) {
-            return "Current reporting-date activity: " + activitySummary;
+        String operationLabel = resolveScorecardOperationLabel(operation, workflow);
+        if (!isScorecardOperationConfigured(operation, workflow)) {
+            return blockedOperation(operationLabel,
+                    operationLabel + " is disabled by the current scorecard workflow configuration.");
         }
-        return "The active reporting date has activity periods configured, but none is active today.";
+
+        if (scorecard == null) {
+            return blockedOperation(operationLabel, "Scorecard not found.");
+        }
+
+        if (!PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())) {
+            return blockedOperation(operationLabel,
+                    operationLabel + " is unavailable because this scorecard is not active.");
+        }
+
+        if (operation.scope == ScorecardOperationScope.CONTRACT) {
+            if (!operation.matchesRole(contractRole)) {
+                return blockedOperation(operationLabel,
+                        "This scorecard is currently at \"" + resolveRoleStageName(contractRole, workflow)
+                                + "\". \"" + operationLabel + "\" requires \""
+                                + resolveRequiredStageLabel(operation, workflow) + "\".");
+            }
+        } else {
+            if (!isContractReadyForScoring(scorecard, workflow)) {
+                return blockedOperation(operationLabel,
+                        "Targets must be fully approved before score operations can start. Current target workflow stage: \""
+                                + resolveRoleStageName(contractRole, workflow) + "\".");
+            }
+            if (hasReportingDateConflict(scorecard)) {
+                return blockedOperation(operationLabel,
+                        "Score operations are blocked because more than one reporting date is currently OPEN/ACTIVE. Contact an administrator.");
+            }
+            if (activeReportingDate == null) {
+                return blockedOperation(operationLabel,
+                        "Score operations are unavailable because no active reporting date is configured.");
+            }
+            if (!reportingDateService.isReportingDateOpen(activeReportingDate)) {
+                return blockedOperation(operationLabel,
+                        "Score operations are unavailable because there is no OPEN reporting date.");
+            }
+            if (!isReportingDateForScorecard(scorecard, activeReportingDate)) {
+                return blockedOperation(operationLabel,
+                        "Score operations are unavailable because the OPEN reporting date is not in this scorecard's reporting period.");
+            }
+            if (!StringUtils.hasText(reportingDateRole)) {
+                return blockedOperation(operationLabel,
+                        "No score workflow stage is assigned for this scorecard on the OPEN reporting date.");
+            }
+            if (!operation.matchesRole(reportingDateRole)) {
+                return blockedOperation(operationLabel,
+                        "This scorecard is currently at \"" + resolveRoleStageName(reportingDateRole, workflow)
+                                + "\" for the OPEN reporting date. \"" + operationLabel
+                                + "\" requires \"" + resolveRequiredStageLabel(operation, workflow) + "\".");
+            }
+        }
+
+        String activityWindowMessage = resolveOperationActivityWindowMessage(operation, scorecard, activeReportingDate);
+        if (StringUtils.hasText(activityWindowMessage)) {
+            return blockedOperation(operationLabel, activityWindowMessage);
+        }
+
+        if (!commonService.isUserAllowed(operation.activity, scorecard)) {
+            return blockedOperation(operationLabel,
+                    resolveOperationAccessDeniedMessage(operation, operationLabel, scorecard));
+        }
+
+        String actionUrl = operation.actionPathPrefix == null ? null : operation.actionPathPrefix + scorecard.getId();
+        String message = actionUrl == null
+                ? operationLabel + " is allowed. Use the controls on this page to continue."
+                : operationLabel + " is allowed. Select Proceed to continue.";
+        String actionLabel = actionUrl == null ? null : "Proceed";
+        return new ScorecardOperationValidation(true, operationLabel, message, actionUrl, actionLabel);
+    }
+
+    private ScorecardOperationValidation blockedOperation(String operationLabel, String message) {
+        return new ScorecardOperationValidation(false, operationLabel, message, null, null);
+    }
+
+    private String resolveOperationActivityWindowMessage(ScorecardOperation operation,
+                                                         Scorecard scorecard,
+                                                         ReportingDate activeReportingDate) {
+        if (operation == null || scorecard == null) {
+            return "";
+        }
+        if (hasReportingDateConflict(scorecard)) {
+            return "This operation is blocked because more than one reporting date is currently OPEN/ACTIVE. Contact an administrator.";
+        }
+        if (activeReportingDate == null) {
+            return "This operation is blocked because no active reporting date is configured.";
+        }
+        if (!reportingDateService.isReportingDateOpen(activeReportingDate)) {
+            return "This operation is blocked because there is no OPEN reporting date.";
+        }
+        if (!isReportingDateForScorecard(scorecard, activeReportingDate)) {
+            return "This operation is blocked because the OPEN reporting date is not in this scorecard's reporting period.";
+        }
+        if (reportingDateActivityPeriodService != null
+                && reportingDateActivityPeriodService.hasConfiguredActivityPeriods(activeReportingDate)
+                && !reportingDateActivityPeriodService.isActivityAllowed(activeReportingDate, operation.activity)) {
+            String activitySummary = reportingDateActivityPeriodService.getCurrentActivitySummary(activeReportingDate);
+            if (StringUtils.hasText(activitySummary)) {
+                return "This operation is not open today. Current reporting-date activity: " + activitySummary;
+            }
+            return "This operation is not open today for the active reporting date.";
+        }
+        return "";
+    }
+
+    private String resolveOperationAccessDeniedMessage(ScorecardOperation operation,
+                                                       String operationLabel,
+                                                       Scorecard scorecard) {
+        if (operation == null) {
+            return "You are not allowed to perform the selected operation.";
+        }
+        if (operation == ScorecardOperation.CAPTURE_TARGETS) {
+            if (!isScorecardInActiveReportingPeriod(scorecard)) {
+                return operationLabel + " is only available in the active reporting period.";
+            }
+            return "Only the scorecard owner, an administrator, or a user with special rights can capture targets at this stage.";
+        }
+        if (operation == ScorecardOperation.APPROVE_TARGETS_SUPERVISOR
+                || operation == ScorecardOperation.APPROVE_OWNER_SCORES
+                || operation == ScorecardOperation.CAPTURE_SUPERVISOR_SCORES
+                || operation == ScorecardOperation.CAPTURE_AGREED_SCORES) {
+            return "Only the assigned supervisor can perform " + operationLabel + " at this stage.";
+        }
+        if (operation == ScorecardOperation.APPROVE_TARGETS_HR) {
+            return "Only users with HR target approval permission can perform " + operationLabel + " at this stage.";
+        }
+        if (operation == ScorecardOperation.CAPTURE_OWNER_SCORES) {
+            return "Only the scorecard owner or a user with special rights can perform " + operationLabel + " at this stage.";
+        }
+        if (operation == ScorecardOperation.APPROVE_AGREED_SCORES) {
+            return "Only users with agreed-score approval permission can perform " + operationLabel + " at this stage.";
+        }
+        if (operation == ScorecardOperation.CAPTURE_MODERATED_SCORES) {
+            return "Only users with scorecard moderation permission can perform " + operationLabel + " at this stage.";
+        }
+        return "You are not allowed to perform " + operationLabel + " at this stage.";
+    }
+
+    private String resolveRequiredStageLabel(ScorecardOperation operation, ScorecardWorkflowDefinition workflow) {
+        if (operation == null || operation.requiredRoleKeys == null || operation.requiredRoleKeys.length == 0) {
+            return "a configured workflow stage";
+        }
+        List<String> labels = new ArrayList<String>();
+        for (String requiredRoleKey : operation.requiredRoleKeys) {
+            String label = resolveRoleStageName(requiredRoleKey, workflow);
+            if (StringUtils.hasText(label) && !containsIgnoreCase(labels, label)) {
+                labels.add(label);
+            }
+        }
+        if (labels.isEmpty()) {
+            return operation.defaultLabel;
+        }
+        if (labels.size() == 1) {
+            return labels.get(0);
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < labels.size(); i++) {
+            if (i > 0) {
+                builder.append(i == labels.size() - 1 ? " or " : ", ");
+            }
+            builder.append(labels.get(i));
+        }
+        return builder.toString();
+    }
+
+    private boolean containsIgnoreCase(List<String> values, String value) {
+        if (values == null || value == null) {
+            return false;
+        }
+        for (String existing : values) {
+            if (existing != null && existing.equalsIgnoreCase(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String resolveRoleStageName(String roleKey, ScorecardWorkflowDefinition workflow) {
+        String normalizedRoleKey = normalizeRoleKey(roleKey);
+        if (normalizedRoleKey == null) {
+            return "Workflow stage not assigned";
+        }
+        if (workflow != null && workflow.getRoleStageNames() != null) {
+            String configuredStageName = workflow.getRoleStageNames().get(normalizedRoleKey);
+            if (StringUtils.hasText(configuredStageName)) {
+                return configuredStageName.trim();
+            }
+        }
+        return toDisplayLabel(normalizedRoleKey.replace("SCORECARD_STAGE_", ""));
+    }
+
+    private String toDisplayLabel(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "Workflow";
+        }
+        String[] tokens = value.trim().toLowerCase(Locale.ENGLISH).split("_");
+        StringBuilder builder = new StringBuilder();
+        for (String token : tokens) {
+            if (!StringUtils.hasText(token)) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(" ");
+            }
+            builder.append(Character.toUpperCase(token.charAt(0))).append(token.substring(1));
+        }
+        return builder.length() == 0 ? value : builder.toString();
     }
 
     private boolean canCurrentUserCaptureTargetsIgnoringActivity(Scorecard scorecard, Account loggedUser) {
         return scorecard != null
                 && PMConstants.STATUS_ACTIVE.equalsIgnoreCase(scorecard.getStatus())
                 && isScorecardInActiveReportingPeriod(scorecard)
-                && PMConstants.LOCK_STATUS_OPEN.equalsIgnoreCase(scorecard.getLockStatus())
                 && (isScorecardOwner(scorecard, loggedUser)
                 || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())
                 || PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin()));
@@ -2588,7 +2990,6 @@ public class ScorecardController {
 
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getPendingApprovalStatus());
-        scorecard.setLockStatus(PMConstants.LOCK_STATUS_LOCKED);
         scorecardService.saveScorecard(scorecard);
         URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
         String recipient = supervisorEmail;
@@ -3224,7 +3625,6 @@ public class ScorecardController {
         String recipient = scorecard.getOwner().getEmail();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getRejectedBySupervisorStatus());
-        scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
         try{
             scorecardService.saveScorecard(scorecard);
@@ -3290,7 +3690,6 @@ public class ScorecardController {
         Account loggedUser = commonService.getLoggedUser();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getApprovedByHrStatus());
-        scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
         try {
             scorecardService.saveScorecard(scorecard);
@@ -3523,12 +3922,14 @@ public class ScorecardController {
             modelAndView.addObject("canModerate", actionState.canModerate);
             modelAndView.addObject("canApproveOwnerScores", actionState.canApproveOwnerScores);
             modelAndView.addObject("canApproveAgreedScores", actionState.canApproveAgreedScores);
-            modelAndView.addObject("scorecardActivityRestrictionNotice",
-                    resolveScorecardActivityRestrictionNotice(
+            modelAndView.addObject("selectedScorecardOperation",
+                    validateSelectedScorecardOperation(
                             scorecard,
+                            request.getParameter("operation"),
+                            contractRole,
+                            reportingDateRole,
                             activeReportingDate,
-                            actionState.hasAllowedAction(),
-                            actionState.expectedActivity
+                            workflow
                     ));
 
         }catch (Exception e){
@@ -4470,9 +4871,20 @@ public class ScorecardController {
         ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD);
         modelAndView.addObject("pageTitle", "Clone Scorecard");
         Scorecard scorecard = scorecardService.getScorecardById(id);
-        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         if (scorecard == null) {
             PortletUtils.addErrorMsg("Source scorecard could not be found.", request);
+            modelAndView.setViewName(Pages.CLONE_SCORECARD_SELECT_OWNER);
+            preparePage(modelAndView, request, session);
+            return modelAndView;
+        }
+        if (!validateStableReportingConfiguration(request, "cloning")) {
+            modelAndView.setViewName(Pages.CLONE_SCORECARD_SELECT_OWNER);
+            preparePage(modelAndView, request, session);
+            return modelAndView;
+        }
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
+        if (activeReportingPeriod == null) {
+            PortletUtils.addErrorMsg("No current reporting period is configured for cloning.", request);
             modelAndView.setViewName(Pages.CLONE_SCORECARD_SELECT_OWNER);
             preparePage(modelAndView, request, session);
             return modelAndView;
@@ -4493,6 +4905,7 @@ public class ScorecardController {
     public ModelAndView cloneScorecardSelect(HttpServletRequest request, HttpSession session) {
         ModelAndView modelAndView = new ModelAndView(Pages.CLONE_SCORECARD_SELECT_OWNER);
         modelAndView.addObject("pageTitle", "Clone Scorecard");
+        validateStableReportingConfiguration(request, "cloning");
         preparePage(modelAndView, request, session);
         return modelAndView;
     }
@@ -4500,11 +4913,14 @@ public class ScorecardController {
     @RequestMapping(value = "/clone-scorecard-save-owner", method = RequestMethod.POST)
     public String cloneScorecardSaveOwner(HttpServletRequest request, Long id) {
         Account owner = accountService.getAccountById(id);
-        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         if (owner == null) {
             PortletUtils.addErrorMsg("Validation failed: Selected owner could not be found.", request);
             return "redirect:/scorecards/clone-scorecard-select-owner";
         }
+        if (!validateStableReportingConfiguration(request, "cloning")) {
+            return "redirect:/scorecards/clone-scorecard-select-owner";
+        }
+        ReportingPeriod activeReportingPeriod = reportingPeriodService.getActiveReportingPeriod();
         if (activeReportingPeriod == null) {
             PortletUtils.addErrorMsg("No current reporting period is configured for cloning.", request);
             return "redirect:/scorecards/clone-scorecard-select-owner";
@@ -4526,6 +4942,9 @@ public class ScorecardController {
 
         if (imaginaryScorecard == null || imaginaryScorecard.getId() <= 0) {
             PortletUtils.addErrorMsg("Validation failed: Source scorecard is required.", request);
+            return "redirect:/scorecards/clone-scorecard-select-owner";
+        }
+        if (!validateStableReportingConfiguration(request, "cloning")) {
             return "redirect:/scorecards/clone-scorecard-select-owner";
         }
         if (imaginaryScorecard.getOwner() == null || imaginaryScorecard.getOwner().getId() <= 0) {
@@ -4626,6 +5045,18 @@ public class ScorecardController {
 
     private boolean isSameReportingPeriod(ReportingPeriod left, ReportingPeriod right) {
         return left != null && right != null && left.getId() == right.getId();
+    }
+
+    private boolean validateStableReportingConfiguration(HttpServletRequest request, String action) {
+        long clientId = commonService.getConfiguredClientId();
+        try {
+            reportingPeriodService.validateSingleActiveReportingPeriod(clientId);
+            reportingDateService.validateSingleOpenOrActiveReportingDate(clientId);
+            return true;
+        } catch (IllegalArgumentException exception) {
+            PortletUtils.addErrorMsg("Scorecard " + action + " is blocked: " + exception.getMessage(), request);
+            return false;
+        }
     }
 
     @RequestMapping("/view-evidence/{fileName}")

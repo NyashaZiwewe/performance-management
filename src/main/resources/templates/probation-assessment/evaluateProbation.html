@@ -25,7 +25,10 @@
                     <div class="col-lg-8">
                         <h3 th:text="${pageTitle}"></h3>
                         <p class="m-b-0">
-                            <strong>Incumbent:</strong> <span th:text="${assessment.employee.fullName}"></span>
+                            <strong>Incumbent:</strong>
+                            <a class="entity-link"
+                               th:href="@{/accounts/view-account/{id}(id=${assessment.employee.id})}"
+                               th:text="${assessment.employee.fullName}"></a>
                         </p>
                     </div>
                     <div class="col-lg-4 text-right">
@@ -49,7 +52,11 @@
                      th:with="latest=${approvalHistory[0]}">
                     <strong>Latest workflow action:</strong>
                     <span th:text="${latest.workflowStepName + ' - ' + latest.action}"></span>
-                    <span th:if="${latest.actor != null}" th:text="${' by ' + latest.actor.fullName}"></span>
+                    <span th:if="${latest.actor != null}"> by
+                        <a class="entity-link"
+                           th:href="@{/accounts/view-account/{id}(id=${latest.actor.id})}"
+                           th:text="${latest.actor.fullName}"></a>
+                    </span>
                     <div th:if="${latest.remarks != null and latest.remarks != ''}" th:text="${latest.remarks}"></div>
                 </div>
 

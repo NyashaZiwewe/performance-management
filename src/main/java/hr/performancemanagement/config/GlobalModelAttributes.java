@@ -1,10 +1,7 @@
 package hr.performancemanagement.config;
 
-import hr.performancemanagement.entities.ReportingDate;
 import hr.performancemanagement.service.api.SystemSettingService;
 import hr.performancemanagement.service.api.AccessControlService;
-import hr.performancemanagement.service.api.ReportingDateActivityPeriodService;
-import hr.performancemanagement.service.api.ReportingDateService;
 import hr.performancemanagement.service.api.CommonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -17,10 +14,6 @@ public class GlobalModelAttributes {
     private SystemSettingService systemSettingService;
     @Autowired
     private AccessControlService accessControlService;
-    @Autowired
-    private ReportingDateService reportingDateService;
-    @Autowired
-    private ReportingDateActivityPeriodService reportingDateActivityPeriodService;
     @Autowired
     private CommonService commonService;
 
@@ -80,24 +73,4 @@ public class GlobalModelAttributes {
         }
     }
 
-    @ModelAttribute("activeReportingActivitySummary")
-    public String activeReportingActivitySummary() {
-        try {
-            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-            return reportingDateActivityPeriodService.getCurrentActivitySummary(reportingDate);
-        } catch (Exception ignored) {
-            return "";
-        }
-    }
-
-    @ModelAttribute("activeReportingActivityAlertClass")
-    public String activeReportingActivityAlertClass() {
-        try {
-            ReportingDate reportingDate = reportingDateService.getActiveReportingDate();
-            boolean activityOpen = reportingDateActivityPeriodService.getCurrentActivityPeriod(reportingDate) != null;
-            return activityOpen ? "alert alert-info" : "alert alert-warning";
-        } catch (Exception ignored) {
-            return "alert alert-info";
-        }
-    }
 }

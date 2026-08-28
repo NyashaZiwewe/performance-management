@@ -82,6 +82,16 @@
         <div class="wrapper wrapper-content animated fadeInRight ecommerce">
             <div class="ibox-content m-b-sm border-bottom">
 
+                <div th:if="${selectedScorecardOperation != null}"
+                     th:class="${selectedScorecardOperation.allowed ? 'alert alert-success' : 'alert alert-warning'}">
+                    <strong th:text="${selectedScorecardOperation.operationLabel}">Scorecard Operation</strong>
+                    <span th:text="${selectedScorecardOperation.message}">Operation validation message.</span>
+                    <a th:if="${selectedScorecardOperation.allowed and selectedScorecardOperation.actionUrl != null}"
+                       th:href="${selectedScorecardOperation.actionUrl}"
+                       class="btn btn-primary btn-sm m-l-sm"
+                       th:text="${selectedScorecardOperation.actionLabel}">Proceed</a>
+                </div>
+
                 <div th:if="${#lists.isEmpty(reportingDates)}" class="alert alert-info">
                     No reporting dates are configured for this scorecard's reporting period.
                 </div>
@@ -228,7 +238,12 @@
                                                                                         <li th:class="${comment?.sender?.id == session.loggedUser?.id ? 'me' : 'you'}">
                                                                                             <div class="entete">
                                                                                                 <h3 th:text="${comment.date}"></h3>
-                                                                                                <h2 th:text="${comment.sender?.fullName}"></h2>
+                                                                                                <h2>
+                                                                                                    <a th:if="${comment.sender != null}"
+                                                                                                       class="entity-link"
+                                                                                                       th:href="@{/accounts/view-account/{id}(id=${comment.sender.id})}"
+                                                                                                       th:text="${comment.sender.fullName}"></a>
+                                                                                                </h2>
                                                                                             </div>
                                                                                             <div class="triangle"></div>
                                                                                             <div class="message" th:text="${comment.name}">
@@ -352,11 +367,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="alert alert-warning"
-                     th:if="${scorecardActivityRestrictionNotice != null and !#strings.isEmpty(scorecardActivityRestrictionNotice)}">
-                    <strong>No scorecard activity is allowed at this moment.</strong>
-                    <span th:text="${scorecardActivityRestrictionNotice}"></span>
                 </div>
                 <div class="form-group row">
                     <div class="col-lg-4">

@@ -44,7 +44,6 @@
                                     <th>Reporting Period</th>
                                     <th>Model</th>
                                     <th>Record Status</th>
-                                    <th>Lock Status</th>
                                     <th>Score History Evidence</th>
                                 </tr>
                                 </thead>
@@ -55,12 +54,35 @@
                                                th:value="${scorecard.id}">
                                     </td>
                                     <td th:text="${scorecard.id}"></td>
-                                    <td th:text="${scorecard.owner != null ? scorecard.owner.fullName : 'Owner unavailable'}"></td>
-                                    <td th:text="${scorecard.owner != null and scorecard.owner.department != null ? scorecard.owner.department.name : '-'}"></td>
-                                    <td th:text="${scorecard.reportingPeriod != null ? scorecard.reportingPeriod.startDate + ' - ' + scorecard.reportingPeriod.endDate : 'Reporting period unavailable'}"></td>
-                                    <td th:text="${scorecard.scorecardModel != null ? scorecard.scorecardModel.name : '-'}"></td>
+                                    <td>
+                                        <a th:if="${scorecard.owner != null}"
+                                           class="entity-link"
+                                           th:href="@{/accounts/view-account/{id}(id=${scorecard.owner.id})}"
+                                           th:text="${scorecard.owner.fullName}"></a>
+                                        <span th:if="${scorecard.owner == null}" class="text-muted">Owner unavailable</span>
+                                    </td>
+                                    <td>
+                                        <a th:if="${scorecard.owner != null and scorecard.owner.department != null}"
+                                           class="entity-link"
+                                           th:href="@{/departments}"
+                                           th:text="${scorecard.owner.department.name}"></a>
+                                        <span th:if="${scorecard.owner == null or scorecard.owner.department == null}" class="text-muted">-</span>
+                                    </td>
+                                    <td>
+                                        <a th:if="${scorecard.reportingPeriod != null}"
+                                           class="entity-link"
+                                           th:href="@{/reporting-periods/reporting-dates/{id}(id=${scorecard.reportingPeriod.id})}"
+                                           th:text="${scorecard.reportingPeriod.startDate + ' - ' + scorecard.reportingPeriod.endDate}"></a>
+                                        <span th:if="${scorecard.reportingPeriod == null}" class="text-muted">Reporting period unavailable</span>
+                                    </td>
+                                    <td>
+                                        <a th:if="${scorecard.scorecardModel != null}"
+                                           class="entity-link"
+                                           th:href="@{/scorecard-models}"
+                                           th:text="${scorecard.scorecardModel.name}"></a>
+                                        <span th:if="${scorecard.scorecardModel == null}" class="text-muted">-</span>
+                                    </td>
                                     <td th:text="${scorecard.status}"></td>
-                                    <td th:text="${scorecard.lockStatus}"></td>
                                     <td th:text="${scoreHistorySummaries.get(scorecard.id)}"></td>
                                 </tr>
                                 </tbody>
@@ -127,11 +149,23 @@
                         <tr th:each="audit : ${mappingAudit}">
                             <td th:text="${audit.dateCreated}"></td>
                             <td th:text="${audit.scorecard != null ? audit.scorecard.id : '-'}"></td>
-                            <td th:text="${audit.scorecard != null and audit.scorecard.owner != null ? audit.scorecard.owner.fullName : '-'}"></td>
+                            <td>
+                                <a th:if="${audit.scorecard != null and audit.scorecard.owner != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${audit.scorecard.owner.id})}"
+                                   th:text="${audit.scorecard.owner.fullName}"></a>
+                                <span th:if="${audit.scorecard == null or audit.scorecard.owner == null}" class="text-muted">-</span>
+                            </td>
                             <td th:text="${audit.previousStage != null ? audit.previousStage.name : 'Not assigned'}"></td>
                             <td th:text="${audit.newStage != null ? audit.newStage.name : '-'}"></td>
                             <td th:text="${audit.reportingDateStagesInitialized}"></td>
-                            <td th:text="${audit.actor != null ? audit.actor.fullName : '-'}"></td>
+                            <td>
+                                <a th:if="${audit.actor != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${audit.actor.id})}"
+                                   th:text="${audit.actor.fullName}"></a>
+                                <span th:if="${audit.actor == null}" class="text-muted">-</span>
+                            </td>
                             <td th:text="${audit.reason}"></td>
                         </tr>
                         </tbody>

@@ -65,7 +65,6 @@
                                         <th>Owner</th>
                                         <th>Reporting Period</th>
                                         <th>Status</th>
-                                        <th>Lock Status</th>
                                         <th>Workflow Stage</th>
                                         <th>Workflow Status</th>
                                         <th>Last Updated</th>
@@ -77,19 +76,23 @@
                                     <tr th:each="scorecard :${scorecards}"
                                         th:with="workflowStage=${scorecard.approvalStage},
                                                  workflowStatus=${scorecard.approvalStage != null ? scorecard.approvalStage.statusCode : null}">
-                                        <td th:text="${scorecard.owner?.fullName}"></td>
-                                        <td th:text="${scorecard.reportingPeriod?.startDate} +' - '+ ${scorecard.reportingPeriod?.endDate}"></td>
+                                        <td>
+                                            <a th:if="${scorecard.owner != null}"
+                                               class="entity-link"
+                                               th:href="@{/accounts/view-account/{id}(id=${scorecard.owner.id})}"
+                                               th:text="${scorecard.owner.fullName}"></a>
+                                            <span th:if="${scorecard.owner == null}" class="text-muted">Owner unavailable</span>
+                                        </td>
+                                        <td>
+                                            <a th:if="${scorecard.reportingPeriod != null}"
+                                               class="entity-link"
+                                               th:href="@{/reporting-periods/reporting-dates/{id}(id=${scorecard.reportingPeriod.id})}"
+                                               th:text="${scorecard.reportingPeriod.startDate + ' - ' + scorecard.reportingPeriod.endDate}"></a>
+                                        </td>
                                         <td>
                                             <div th:switch="${scorecard.status}">
                                                 <label class="label label-primary" th:case="ACTIVE" th:text="${scorecard.status}"></label>
                                                 <label class="label label-danger" th:case="IN_ACTIVE" th:text="${scorecard.status}"></label>
-                                                <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div th:switch="${scorecard.lockStatus}">
-                                                <label class="label label-primary" th:case="OPEN" th:text="${scorecard.lockStatus}"></label>
-                                                <label class="label label-danger" th:case="LOCKED" th:text="${scorecard.lockStatus}"></label>
                                                 <label class="label label-danger" th:case="*">UNKNOWN STATUS</label>
                                             </div>
                                         </td>
@@ -104,24 +107,30 @@
                                         <td th:text="${scorecard.lastUpdate}"></td>
                                         <td th:text="${scorecard.date}"></td>
                                         <td>
-                                            <span th:if="${scorecard.status == 'ACTIVE'}">
-                                                <a th:if="${scorecardCaptureScoresAllowed != null and scorecardCaptureScoresAllowed[scorecard.id]}" th:href="@{/scorecards/capture-scores/{id}(id=${scorecard.id})}">
-                                                   <button class="btn btn-success btn-sm">Capture Scores</button>
-                                                </a>
-                                                <span>
-                                                    <a th:if="${scorecardEditTargetsAllowed != null and scorecardEditTargetsAllowed[scorecard.id]}" th:href="@{/scorecards/capture-targets/{id}(id=${scorecard.id})}">
-                                                    <button class="btn btn-success btn-sm">Edit Targets</button>
-                                                </a>
-                                                </span>
-                                            </span>
-                                            <a th:if="${activeReportingPeriod != null and scorecard.reportingPeriod != null and scorecard.reportingPeriod.id == activeReportingPeriod.id}"
-                                               th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}">
-                                                <button class="btn btn-success btn-sm" type="button">Clone Scorecard</button>
-                                            </a>
-                                            <a th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}">
-                                                <button class="btn btn-success btn-sm" type="button">View Scorecard</button>
-                                            </a>
-                                            <a th:if="${scorecardViewReportAllowed != null and scorecardViewReportAllowed[scorecard.id]}" th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}" class="btn btn-success btn-sm" type="button">View Report</a>
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-primary btn-sm dropdown-toggle"
+                                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                    Actions
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right">
+                                                    <a class="dropdown-item"
+                                                       th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id})}">View Scorecard</a>
+                                                    <div class="dropdown-divider"
+                                                         th:if="${scorecardOperationOptions != null and !#lists.isEmpty(scorecardOperationOptions)}"></div>
+                                                    <a class="dropdown-item"
+                                                       th:each="operation : ${scorecardOperationOptions}"
+                                                       th:href="@{/scorecards/view-scorecard/{id}(id=${scorecard.id},operation=${operation.value})}"
+                                                       th:text="${operation.label}">Scorecard Operation</a>
+                                                    <div class="dropdown-divider"
+                                                         th:if="${activeReportingPeriod != null and scorecard.reportingPeriod != null and scorecard.reportingPeriod.id == activeReportingPeriod.id}"></div>
+                                                    <a class="dropdown-item"
+                                                       th:if="${activeReportingPeriod != null and scorecard.reportingPeriod != null and scorecard.reportingPeriod.id == activeReportingPeriod.id}"
+                                                       th:href="@{/scorecards/clone-scorecard/{id}(id=${scorecard.id})}">Clone Scorecard</a>
+                                                    <a class="dropdown-item"
+                                                       th:if="${scorecardViewReportAllowed != null and scorecardViewReportAllowed[scorecard.id]}"
+                                                       th:href="@{/performance-review/download-pdf/{id}(id=${scorecard.id})}">View Report</a>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
 
@@ -176,23 +185,23 @@
                 {extend: 'csv',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6]
                     }},
                 {extend: 'excel',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6]
                     }},
                 {extend: 'pdf',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6]
                     }},
 
                 {extend: 'print',
                     title: 'System Users',
                     exportOptions: {
-                        columns: [0,1,2,3,4,5,6,7]
+                        columns: [0,1,2,3,4,5,6]
                     },
                     customize: function (win){
                         $(win.document.body).addClass('white-bg');

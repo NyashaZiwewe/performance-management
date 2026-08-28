@@ -12,6 +12,6 @@ public interface ReportingPeriodRepository extends JpaRepository<ReportingPeriod
     List<ReportingPeriod> findAllReportingPeriodsByClientId(long clientId);
     ReportingPeriod findReportingPeriodById(long id);
 
-    ReportingPeriod findReportingPeriodByStatus(String status);
-    ReportingPeriod findReportingPeriodByClientIdAndStatus(long clientId, String status);
+    List<ReportingPeriod> findReportingPeriodsByStatusOrderByStartDateDescEndDateDescIdDesc(String status);
+    List<ReportingPeriod> findReportingPeriodsByClientIdAndStatusOrderByStartDateDescEndDateDescIdDesc(long clientId, String status);
 }

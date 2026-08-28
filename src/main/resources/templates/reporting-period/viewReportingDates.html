@@ -45,7 +45,10 @@
         <div class="col-12 ">
           <div class="ibox ">
             <div class="ibox-title">
-              <h4>Reporting Period : <span th:text="${reportingPeriod.startDate} + ' - ' + ${reportingPeriod.endDate}" class="text-success"></span></h4>
+              <h4>Reporting Period :
+                <a class="text-success entity-link" th:href="@{/reporting-periods/reporting-dates/{id}(id=${reportingPeriod.id})}"
+                   th:text="${reportingPeriod.startDate + ' - ' + reportingPeriod.endDate}"></a>
+              </h4>
               <div class="ibox-tools">
                 <a class="btn btn-default btn-sm" th:href="@{/reporting-periods}">
                   <i class="fa fa-arrow-left"></i> Reporting Periods
@@ -63,7 +66,7 @@
                   Reporting dates without configured activity periods continue using the existing workflow until periods are added.
                 </div>
                 <div class="table-responsive" th:fragement="administration">
-                  <table class="table table-striped table-bordered table-hover transactionsDataTable nowrap">
+                  <table class="table table-striped table-bordered table-hover nowrap">
                     <thead>
                     <tr>
                       <th>Reporting Date</th>
@@ -76,7 +79,11 @@
                     </thead>
                     <tbody>
                     <tr th:each="reportingDate, stat :${reportingDateList}">
-                      <td th:text="${reportingDate.endDate}"></td>
+                      <td>
+                        <a class="entity-link"
+                           th:href="@{/reporting-periods/reporting-dates/{id}/activity-periods(id=${reportingDate.id})}"
+                           th:text="${reportingDate.endDate}"></a>
+                      </td>
                       <td>
                         <span class="label label-primary"
                               th:if="${reportingDate.status != null and (reportingDate.status.equalsIgnoreCase('OPEN') or reportingDate.status.equalsIgnoreCase('ACTIVE'))}"

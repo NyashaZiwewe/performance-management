@@ -109,9 +109,7 @@ public class ScorecardResource {
         if (!hasText(scorecard.getApprovalStatus())) {
             scorecard.setApprovalStatus(workflow.getNewStatus());
         }
-        if (!hasText(scorecard.getLockStatus())) {
-            scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
-        }
+        scorecard.setLockStatus(PMConstants.LOCK_STATUS_OPEN);
 
         Scorecard savedScorecard = scorecardService.saveScorecard(scorecard);
         return ResponseEntity.status(HttpStatus.CREATED).body(CommonResponse.<Scorecard>builder()
@@ -160,10 +158,6 @@ public class ScorecardResource {
         if (hasText(payload.getApprovalStatus())) {
             scorecard.setApprovalStatus(payload.getApprovalStatus());
         }
-        if (hasText(payload.getLockStatus())) {
-            scorecard.setLockStatus(payload.getLockStatus());
-        }
-
         Scorecard updatedScorecard = scorecardService.saveScorecard(scorecard);
         return ResponseEntity.ok(CommonResponse.<Scorecard>builder()
                 .isSuccess(true)
@@ -181,11 +175,6 @@ public class ScorecardResource {
     @PutMapping("/{id}/approval-status")
     public ResponseEntity<CommonResponse<Scorecard>> updateApprovalStatus(@PathVariable long id, @RequestBody StatusUpdateWrapper wrapper) {
         return updateSingleStatusField(id, wrapper, "approvalStatus");
-    }
-
-    @PutMapping("/{id}/lock-status")
-    public ResponseEntity<CommonResponse<Scorecard>> updateLockStatus(@PathVariable long id, @RequestBody StatusUpdateWrapper wrapper) {
-        return updateSingleStatusField(id, wrapper, "lockStatus");
     }
 
     @GetMapping("/{id}/goals")
@@ -555,8 +544,7 @@ public class ScorecardResource {
 
         String recordStatus = "status".equals(field) ? wrapper.getStatus().trim() : null;
         String approvalStatus = "approvalStatus".equals(field) ? wrapper.getStatus().trim() : null;
-        String lockStatus = "lockStatus".equals(field) ? wrapper.getStatus().trim() : null;
-        scorecardLifecycleService.applyStatusTransition(scorecard, recordStatus, approvalStatus, lockStatus);
+        scorecardLifecycleService.applyStatusTransition(scorecard, recordStatus, approvalStatus);
 
         Scorecard updatedScorecard = scorecardService.saveScorecard(scorecard);
         return ResponseEntity.ok(CommonResponse.<Scorecard>builder()

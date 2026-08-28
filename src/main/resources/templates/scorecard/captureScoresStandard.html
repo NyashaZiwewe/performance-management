@@ -173,7 +173,12 @@
 	                                                                                         th:with="scoreEvidence=${score.reportingDate == null ? null : row.evidenceByReportingDate[score.reportingDate.id]},
 	                                                                                                  scoreEvidenceLink=${scoreEvidence != null ? scoreEvidence.evidence : score.evidence},
 	                                                                                                  scoreAttachmentName=${scoreEvidence != null ? scoreEvidence.attachmentName : score.attachmentName}">
-                                                                                         <td th:text="${score.reportingDate?.endDate}"></td>
+	                                                                                         <td>
+                                                                                             <a th:if="${score.reportingDate != null}"
+                                                                                                class="entity-link"
+                                                                                                th:href="@{/reporting-periods/reporting-dates/{id}/activity-periods(id=${score.reportingDate.id})}"
+                                                                                                th:text="${score.reportingDate.endDate}"></a>
+                                                                                         </td>
                                                                                          <td th:text="${target.baseTarget}"></td>
                                                                                          <td th:text="${target.stretchTarget}"></td>
                                                                                          <td th:text="${score.actual}"></td>
@@ -262,7 +267,11 @@
                                 <form th:action="@{/scorecards/} + ${url}" method="post" th:object="${scorecard}"
                                       th:onsubmit="${selfAssessmentPipRequired} ? 'return validateSelfAssessmentPipSubmission();' : null">
                                     <fieldset class="border p-2" th:attr="disabled=${scoreCaptureAllowed == false ? 'disabled' : null}">
-                                        <legend class="w-auto"><span th:text="${reportingPeriod.startDate +' - '+ reportingPeriod.endDate}"></span></legend>
+                                        <legend class="w-auto">
+                                            <a class="entity-link"
+                                               th:href="@{/reporting-periods/reporting-dates/{id}(id=${reportingPeriod.id})}"
+                                               th:text="${reportingPeriod.startDate + ' - ' + reportingPeriod.endDate}"></a>
+                                        </legend>
                                         <div class="row table-responsive">
                                             <table class="table">
                                                 <thead>

@@ -70,16 +70,30 @@
                                     </thead>
                                     <tbody>
                                     <tr th:each="plan, stat :${plansList}">
-                                        <td th:text="${plan.name}"></td>
+                                        <td>
+                                            <a class="entity-link"
+                                               th:href="@{/action-plans/view-plan/{id}(id=${plan.id})}"
+                                               th:text="${plan.name}"></a>
+                                        </td>
                                         <td th:text="${plan.description}"></td>
                                         <td th:text="${plan.measureOfSuccess}"></td>
-                                        <td th:text="${plan.reportingPeriod?.startDate +' - '+ plan.reportingPeriod?.endDate}"></td>
+                                        <td>
+                                            <a th:if="${plan.reportingPeriod != null}"
+                                               class="entity-link"
+                                               th:href="@{/reporting-periods/reporting-dates/{id}(id=${plan.reportingPeriod.id})}"
+                                               th:text="${plan.reportingPeriod.startDate + ' - ' + plan.reportingPeriod.endDate}"></a>
+                                        </td>
                                         <td th:text="${plan.startDate}"></td>
                                         <td th:text="${plan.endDate}"></td>
                                         <td>
                                             <span class="pie" th:text="${plan.progress} +','+ ${100 - plan.progress}"></span>
                                         </td>
-                                        <td th:text="${plan.manager?.fullName}"></td>
+                                        <td>
+                                            <a th:if="${plan.manager != null}"
+                                               class="entity-link"
+                                               th:href="@{/accounts/view-account/{id}(id=${plan.manager.id})}"
+                                               th:text="${plan.manager.fullName}"></a>
+                                        </td>
                                         <td>
                                             <div th:switch="${plan.status}">
                                                 <label class="label label-primary" th:case="ACTIVE" th:text="${plan.status}"></label>

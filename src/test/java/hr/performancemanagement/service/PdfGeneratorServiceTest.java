@@ -46,11 +46,13 @@ class PdfGeneratorServiceTest {
         Context context = new Context();
         Map<String, Object> department = mapOf("name", "Corporate Services");
         Map<String, Object> owner = mapOf(
+                "id", 10L,
                 "fullName", "Test Employee",
                 "position", "Performance Analyst",
                 "department", department
         );
         Map<String, Object> reportingPeriod = mapOf(
+                "id", 20L,
                 "startDate", "2026-01-01",
                 "endDate", "2026-12-31"
         );

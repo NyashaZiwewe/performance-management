@@ -56,7 +56,12 @@
                 <div class="col-lg-12 ">
                     <div class="ibox ">
                         <div class="ibox-title">
-                            <h5>Performance Levels for <span class="text-success" th:text="${employee.fullName}"></span> Over time</h5>
+                            <h5>Performance Levels for
+                                <a class="text-success entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${employee.id})}"
+                                   th:text="${employee.fullName}"></a>
+                                Over time
+                            </h5>
                             <div class="ibox-tools">
 
                             </div>

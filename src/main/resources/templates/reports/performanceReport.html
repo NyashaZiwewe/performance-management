@@ -143,7 +143,11 @@
                             <table class="table" style="border: none; width: 100%">
                                 <tr>
                                     <th>Name</th>
-                                    <td th:text="${owner.fullName}"></td>
+                                    <td>
+                                        <a class="entity-link"
+                                           th:href="@{/accounts/view-account/{id}(id=${owner.id})}"
+                                           th:text="${owner.fullName}"></a>
+                                    </td>
                                     <th>Position</th>
                                     <td th:text="${owner.position}"></td>
                                 </tr>
@@ -151,7 +155,12 @@
                                     <th>Date</th>
                                     <td th:text="${endDate}"></td>
                                     <th>Department</th>
-                                    <td th:text="${owner.department?.name}"></td>
+                                    <td>
+                                        <a th:if="${owner.department != null}"
+                                           class="entity-link"
+                                           th:href="@{/departments}"
+                                           th:text="${owner.department.name}"></a>
+                                    </td>
                                 </tr>
                             </table>
                         </div>
@@ -454,7 +463,11 @@
                             </thead>
                             <tbody>
                             <tr th:each="actionPlan : ${actionPlans}">
-                                <td th:text="${actionPlan.name}"></td>
+                                <td>
+                                    <a class="entity-link"
+                                       th:href="@{/action-plans/view-plan/{id}(id=${actionPlan.id})}"
+                                       th:text="${actionPlan.name}"></a>
+                                </td>
                                 <td th:text="${actionPlan.description}"></td>
                                 <td th:text="${actionPlan.measureOfSuccess}"></td>
                                 <td th:text="${#numbers.formatDecimal(actionPlan.progress, 0, 0) + '%'}"></td>

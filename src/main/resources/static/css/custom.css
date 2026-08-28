@@ -1375,3 +1375,16 @@ html.theme-dark body .dashboard-stat-neutral {
     margin-top: 6px;
     text-align: left;
 }
+
+a.entity-link {
+    color: inherit !important;
+    text-decoration: none;
+}
+
+a.entity-link:hover,
+a.entity-link:focus {
+    color: inherit !important;
+    text-decoration: underline;
+    text-decoration-color: rgba(24, 50, 71, 0.35);
+    text-underline-offset: 2px;
+}

@@ -161,20 +161,19 @@ public class HomeController {
                 scorecardService.getScoresByReportingDatesAndScorecardIds(reportingDates, scorecards);
 
         int scorecardTotal = scorecards.size();
-        int lockedScorecards = 0;
+        int inProgressScorecards = 0;
         int pendingApprovalScorecards = 0;
         int completedApprovalScorecards = 0;
         for (Scorecard scorecard : scorecards) {
             if (scorecard == null) {
                 continue;
             }
-            if ("LOCKED".equalsIgnoreCase(safeText(scorecard.getLockStatus()))) {
-                lockedScorecards++;
-            }
             if (isCompletedApprovalStatus(scorecard.getApprovalStatus())) {
                 completedApprovalScorecards++;
-            } else {
+            } else if (isOpenOrPendingApprovalStatus(scorecard.getApprovalStatus())) {
                 pendingApprovalScorecards++;
+            } else {
+                inProgressScorecards++;
             }
         }
 
@@ -349,7 +348,7 @@ public class HomeController {
         modelAndView.addObject("dashboardScorecardTotal", scorecardTotal);
         modelAndView.addObject("dashboardScorecardPending", pendingApprovalScorecards);
         modelAndView.addObject("dashboardScorecardCompleted", completedApprovalScorecards);
-        modelAndView.addObject("dashboardScorecardLocked", lockedScorecards);
+        modelAndView.addObject("dashboardScorecardInProgress", inProgressScorecards);
         modelAndView.addObject("dashboardPassCount", pass);
         modelAndView.addObject("dashboardFailCount", fail);
         modelAndView.addObject("dashboardNotScoredCount", notScored);
@@ -564,7 +563,7 @@ public class HomeController {
         modelAndView.addObject("dashboardScorecardTotal", 0);
         modelAndView.addObject("dashboardScorecardPending", 0);
         modelAndView.addObject("dashboardScorecardCompleted", 0);
-        modelAndView.addObject("dashboardScorecardLocked", 0);
+        modelAndView.addObject("dashboardScorecardInProgress", 0);
         modelAndView.addObject("dashboardPassCount", 0);
         modelAndView.addObject("dashboardFailCount", 0);
         modelAndView.addObject("dashboardNotScoredCount", 0);
@@ -1086,6 +1085,14 @@ public class HomeController {
     private boolean isCompletedApprovalStatus(String status) {
         String normalized = safeText(status).toUpperCase(Locale.ENGLISH);
         return "MODERATED_BY_HR".equals(normalized) || "CLOSED".equals(normalized);
+    }
+
+    private boolean isOpenOrPendingApprovalStatus(String status) {
+        String normalized = safeText(status).toUpperCase(Locale.ENGLISH);
+        return normalized.isEmpty()
+                || PMConstants.APPROVAL_STATUS_NEW.equals(normalized)
+                || PMConstants.APPROVAL_STATUS_PENDING_APPROVAL.equals(normalized)
+                || normalized.contains("REJECTED");
     }
 
     private double safeScore(Double value) {

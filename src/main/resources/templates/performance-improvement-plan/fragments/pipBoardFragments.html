@@ -5,9 +5,16 @@
 <li th:fragment="planCard(plan, cardClass)" th:class="${cardClass}" th:id="${plan.id}"
     onmouseleave="updatePerformanceImprovementPlanStatus(this.id, this.parentElement.id);">
     <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
-        <span th:text="${plan.agreedAction}"></span>
+        <a class="entity-link"
+           th:href="@{/performance-improvement-plans/view-plan/{id}(id=${plan.id})}"
+           th:text="${plan.agreedAction}"
+           onclick="event.stopPropagation();"></a>
         <div class="agile-detail">
-            <a class="float-right btn btn-xs btn-white" th:text="${plan.employee?.initials}">NDZ</a>
+            <a class="float-right btn btn-xs btn-white"
+               th:if="${plan.employee != null}"
+               th:href="@{/accounts/view-account/{id}(id=${plan.employee.id})}"
+               th:text="${plan.employee.initials}"
+               onclick="event.stopPropagation();">NDZ</a>
             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
         </div>
     </div>

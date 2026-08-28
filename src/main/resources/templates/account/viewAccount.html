@@ -54,11 +54,23 @@
                     </tr>
                     <tr>
                         <th>Office Location</th>
-                        <td th:text="${account.division?.name}"></td>
+                        <td>
+                            <a th:if="${account.division != null}"
+                               class="entity-link"
+                               th:href="@{/divisions}"
+                               th:text="${account.division.name}"></a>
+                            <span th:if="${account.division == null}" class="text-muted">Not assigned</span>
+                        </td>
                     </tr>
                     <tr>
                         <th>Department</th>
-                        <td th:text="${account.department?.name}"></td>
+                        <td>
+                            <a th:if="${account.department != null}"
+                               class="entity-link"
+                               th:href="@{/departments}"
+                               th:text="${account.department.name}"></a>
+                            <span th:if="${account.department == null}" class="text-muted">Not assigned</span>
+                        </td>
                     </tr>
                     <tr>
                         <th>Account Type</th>
@@ -67,9 +79,12 @@
                     <tr>
                         <th>Supervisor</th>
                         <td>
-                            <a th:href="@{/accounts/view-account/} + ${account.supervisor?.id}">
-                                <span  th:text="${account.supervisor?.fullName}"></span>
+                            <a th:if="${account.supervisor != null}"
+                               class="entity-link"
+                               th:href="@{/accounts/view-account/{id}(id=${account.supervisor.id})}">
+                                <span th:text="${account.supervisor.fullName}"></span>
                             </a>
+                            <span th:if="${account.supervisor == null}" class="text-muted">Not assigned</span>
                         </td>
                     </tr>
                     <tr>

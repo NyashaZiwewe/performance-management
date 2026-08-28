@@ -6,7 +6,7 @@ import hr.performancemanagement.entities.Scorecard;
 
 public interface ScorecardLifecycleService {
     void prepareScorecardForSave(Scorecard scorecard);
-    void applyStatusTransition(Scorecard scorecard, String recordStatus, String approvalStatus, String lockStatus);
+    void applyStatusTransition(Scorecard scorecard, String recordStatus, String approvalStatus);
     int closeScorecardsForInactiveReportingPeriod(ReportingPeriod reportingPeriod);
     int closeScorecardReportingDateStages(ReportingDate reportingDate);
 }

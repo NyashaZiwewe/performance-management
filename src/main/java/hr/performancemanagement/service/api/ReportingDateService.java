@@ -9,6 +9,7 @@ public interface ReportingDateService {
     ReportingDate getActiveReportingDate();
     List<ReportingDate> listOpenOrActiveReportingDates(long clientId);
     boolean hasMultipleOpenOrActiveReportingDates(long clientId);
+    void validateSingleOpenOrActiveReportingDate(long clientId);
     boolean isReportingDateOpen(ReportingDate reportingDate);
     List<ReportingDate> listAllReportingDates(ReportingPeriod reportingPeriod);
     long countReportingDates(long reportingPeriodId);

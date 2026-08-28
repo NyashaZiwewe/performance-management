@@ -236,7 +236,7 @@
                     <span class="dashboard-metric-icon"><i class="fa fa-balance-scale"></i></span>
                     <span class="dashboard-metric-title">Scorecards</span>
                     <span class="dashboard-metric-value" th:text="${dashboardScorecardTotal}">0</span>
-                    <span class="dashboard-metric-detail" th:text="${dashboardScorecardPending + ' pending workflow'}">0 pending workflow</span>
+                    <span class="dashboard-metric-detail" th:text="${dashboardScorecardPending + ' open/pending workflow'}">0 open/pending workflow</span>
                 </a>
 
                 <a class="dashboard-metric-card" th:href="@{/performance-review/view-scores-select-year}">
@@ -394,7 +394,7 @@
                                 <td>Scorecards</td>
                                 <td th:text="${dashboardScorecardTotal}">0</td>
                                 <td th:text="${dashboardScorecardPending}">0</td>
-                                <td th:text="${dashboardScorecardLocked}">0</td>
+                                <td th:text="${dashboardScorecardInProgress}">0</td>
                                 <td th:text="${dashboardScorecardCompleted}">0</td>
                                 <td><a th:href="@{/scorecards(reportingPeriodId=${dashboardSelectedPeriodId})}">Open</a></td>
                             </tr>

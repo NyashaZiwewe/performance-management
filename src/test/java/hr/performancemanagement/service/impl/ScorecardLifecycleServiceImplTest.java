@@ -108,7 +108,7 @@ class ScorecardLifecycleServiceImplTest {
 
         assertEquals(1, closedCount);
         assertEquals(PMConstants.STATUS_IN_ACTIVE, activeScorecard.getStatus());
-        assertEquals(PMConstants.LOCK_STATUS_CLOSED, activeScorecard.getLockStatus());
+        assertEquals(PMConstants.LOCK_STATUS_OPEN, activeScorecard.getLockStatus());
         assertEquals(PMConstants.APPROVAL_STATUS_CLOSED, activeScorecard.getApprovalStatus());
         assertEquals(closedStage, activeScorecard.getApprovalStage());
         assertEquals(PMConstants.STATUS_IN_ACTIVE, stage.getStatus());
@@ -131,12 +131,29 @@ class ScorecardLifecycleServiceImplTest {
         scorecard.setReportingPeriod(reportingPeriod);
         scorecard.setClientId(3L);
 
-        service.applyStatusTransition(scorecard, null, PMConstants.APPROVAL_STATUS_CLOSED, null);
+        service.applyStatusTransition(scorecard, null, PMConstants.APPROVAL_STATUS_CLOSED);
 
         assertEquals(PMConstants.STATUS_IN_ACTIVE, scorecard.getStatus());
-        assertEquals(PMConstants.LOCK_STATUS_CLOSED, scorecard.getLockStatus());
+        assertEquals(PMConstants.LOCK_STATUS_OPEN, scorecard.getLockStatus());
         assertEquals(PMConstants.APPROVAL_STATUS_CLOSED, scorecard.getApprovalStatus());
         assertEquals(closedStage, scorecard.getApprovalStage());
+    }
+
+    @Test
+    void prepareScorecardForSaveDoesNotCloseScorecardFromLegacyLockStatus() {
+        ReportingPeriod reportingPeriod = reportingPeriod(10L, PMConstants.STATUS_ACTIVE, 3L);
+        when(reportingPeriodRepository.findReportingPeriodById(10L)).thenReturn(reportingPeriod);
+
+        Scorecard scorecard = new Scorecard();
+        scorecard.setStatus(PMConstants.STATUS_ACTIVE);
+        scorecard.setLockStatus(PMConstants.LOCK_STATUS_CLOSED);
+        scorecard.setReportingPeriod(reportingPeriod);
+        scorecard.setClientId(3L);
+
+        service.prepareScorecardForSave(scorecard);
+
+        assertEquals(PMConstants.STATUS_ACTIVE, scorecard.getStatus());
+        assertEquals(PMConstants.LOCK_STATUS_CLOSED, scorecard.getLockStatus());
     }
 
     private ReportingPeriod reportingPeriod(long id, String status, long clientId) {

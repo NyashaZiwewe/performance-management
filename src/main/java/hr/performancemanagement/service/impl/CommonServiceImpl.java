@@ -148,6 +148,9 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
     @Override
     public ReportingDate getActiveReportingDate(){
         long clientId = getConfiguredClientId();
+        if (hasMultipleOpenOrActiveReportingDates(clientId)) {
+            return null;
+        }
         List<ReportingDate> reportingDates = repository.findReportingDatesByReportingPeriod_ClientIdAndStatusInOrderByDateDescIdDesc(
                 clientId,
                 Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
@@ -220,8 +223,7 @@ public class CommonServiceImpl implements hr.performancemanagement.service.api.C
                     || matchesRole(contractRole, PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS)
                     || matchesStatus(approval_status, workflow.getNewStatus())
                     || matchesStatus(approval_status, workflow.getRejectedBySupervisorStatus()))
-                    && isScorecardInActiveReportingPeriod(scorecard)
-                    && PMConstants.LOCK_STATUS_OPEN.equalsIgnoreCase(scorecard.getLockStatus())){
+                    && isScorecardInActiveReportingPeriod(scorecard)){
                 if(isOwner(scorecard)
                         || PMConstants.HAS_SPECIAL_RIGHTS.equalsIgnoreCase(loggedUser.getSpecial())
                         || PMConstants.IS_ADMIN.equalsIgnoreCase(loggedUser.getAdmin())){

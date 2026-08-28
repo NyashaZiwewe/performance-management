@@ -24,7 +24,12 @@
                 <div class="ibox-content border-bottom col-12">
                     <div class="row">
                         <div class="col-lg-8">
-                            <h3 th:text="${assessment.employee?.fullName}"></h3>
+                            <h3>
+                                <a th:if="${assessment.employee != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${assessment.employee.id})}"
+                                   th:text="${assessment.employee.fullName}"></a>
+                            </h3>
                             <p>
                                 <strong>Performance Period:</strong>
                                 <span th:text="${#strings.isEmpty(assessment.performancePeriod) ? (assessment.startDate + ' - ' + assessment.endDate) : assessment.performancePeriod}"></span>
@@ -232,7 +237,12 @@
                             <td th:text="${item.date}"></td>
                             <td th:text="${item.workflowStepName}"></td>
                             <td th:text="${item.action}"></td>
-                            <td th:text="${item.actor?.fullName}"></td>
+                            <td>
+                                <a th:if="${item.actor != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${item.actor.id})}"
+                                   th:text="${item.actor.fullName}"></a>
+                            </td>
                             <td th:text="${item.remarks}"></td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(approvalHistory)}">

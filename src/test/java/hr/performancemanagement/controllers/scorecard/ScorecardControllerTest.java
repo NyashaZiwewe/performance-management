@@ -35,6 +35,7 @@ import hr.performancemanagement.service.api.SystemSettingService;
 import hr.performancemanagement.service.api.TargetService;
 import hr.performancemanagement.service.api.ScoreService.StandardScorecardScoreService;
 import hr.performancemanagement.service.api.ScoreService.ValueBasedScoreService;
+import hr.performancemanagement.utils.PortletUtils.PortletUtils;
 import hr.performancemanagement.utils.constants.PMConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,10 +43,13 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -198,6 +202,42 @@ class ScorecardControllerTest {
         verify(scorecardService, never()).getActiveEmployeeScorecardByOwner(any());
     }
 
+    @Test
+    void cloneScorecardSaveOwnerRejectsMultipleActiveReportingPeriodsWithClearMessage() {
+        Account owner = account("Source Employee", "source@example.com");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        when(accountService.getAccountById(1L)).thenReturn(owner);
+        when(commonService.getConfiguredClientId()).thenReturn(7L);
+        doThrow(new IllegalArgumentException("Multiple active reporting periods were detected: 2026-01-01 - 2026-12-31 (ID 10)."))
+                .when(reportingPeriodService)
+                .validateSingleActiveReportingPeriod(7L);
+
+        String result = controller.cloneScorecardSaveOwner(request, 1L);
+
+        assertEquals("redirect:/scorecards/clone-scorecard-select-owner", result);
+        assertTrue(errorMessages(request).get(0).contains("Scorecard cloning is blocked"));
+        assertTrue(errorMessages(request).get(0).contains("Multiple active reporting periods were detected"));
+        verify(scorecardService, never()).getScorecardByOwnerAndReportingPeriod(any(), any());
+    }
+
+    @Test
+    void cloneScorecardSaveOwnerRejectsMultipleOpenReportingDatesWithClearMessage() {
+        Account owner = account("Source Employee", "source@example.com");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        when(accountService.getAccountById(1L)).thenReturn(owner);
+        when(commonService.getConfiguredClientId()).thenReturn(7L);
+        doThrow(new IllegalArgumentException("Multiple OPEN/ACTIVE reporting dates were detected: 2026-03-31 (ID 20)."))
+                .when(reportingDateService)
+                .validateSingleOpenOrActiveReportingDate(7L);
+
+        String result = controller.cloneScorecardSaveOwner(request, 1L);
+
+        assertEquals("redirect:/scorecards/clone-scorecard-select-owner", result);
+        assertTrue(errorMessages(request).get(0).contains("Scorecard cloning is blocked"));
+        assertTrue(errorMessages(request).get(0).contains("Multiple OPEN/ACTIVE reporting dates were detected"));
+        verify(scorecardService, never()).getScorecardByOwnerAndReportingPeriod(any(), any());
+    }
+
     private Scorecard scorecard() {
         ReportingPeriod reportingPeriod = reportingPeriod();
 
@@ -227,6 +267,11 @@ class ScorecardControllerTest {
         account.setFullName(fullName);
         account.setEmail(email);
         return account;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> errorMessages(MockHttpServletRequest request) {
+        return (List<String>) request.getSession().getAttribute(PortletUtils.ERROR_MSGS);
     }
 
     private ReportingPeriod reportingPeriod() {

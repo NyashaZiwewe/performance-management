@@ -47,7 +47,13 @@
                                     <tbody>
                                     <tr th:each="department : ${departments}">
                                         <td th:text="${department.name}"></td>
-                                        <td th:text="${department.manager > 0 and managerNames[department.manager] != null ? managerNames[department.manager] : 'Not assigned'}"></td>
+                                        <td>
+                                            <a th:if="${department.manager > 0 and managerNames[department.manager] != null}"
+                                               class="entity-link"
+                                               th:href="@{/accounts/view-account/{id}(id=${department.manager})}"
+                                               th:text="${managerNames[department.manager]}"></a>
+                                            <span th:if="${department.manager <= 0 or managerNames[department.manager] == null}" class="text-muted">Not assigned</span>
+                                        </td>
                                         <td th:if="${canManageDepartments}">
                                             <a data-toggle="modal" th:data-target="'#editDepartmentModal' + ${department.id}">
                                                 <button class="btn btn-success btn-sm" title="Edit" type="button">

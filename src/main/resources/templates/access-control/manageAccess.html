@@ -170,12 +170,20 @@
                                 <thead><tr><th>User</th><th>Role</th><th>Scope</th><th>Validity</th><th>Status</th><th></th></tr></thead>
                                 <tbody>
                                 <tr th:each="assignment : ${assignments}">
-                                    <td th:text="${assignment.account.fullName}"></td>
+                                    <td>
+                                        <a class="entity-link"
+                                           th:href="@{/accounts/view-account/{id}(id=${assignment.account.id})}"
+                                           th:text="${assignment.account.fullName}"></a>
+                                    </td>
                                     <td th:text="${assignment.accessRole.name}"></td>
                                     <td>
                                         <span th:text="${assignment.scopeType}"></span>
-                                        <span th:if="${assignment.division != null}" th:text="${': ' + assignment.division.name}"></span>
-                                        <span th:if="${assignment.department != null}" th:text="${': ' + assignment.department.name}"></span>
+                                        <span th:if="${assignment.division != null}">:
+                                            <a class="entity-link" th:href="@{/divisions}" th:text="${assignment.division.name}"></a>
+                                        </span>
+                                        <span th:if="${assignment.department != null}">:
+                                            <a class="entity-link" th:href="@{/departments}" th:text="${assignment.department.name}"></a>
+                                        </span>
                                     </td>
                                     <td>
                                         <span th:text="${assignment.effectiveFrom != null ? assignment.effectiveFrom : 'Immediately'}"></span>
@@ -208,9 +216,21 @@
                         <tr th:each="audit : ${accessAudit}">
                             <td th:text="${audit.dateCreated}"></td>
                             <td th:text="${audit.action}"></td>
-                            <td th:text="${audit.account != null ? audit.account.fullName : '-'}"></td>
+                            <td>
+                                <a th:if="${audit.account != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${audit.account.id})}"
+                                   th:text="${audit.account.fullName}"></a>
+                                <span th:if="${audit.account == null}" class="text-muted">-</span>
+                            </td>
                             <td th:text="${audit.accessRole != null ? audit.accessRole.name : '-'}"></td>
-                            <td th:text="${audit.actor != null ? audit.actor.fullName : '-'}"></td>
+                            <td>
+                                <a th:if="${audit.actor != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${audit.actor.id})}"
+                                   th:text="${audit.actor.fullName}"></a>
+                                <span th:if="${audit.actor == null}" class="text-muted">-</span>
+                            </td>
                             <td th:text="${audit.reason}"></td>
                         </tr>
                         </tbody>

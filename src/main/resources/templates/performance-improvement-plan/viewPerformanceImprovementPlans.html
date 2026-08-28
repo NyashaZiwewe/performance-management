@@ -73,7 +73,12 @@
                                     </thead>
                                     <tbody>
                                     <tr th:each="plan, stat :${plansList}">
-                                        <td th:text="${plan.employee?.fullName}"></td>
+                                        <td>
+                                            <a th:if="${plan.employee != null}"
+                                               class="entity-link"
+                                               th:href="@{/accounts/view-account/{id}(id=${plan.employee.id})}"
+                                               th:text="${plan.employee.fullName}"></a>
+                                        </td>
                                         <td th:text="${plan.targetArea}"></td>
                                         <td th:text="${plan.concern}"></td>
                                         <td th:text="${plan.expectedStandard}"></td>

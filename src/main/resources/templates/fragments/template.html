@@ -629,11 +629,6 @@
             </div>
         </div>
         <div class="alerts" th:fragment="alerts" aria-live="polite" aria-atomic="true">
-            <div th:class="${activeReportingActivityAlertClass}"
-                 th:if="${activeReportingActivitySummary != null and !activeReportingActivitySummary.isEmpty()}">
-                <strong>Current reporting activity:</strong>
-                <span th:text="${activeReportingActivitySummary}">Activity period and cutoff</span>
-            </div>
             <div th:if="${errorMsgs != null }">
                 <div th:each="message: ${errorMsgs}">
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">

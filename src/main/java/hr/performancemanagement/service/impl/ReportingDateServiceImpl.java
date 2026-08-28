@@ -51,7 +51,7 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
             return null;
         }
         List<ReportingDate> activeReportingDates = listOpenOrActiveReportingDates(loggedUser.getClientId());
-        if (activeReportingDates.isEmpty()) {
+        if (activeReportingDates.size() != 1) {
             return null;
         }
         return activeReportingDates.get(0);
@@ -62,10 +62,7 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
         if (clientId <= 0) {
             return Collections.emptyList();
         }
-        List<ReportingDate> reportingDates = reportingDateRepository.findReportingDatesByReportingPeriod_ClientIdAndStatusInOrderByDateDescIdDesc(
-                clientId,
-                Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
-        );
+        List<ReportingDate> reportingDates = listOpenOrActiveReportingDatesForClient(clientId);
         List<ReportingDate> validReportingDates = new ArrayList<>();
         for (ReportingDate reportingDate : reportingDates) {
             if (isCurrentActiveReportingPeriod(reportingDate == null ? null : reportingDate.getReportingPeriod())) {
@@ -81,6 +78,21 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
             return false;
         }
         return listOpenOrActiveReportingDates(clientId).size() > 1;
+    }
+
+    @Override
+    public void validateSingleOpenOrActiveReportingDate(long clientId) {
+        if (clientId <= 0) {
+            return;
+        }
+        List<ReportingDate> reportingDates = listOpenOrActiveReportingDatesForClient(clientId);
+        if (reportingDates.size() > 1) {
+            throw new IllegalArgumentException(
+                    "Multiple OPEN/ACTIVE reporting dates were detected: "
+                            + summarizeReportingDates(reportingDates)
+                            + ". Only one reporting date may be OPEN/ACTIVE."
+            );
+        }
     }
 
     @Override
@@ -109,6 +121,35 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
                 reportingPeriod,
                 Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
         );
+        closeReportingDates(reportingDateList, keepId);
+    }
+
+    private void closeOpenReportingDatesForClient(ReportingPeriod reportingPeriod, long keepId) {
+        if (reportingPeriod == null || reportingPeriod.getClientId() <= 0) {
+            closeOpenReportingDates(reportingPeriod, keepId);
+            return;
+        }
+        List<ReportingDate> reportingDateList =
+                listOpenOrActiveReportingDatesForClient(reportingPeriod.getClientId());
+        closeReportingDates(reportingDateList, keepId);
+    }
+
+    private List<ReportingDate> listOpenOrActiveReportingDatesForClient(long clientId) {
+        if (clientId <= 0) {
+            return Collections.emptyList();
+        }
+        List<ReportingDate> reportingDates =
+                reportingDateRepository.findReportingDatesByReportingPeriod_ClientIdAndStatusInOrderByDateDescIdDesc(
+                        clientId,
+                        Arrays.asList(PMConstants.REPORTING_DATE_STATUS_OPEN, PMConstants.STATUS_ACTIVE)
+                );
+        return reportingDates == null ? Collections.<ReportingDate>emptyList() : reportingDates;
+    }
+
+    private void closeReportingDates(List<ReportingDate> reportingDateList, long keepId) {
+        if (reportingDateList == null || reportingDateList.isEmpty()) {
+            return;
+        }
         for(ReportingDate reportingDate: reportingDateList){
             if (keepId > 0 && reportingDate.getId() == keepId) {
                 continue;
@@ -117,6 +158,40 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
             reportingDateRepository.save(reportingDate);
             scorecardLifecycleService.closeScorecardReportingDateStages(reportingDate);
         }
+    }
+
+    private String summarizeReportingDates(List<ReportingDate> reportingDates) {
+        if (reportingDates == null || reportingDates.isEmpty()) {
+            return "none";
+        }
+        StringBuilder summary = new StringBuilder();
+        int displayed = 0;
+        for (ReportingDate reportingDate : reportingDates) {
+            if (reportingDate == null) {
+                continue;
+            }
+            if (displayed > 0) {
+                summary.append("; ");
+            }
+            summary.append(formatReportingDate(reportingDate));
+            displayed++;
+            if (displayed == 3 && reportingDates.size() > displayed) {
+                summary.append("; and ").append(reportingDates.size() - displayed).append(" more");
+                break;
+            }
+        }
+        return summary.length() == 0 ? "none" : summary.toString();
+    }
+
+    private String formatReportingDate(ReportingDate reportingDate) {
+        String endDate = StringUtils.hasText(reportingDate.getEndDate())
+                ? reportingDate.getEndDate().trim()
+                : "missing end date";
+        ReportingPeriod reportingPeriod = reportingDate.getReportingPeriod();
+        String period = reportingPeriod == null
+                ? ""
+                : ", period ID " + reportingPeriod.getId();
+        return endDate + " (ID " + reportingDate.getId() + period + ")";
     }
 
     @Override
@@ -149,7 +224,7 @@ public class ReportingDateServiceImpl implements hr.performancemanagement.servic
 
         if(PMConstants.REPORTING_DATE_STATUS_OPEN.equalsIgnoreCase(status)){
             validateOpenReportingDatePeriod(reportingPeriod);
-            closeOpenReportingDates(reportingPeriod, reportingDate.getId());
+            closeOpenReportingDatesForClient(reportingPeriod, reportingDate.getId());
         }
         ReportingDate savedReportingDate = reportingDateRepository.save(reportingDate);
         if (!PMConstants.REPORTING_DATE_STATUS_OPEN.equalsIgnoreCase(status)) {

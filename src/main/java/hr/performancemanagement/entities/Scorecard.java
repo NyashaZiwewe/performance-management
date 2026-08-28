@@ -59,8 +59,6 @@ public class Scorecard {
     @CreationTimestamp
     private Date date;
 
-    @NotBlank(message = "Lock status is required")
-    @Pattern(regexp = "OPEN|LOCKED|CLOSED", message = "Invalid lock status")
     private String lockStatus;
 
     public String getApprovalStatus() {

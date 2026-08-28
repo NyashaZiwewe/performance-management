@@ -243,9 +243,16 @@
                             <ul class="sortable-list connectList agile-list" id="todo">
                                 <li class="secondary-element" th:id="${plan.id}" onmouseleave="updateActionPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'todo']}" >
                                     <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
-                                        <span th:text="${plan.name}"></span>
+                                        <a class="entity-link"
+                                           th:href="@{/action-plans/view-plan/{id}(id=${plan.id})}"
+                                           th:text="${plan.name}"
+                                           onclick="event.stopPropagation();"></a>
                                         <div class="agile-detail">
-                                            <a class="float-right btn btn-xs btn-white" th:text="${plan.manager?.initials}">NDZ</a>
+                                            <a class="float-right btn btn-xs btn-white"
+                                               th:if="${plan.manager != null}"
+                                               th:href="@{/accounts/view-account/{id}(id=${plan.manager.id})}"
+                                               th:text="${plan.manager.initials}"
+                                               onclick="event.stopPropagation();">NDZ</a>
                                             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
                                         </div>
                                     </div>
@@ -500,9 +507,16 @@
                             <ul class="sortable-list connectList agile-list" id="inprogress">
                                 <li class="warning-element" th:id="${plan.id}" onmouseleave="updateActionPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'inprogress']}" >
                                     <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
-                                        <span th:text="${plan.name}"></span>
+                                        <a class="entity-link"
+                                           th:href="@{/action-plans/view-plan/{id}(id=${plan.id})}"
+                                           th:text="${plan.name}"
+                                           onclick="event.stopPropagation();"></a>
                                         <div class="agile-detail">
-                                            <a class="float-right btn btn-xs btn-white" th:text="${plan.manager?.initials}">NDZ</a>
+                                            <a class="float-right btn btn-xs btn-white"
+                                               th:if="${plan.manager != null}"
+                                               th:href="@{/accounts/view-account/{id}(id=${plan.manager.id})}"
+                                               th:text="${plan.manager.initials}"
+                                               onclick="event.stopPropagation();">NDZ</a>
                                             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
                                         </div>
                                     </div>
@@ -757,9 +771,16 @@
                             <ul class="sortable-list connectList agile-list" id="completed">
                                 <li class="success-element" th:id="${plan.id}" onmouseleave="updateActionPlanStatus(this.id, this.parentElement.id);" th:each="plan : ${plansList.?[#this.status eq 'completed']}" >
                                     <div data-toggle="modal" th:data-target="'#planModal'+ ${plan.id}">
-                                        <span th:text="${plan.name}"></span>
+                                        <a class="entity-link"
+                                           th:href="@{/action-plans/view-plan/{id}(id=${plan.id})}"
+                                           th:text="${plan.name}"
+                                           onclick="event.stopPropagation();"></a>
                                         <div class="agile-detail">
-                                            <a class="float-right btn btn-xs btn-white" th:text="${plan.manager?.initials}">NDZ</a>
+                                            <a class="float-right btn btn-xs btn-white"
+                                               th:if="${plan.manager != null}"
+                                               th:href="@{/accounts/view-account/{id}(id=${plan.manager.id})}"
+                                               th:text="${plan.manager.initials}"
+                                               onclick="event.stopPropagation();">NDZ</a>
                                             <i class="fa fa-clock-o"></i> <span th:text="${plan.endDate}"></span>
                                         </div>
                                     </div>

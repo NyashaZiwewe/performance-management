@@ -45,7 +45,10 @@
         <div class="col-12 ">
           <div class="ibox ">
             <div class="ibox-title">
-              <h4>Reporting Period : <span th:text="${reportingPeriod.startDate} + ' - ' + ${reportingPeriod.endDate}" class="text-success"></span></h4>
+              <h4>Reporting Period :
+                <a class="text-success entity-link" th:href="@{/reporting-periods/reporting-dates/{id}(id=${reportingPeriod.id})}"
+                   th:text="${reportingPeriod.startDate + ' - ' + reportingPeriod.endDate}"></a>
+              </h4>
               <div class="ibox-tools">
                 <a class="btn btn-default btn-sm" th:href="@{/reporting-periods}">
                   <i class="fa fa-arrow-left"></i> Reporting Periods

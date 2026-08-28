@@ -53,7 +53,7 @@ public class ScorecardLifecycleServiceImpl implements ScorecardLifecycleService 
         }
 
         scorecard.setStatus(normalizeRecordStatus(scorecard.getStatus()));
-        scorecard.setLockStatus(normalizeLockStatus(scorecard.getLockStatus()));
+        scorecard.setLockStatus(normalizeLegacyLockStatus(scorecard.getLockStatus()));
         if (scorecard.getReportingPeriod() != null && scorecard.getReportingPeriod().getId() > 0) {
             ReportingPeriod reportingPeriod = resolveReportingPeriod(scorecard.getReportingPeriod());
             scorecard.setReportingPeriod(reportingPeriod);
@@ -63,7 +63,7 @@ public class ScorecardLifecycleServiceImpl implements ScorecardLifecycleService 
     }
 
     @Override
-    public void applyStatusTransition(Scorecard scorecard, String recordStatus, String approvalStatus, String lockStatus) {
+    public void applyStatusTransition(Scorecard scorecard, String recordStatus, String approvalStatus) {
         if (scorecard == null) {
             throw new InvalidWorkflowStateException("Scorecard details are required.");
         }
@@ -73,23 +73,18 @@ public class ScorecardLifecycleServiceImpl implements ScorecardLifecycleService 
         if (StringUtils.hasText(approvalStatus)) {
             scorecard.setApprovalStatus(normalizeText(approvalStatus));
         }
-        if (StringUtils.hasText(lockStatus)) {
-            scorecard.setLockStatus(normalizeLockStatus(lockStatus));
-        }
 
         enforceScorecardConsistency(scorecard);
     }
 
     private void enforceScorecardConsistency(Scorecard scorecard) {
         String recordStatus = normalizeRecordStatus(scorecard.getStatus());
-        String lockStatus = normalizeLockStatus(scorecard.getLockStatus());
         String approvalStatus = normalizeText(scorecard.getApprovalStatus());
 
         scorecard.setStatus(recordStatus);
-        scorecard.setLockStatus(lockStatus);
+        scorecard.setLockStatus(normalizeLegacyLockStatus(scorecard.getLockStatus()));
 
         if (isTerminalRecordStatus(recordStatus)
-                || PMConstants.LOCK_STATUS_CLOSED.equalsIgnoreCase(lockStatus)
                 || PMConstants.APPROVAL_STATUS_CLOSED.equalsIgnoreCase(approvalStatus)) {
             closeScorecardFields(scorecard, resolveClosedStage(scorecard.getClientId()));
             return;
@@ -154,7 +149,7 @@ public class ScorecardLifecycleServiceImpl implements ScorecardLifecycleService 
             return;
         }
         scorecard.setStatus(PMConstants.STATUS_IN_ACTIVE);
-        scorecard.setLockStatus(PMConstants.LOCK_STATUS_CLOSED);
+        scorecard.setLockStatus(normalizeLegacyLockStatus(scorecard.getLockStatus()));
         if (closedStage != null) {
             scorecard.setApprovalStage(closedStage);
         }
@@ -288,11 +283,17 @@ public class ScorecardLifecycleServiceImpl implements ScorecardLifecycleService 
         return normalized;
     }
 
-    private String normalizeLockStatus(String status) {
+    private String normalizeLegacyLockStatus(String status) {
         if (!StringUtils.hasText(status)) {
             return PMConstants.LOCK_STATUS_OPEN;
         }
-        return status.trim().toUpperCase(Locale.ENGLISH);
+        String normalized = status.trim().toUpperCase(Locale.ENGLISH);
+        if (PMConstants.LOCK_STATUS_OPEN.equals(normalized)
+                || PMConstants.LOCK_STATUS_LOCKED.equals(normalized)
+                || PMConstants.LOCK_STATUS_CLOSED.equals(normalized)) {
+            return normalized;
+        }
+        return PMConstants.LOCK_STATUS_OPEN;
     }
 
     private boolean isTerminalRecordStatus(String status) {

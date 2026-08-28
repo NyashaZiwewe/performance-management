@@ -71,11 +71,30 @@
                                     </thead>
                                     <tbody>
                                     <tr th:each="account, stat :${accounts}">
-                                        <td th:text="${account.fullName}"></td>
+                                        <td>
+                                            <a class="entity-link"
+                                               th:href="@{/accounts/view-account/{id}(id=${account.id})}"
+                                               th:text="${account.fullName}"></a>
+                                        </td>
                                         <td th:text="${account.email}"></td>
-                                        <td th:text="${account.supervisor?.fullName}"></td>
-                                        <td th:text="${account.division?.name}"></td>
-                                        <td th:text="${account.department?.name}"></td>
+                                        <td>
+                                            <a th:if="${account.supervisor != null}"
+                                               class="entity-link"
+                                               th:href="@{/accounts/view-account/{id}(id=${account.supervisor.id})}"
+                                               th:text="${account.supervisor.fullName}"></a>
+                                        </td>
+                                        <td>
+                                            <a th:if="${account.division != null}"
+                                               class="entity-link"
+                                               th:href="@{/divisions}"
+                                               th:text="${account.division.name}"></a>
+                                        </td>
+                                        <td>
+                                            <a th:if="${account.department != null}"
+                                               class="entity-link"
+                                               th:href="@{/departments}"
+                                               th:text="${account.department.name}"></a>
+                                        </td>
                                         <td th:text="${account.position}"></td>
                                         <td th:text="${account.accountType}"></td>
                                         <td>

@@ -44,7 +44,12 @@
                         <tbody>
                         <tr th:each="assessment, stat : ${assessments}">
                             <td th:text="${stat.count}"></td>
-                            <td th:text="${assessment.employee?.fullName}"></td>
+                            <td>
+                                <a th:if="${assessment.employee != null}"
+                                   class="entity-link"
+                                   th:href="@{/accounts/view-account/{id}(id=${assessment.employee.id})}"
+                                   th:text="${assessment.employee.fullName}"></a>
+                            </td>
                             <td th:text="${#strings.isEmpty(assessment.performancePeriod) ? (assessment.startDate + ' - ' + assessment.endDate) : assessment.performancePeriod}"></td>
                             <td th:text="${assessment.status}"></td>
                             <td th:text="${assessment.currentStepName}"></td>

@@ -79,8 +79,17 @@
                                     </thead>
                                     <tbody>
                                     <tr th:each="gear :${gears}">
-                                        <td th:text="${gear.name}"></td>
-                                        <td th:text="${gear.reportingPeriod != null ? gear.reportingPeriod.startDate + ' - ' + gear.reportingPeriod.endDate : ''}"></td>
+                                        <td>
+                                            <a class="entity-link"
+                                               th:href="@{/gears/view-gear/{id}(id=${gear.id})}"
+                                               th:text="${gear.name}"></a>
+                                        </td>
+                                        <td>
+                                            <a th:if="${gear.reportingPeriod != null}"
+                                               class="entity-link"
+                                               th:href="@{/reporting-periods/reporting-dates/{id}(id=${gear.reportingPeriod.id})}"
+                                               th:text="${gear.reportingPeriod.startDate + ' - ' + gear.reportingPeriod.endDate}"></a>
+                                        </td>
                                         <td th:text="${gear.category}"></td>
                                         <td th:text="${gear.description}"></td>
 <!--                                        <td th:text="${perspective.graphColor}"></td>-->
