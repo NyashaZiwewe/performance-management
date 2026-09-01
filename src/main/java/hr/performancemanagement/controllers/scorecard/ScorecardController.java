@@ -360,6 +360,8 @@ public class ScorecardController {
     @Autowired
     private final ScorecardWorkflowService scorecardWorkflowService;
     @Autowired
+    private final ScorecardWorkflowStageService scorecardWorkflowStageService;
+    @Autowired
     private final ScorecardReportingDateStageService scorecardReportingDateStageService;
     @Autowired
     private final EvidenceRepository evidenceRepository;
@@ -377,7 +379,7 @@ public class ScorecardController {
     private final Environment environment;
 
 
-    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, SystemSettingService systemSettingService, ScorecardWorkflowService scorecardWorkflowService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, EvidenceService evidenceService, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
+    public ScorecardController(ReportingPeriodService reportingPeriodService, AccountService accountService, DepartmentService departmentService, ScorecardService scorecardService, PerspectiveService perspectiveService, GoalService goalService, TargetService targetService, GearService gearService, OutcomeService outcomeService, OutputService outputService, StrategicObjectiveService strategicObjectiveService, CommentService commentService, NotificationService notificationService, ApprovalService approvalService, ReportingDateService reportingDateService, StandardScorecardScoreService standardScorecardScoreService, ValueBasedScoreService valueBasedScoreService, ScorecardModelService scorecardModelService, CommonService commonService, SystemSettingService systemSettingService, ScorecardWorkflowService scorecardWorkflowService, ScorecardWorkflowStageService scorecardWorkflowStageService, ScorecardReportingDateStageService scorecardReportingDateStageService, EvidenceRepository evidenceRepository, EvidenceService evidenceService, CommentRepository commentRepository, ScoreRepository scoreRepository, OverallScoreService overallScoreService, OverallCommentService overallCommentService, Environment environment) {
         this.reportingPeriodService = reportingPeriodService;
         this.accountService = accountService;
         this.departmentService = departmentService;
@@ -399,6 +401,7 @@ public class ScorecardController {
         this.commonService = commonService;
         this.systemSettingService = systemSettingService;
         this.scorecardWorkflowService = scorecardWorkflowService;
+        this.scorecardWorkflowStageService = scorecardWorkflowStageService;
         this.scorecardReportingDateStageService = scorecardReportingDateStageService;
         this.evidenceRepository = evidenceRepository;
         this.evidenceService = evidenceService;
@@ -2990,6 +2993,10 @@ public class ScorecardController {
 
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getPendingApprovalStatus());
+        ScorecardWorkflowStage supervisorApprovalStage = scorecardWorkflowStageService.getWorkflowStageByRoleKey(PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+        if (supervisorApprovalStage != null) {
+            scorecard.setApprovalStage(supervisorApprovalStage);
+        }
         scorecardService.saveScorecard(scorecard);
         URL currentURL = new URL(commonService.getCurrentUrl(request).concat("/scorecards/view-scorecard/"+ scorecard.getId()));
         String recipient = supervisorEmail;
@@ -3558,6 +3565,10 @@ public class ScorecardController {
         String recipient = scorecard.getOwner().getEmail();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getApprovedBySupervisorStatus());
+        ScorecardWorkflowStage hrApprovalStage = scorecardWorkflowStageService.getWorkflowStageByRoleKey(PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_HR);
+        if (hrApprovalStage != null) {
+            scorecard.setApprovalStage(hrApprovalStage);
+        }
 
         try {
             scorecardService.saveScorecard(scorecard);
@@ -3625,6 +3636,10 @@ public class ScorecardController {
         String recipient = scorecard.getOwner().getEmail();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getRejectedBySupervisorStatus());
+        ScorecardWorkflowStage captureTargetsStage = scorecardWorkflowStageService.getWorkflowStageByRoleKey(PMConstants.SCORECARD_STAGE_CAPTURE_TARGETS);
+        if (captureTargetsStage != null) {
+            scorecard.setApprovalStage(captureTargetsStage);
+        }
 
         try{
             scorecardService.saveScorecard(scorecard);
@@ -3690,6 +3705,10 @@ public class ScorecardController {
         Account loggedUser = commonService.getLoggedUser();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getApprovedByHrStatus());
+        ScorecardWorkflowStage ownerScoringStage = scorecardWorkflowStageService.getWorkflowStageByRoleKey(PMConstants.SCORECARD_STAGE_OWNER_SCORING);
+        if (ownerScoringStage != null) {
+            scorecard.setApprovalStage(ownerScoringStage);
+        }
 
         try {
             scorecardService.saveScorecard(scorecard);
@@ -3761,6 +3780,10 @@ public class ScorecardController {
         String recipient = scorecard.getOwner().getSupervisor().getEmail();
         ScorecardWorkflowDefinition workflow = scorecardWorkflowService.getWorkflowDefinition();
         scorecard.setApprovalStatus(workflow.getRejectedByHrStatus());
+        ScorecardWorkflowStage supervisorApprovalStage = scorecardWorkflowStageService.getWorkflowStageByRoleKey(PMConstants.SCORECARD_STAGE_TARGETS_APPROVAL_BY_SUPERVISOR);
+        if (supervisorApprovalStage != null) {
+            scorecard.setApprovalStage(supervisorApprovalStage);
+        }
         Account loggedUser = commonService.getLoggedUser();
 
         try{

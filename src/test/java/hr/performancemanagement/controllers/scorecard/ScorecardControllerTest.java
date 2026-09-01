@@ -30,6 +30,7 @@ import hr.performancemanagement.service.api.ScorecardModelService;
 import hr.performancemanagement.service.api.ScorecardReportingDateStageService;
 import hr.performancemanagement.service.api.ScorecardService;
 import hr.performancemanagement.service.api.ScorecardWorkflowService;
+import hr.performancemanagement.service.api.ScorecardWorkflowStageService;
 import hr.performancemanagement.service.api.StrategicObjectiveService;
 import hr.performancemanagement.service.api.SystemSettingService;
 import hr.performancemanagement.service.api.TargetService;
@@ -100,6 +101,7 @@ class ScorecardControllerTest {
                 commonService,
                 mock(SystemSettingService.class),
                 mock(ScorecardWorkflowService.class),
+                mock(ScorecardWorkflowStageService.class),
                 reportingDateStageService,
                 mock(EvidenceRepository.class),
                 mock(EvidenceService.class),

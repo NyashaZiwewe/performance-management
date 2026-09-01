@@ -55,6 +55,15 @@ public class ScorecardWorkflowStageServiceImpl implements ScorecardWorkflowStage
     }
 
     @Override
+    public ScorecardWorkflowStage getWorkflowStageByRoleKey(String roleKey) {
+        long clientId = getClientId();
+        if (clientId <= 0) {
+            return null;
+        }
+        return repository.findScorecardWorkflowStageByClientIdAndRoleKey(clientId, roleKey);
+    }
+
+    @Override
     public ScorecardWorkflowStage saveWorkflowStage(ScorecardWorkflowStage stage) {
         if (stage == null) {
             throw new IllegalArgumentException("Workflow stage cannot be null");
