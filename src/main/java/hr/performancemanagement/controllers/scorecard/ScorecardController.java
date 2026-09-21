@@ -802,7 +802,8 @@ public class ScorecardController {
         List<StrategicObjective> STRATEGIC_OBJECTIVES_LIST = strategicObjectiveService.listAllStrategicObjectives(reportingPeriodId);
         ModelAndView modelAndView;
 
-        if(canCaptureTargets(scorecard)){
+        boolean canSubmitTargets = canCaptureTargets(scorecard);
+        if(canSubmitTargets){
 
             modelAndView = new ModelAndView(Pages.CAPTURE_TARGETS);
             modelAndView.addObject("pageTitle", "Capture Targets {"+ scorecard.getOwner().getFullName() +"}");
@@ -830,6 +831,7 @@ public class ScorecardController {
             }
             modelAndView.addObject("targetsList", targetsList);
             modelAndView.addObject("targetRows", buildTargetCaptureRows(targetsList));
+            modelAndView.addObject("canSubmitTargets", canSubmitTargets);
 
         } else {
 

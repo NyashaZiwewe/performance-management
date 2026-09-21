@@ -479,10 +479,8 @@
                     </div>
                     <div class="col-lg-8" th:if="${totalAllocatedWeight == 100.0}">
                         <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
-                        <button class="btn btn-success submit-scorecard-btn" th:if="${scorecard.approvalStatus == scorecardWorkflow.newStatus}" type="button" onclick="submitScorecardForApproval()"
-                                th:text="${workflowRoleActionLabels != null and workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] != null ? workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] : 'Submit for Approval'}">Submit for Approval</button>
-                        <button class="btn btn-success submit-scorecard-btn" th:if="${scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus}" type="button" onclick="submitScorecardForApproval()"
-                                th:text="${workflowRoleActionLabels != null and workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] != null ? workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] : 'Re-Submit for Approval'}">Re-Submit for Approval</button>
+                        <button class="btn btn-success submit-scorecard-btn" th:if="${canSubmitTargets}" type="button" onclick="submitScorecardForApproval()"
+                                th:text="${workflowRoleActionLabels != null and workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] != null ? workflowRoleActionLabels['SCORECARD_STAGE_CAPTURE_TARGETS'] : (scorecard.approvalStatus == scorecardWorkflow.rejectedBySupervisorStatus ? 'Re-Submit for Approval' : 'Submit for Approval')}">Submit for Approval</button>
                     </div>
                     <div class="col-lg-8" th:if="${totalAllocatedWeight != 100.0}">
                         <a th:href="@{/scorecards}" class="btn btn-success" type="button">Save For Later</a>
